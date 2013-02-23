@@ -1,0 +1,30 @@
+<html>
+<head>
+	<title></title>
+</head>
+<body>
+	<div data-bind="text:foo">
+
+	</div>
+
+	<script type="text/javascript" src="../js/lib/knockout.js"></script>
+	<script type="text/javascript" src="../js/lib/ko.mapping.js"></script>
+	<script type="text/javascript">
+		
+		var viewModel = {
+			foo : ko.observable()
+		}
+		var attr = {
+			foo : ko.observable("test")
+		}
+		attr2 = {
+			foo : "foo"
+		}
+		ko.mapping.fromJS(attr2, {}, viewModel);
+		ko.applyBindings(viewModel, document.body);
+
+		attr2.foo("ahahaha")
+
+	</script>
+</body>
+</html>
