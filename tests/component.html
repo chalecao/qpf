@@ -7,6 +7,7 @@
 		}
 		body{
 			background-color: rgba(40, 40, 40, 1);
+			background-image:url(imgs/dark_leather.png);
 			color: white;
 			margin:0px;
 			height: 100%;
@@ -14,54 +15,38 @@
 		#Main{
 			display: inline-block;
 		}
-		#Main>div{
+		.wse-panel-body>div{
 			margin:10px 0px;
-		}
-		.left{
-			margin-right: 450px;
-			height:100%;
-			font-size: 12px;
-		}
-		#CodeEditor{
-			height: 100%;
-		}
-		.CodeMirror,
-		.CodeMirror-scroll{
-			height: 100%;
 		}
 		.right{
 			width:800px;
 			position: absolute;
 			right:0px;
-			top:0px;
+			top:10px;
 		}
 	</style>
 </head>
 <body>
-	<div class="left">
-		<div id="CodeEditor"></div>
-	</div>
 	<div class="right"></div>
 
 	<script type="text/x-template" id="Template">
-<div id="Main" data-bind="wse_container:{type:'container',name:'container'}">
-	<div data-bind="wse_meta:{type:'button',name:'button',text:'click me!'}"></div>
-	<div data-bind="wse_meta:{type:'label', name:'label', text:'im a label'}"></div>
-	<div data-bind="wse_meta:{type:'checkbox', name:'checkbox', checked:true,label:'im a checkbox'}"></div>
-	<div data-bind="wse_meta:{type:'textfield', name:'textfield', text:'Hi'}"></div>
-	<div data-bind="wse_meta:{type:'spinner', name:'spinner', value:20  }"></div>
-	<div data-bind="wse_meta:{type:'range', name:'range',  min:0,max:100,value:10,format:'{{value}}%' }"></div>
-	<div data-bind="wse_meta:{type:'range', name:'rangeVertical', precision:2, min:0, max:1, value:0.1, orientation:'vertical' }" style="height:100px;"></div>
-	<div data-bind="wse_meta:{type:'combobox', name:'combobox', value:1, options:[{value:1, text:'first'},{value:2,text:'second'}]}"></div>
+<div id="Main" data-bind="wse_ui:{type:'window',name:'window',title:title}">
+	<div data-bind="wse_ui:{type:'button',name:'button',text:'click me!',onclick:clickHandler}"></div>
+	<div data-bind="wse_ui:{type:'label', name:'label', text:info}"></div>
+	<div data-bind="wse_ui:{type:'checkbox', name:'checkbox', checked:true,label:'im a checkbox'}"></div>
+	<div data-bind="wse_ui:{type:'textfield', name:'textfield', text:'Hi'}"></div>
+	<div data-bind="wse_ui:{type:'spinner', name:'spinner', value:20  }"></div>
+	<div data-bind="wse_ui:{type:'range', name:'range',  min:0,max:100,value:10,format:'{{value}}%' }"></div>
+	<div data-bind="wse_ui:{type:'range', name:'rangeVertical', precision:2, min:0, max:1, value:0.1, orientation:'vertical' }"></div>
+	<div data-bind="wse_ui:{type:'combobox', name:'combobox', value:1, options:[{value:1, text:'first'},{value:2,text:'second'}]}"></div>
 
-	<div data-bind="wse_widget:{type:'vector', name:'position', constrainType:'ratio', items:[{type:'spinner', value:512},{type:'spinner', value:728}] }"></div>
+	<div data-bind="wse_ui:{type:'vector', name:'resolution', constrainType:'ratio', items:[{type:'spinner', value:512},{type:'spinner', value:728}] }"></div>
 
-	<div data-bind="wse_widget:{type:'vector', name:'position', items:[{type:'range', value:0},{type:'range', value:10},{type:'range', value:10}] }"></div>
+	<div data-bind="wse_ui:{type:'vector', name:'position', items:[{type:'range', value:0},{type:'range', value:10},{type:'range', value:10}] }"></div>
 </div>
 	</script>
 	<script type="text/javascript" src="../thirdparty/jquery.js"></script>
 	<script type="text/javascript" src="../thirdparty/require.js"></script>
-	<script type="text/javascript" src="../thirdparty/less.js"></script>
 	<script type="text/javascript" src="../thirdparty/underscore.js"></script>
 	<script type="text/javascript">
 		requirejs.config({

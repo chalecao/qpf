@@ -1,4 +1,5 @@
-define(["knockout",
+define(['core/xmlparser',
+		"knockout",
 		"components/mixin/draggable",
 		"components/meta/button",
 		"components/meta/label",
@@ -8,27 +9,26 @@ define(["knockout",
 		"components/meta/textfield",
 		"components/meta/combobox",
 		'components/widget/vector',
-		"components/container/window"], function(ko){
-
-	var Base = require("components/base");
-	var Draggable = require("components/mixin/draggable");
-
-	var tpl = $("#Template").html();
-
-	var $el = $(tpl);
-	$('.right').append( $el );
+		"components/container/window"], function(XMLParser, ko){
 
 	var viewModel = {
 		title : ko.observable("window"),
 		clickHandler : function(){
+			a
 			viewModel.info("button is clicked");
 		},
 		info : ko.observable("Im a label!")
 	}
 
-	ko.applyBindings(viewModel, $el[0]);
+	$.get('./component.xml', function(result){
 
+		var dom = XMLParser.parse(result);
 
-	var item = Base.getByDom($el);
+		document.body.appendChild(dom);
+		dom.style.width="200px";
+
+		ko.applyBindings(viewModel, dom);
+
+	}, 'text')
 
 })

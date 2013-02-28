@@ -6,8 +6,8 @@
 //=====================================
 define(["core/mixin/derive",
 		"core/mixin/event",
-		"knockout",
-		"ko.mapping"], function(Derive, Events, ko, koMapping){
+		"./Util",
+		"knockout"], function(Derive, Events, Util, ko){
 
 var clazz = new Function();
 
@@ -34,6 +34,8 @@ return {	// Public properties
 	// Attribute will be applied to the viewModel
 	// WARNING: It will be only used in the constructor
 	// So there is no need to re-assign a new viewModel when created an instance
+	// if property in the attribute is a observable
+	// it will be binded to the property in viewModel
 	attribute : {},
 	// ui skin
 	skin : "",
@@ -57,7 +59,7 @@ return {	// Public properties
 	// Class name of wrapper element is depend on the lowercase of component type
 	this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
 	// apply attribute to the view model
-	koMapping.fromJS(this.attribute, {}, this.viewModel);
+	this._mappingAttributesToViewModel( this.attribute );
 
 	this.initialize();
 	this.render();
@@ -68,6 +70,12 @@ return {	// Public properties
 	type : "BASE",
 	// Template of the component, will be applyed binging with viewModel
 	template : "",
+	// Declare the events that will be provided 
+	// Developers can use on method to subscribe these events
+	// It is used in the binding handlers to judge which parameter
+	// passed in is events
+	eventsProvided : [],
+
 	// Will be called after the component first created
 	initialize : function(){},
 	// set the attribute in the modelView
@@ -76,10 +84,9 @@ return {	// Public properties
 			var source = {};
 			source[key] = value;
 		}else{
-			source = key
+			source = key;
 		};
-
-		koMapping.fromJS(source, {}, this.viewModel);
+		this._mappingAttributesToViewModel( source );
 	},
 	// Call to refresh the component
 	// Will trigger beforerender and afterrender hooks
@@ -95,10 +102,6 @@ return {	// Public properties
 	// Default render method
 	dorender : function(){
 		this.$el.html(this.template);
-		// get data from Attribute
-		if( this.attribute ){
-			koMapping.fromJS(this.attribute, {}, this.viewModel);	
-		}
 		ko.applyBindings( this.viewModel, this.$el[0] );
 	},
 	// Dispose the component instance
@@ -121,6 +124,26 @@ return {	// Public properties
 		if( className.indexOf(prefix) == 0){
 			return className.substr(prefix.length);
 		}
+	},
+	// mapping the attributes to viewModel 
+	_mappingAttributesToViewModel : function(attributes){
+		for(var name in attributes){
+			var attr = attributes[name];
+			var propInVM = this.viewModel[name];
+			if( ! propInVM ){
+				// console.error("Attribute "+name+" is not a valid viewModel property");
+				continue;
+			}
+			if( ko.isObservable(propInVM) ){
+				propInVM(ko.utils.unwrapObservable(attr) );
+
+				if( ko.isObservable(attr) ){
+					Util.bridge(propInVM, attr);
+				}
+			}else{
+				propInVM = ko.utils.unwrapObservable(attr);
+			}
+		}	
 	}
 })
 
@@ -204,6 +227,68 @@ ko.extenders.numeric = function(target, precision) {
 
 	return fixer;
 };
+
+//-------------------------------------------
+// Handle bingings in the knockout template
+var bindings = {};
+Base.provideBinding = function(name, Component ){
+	bindings[name] = Component;
+}
+// provide bindings to knockout
+ko.bindingHandlers["wse_ui"] = {
+	init : function( element, valueAccessor ){
+
+		// dispose the previous component host on the element
+		var prevComponent = Base.getByDom( element );
+		if( prevComponent ){
+			prevComponent.dispose();
+		}
+		var component = Util.createComponentFromDataBinding( element, valueAccessor, bindings );
+
+		// not apply bindings to the descendant doms in the UI component
+		return { 'controlsDescendantBindings': true };
+	},
+
+	update : function( element, valueAccessor ){
+		// var value = valueAccessor();
+		// var options = unwrap(value) || {},
+		// 	type = unwrap(options.type),
+		// 	name  = unwrap(options.name),
+		// 	attr = unwrap(options.attribute);
+
+		// var component = Base.get( element.getAttribute("data-wse-guid") );
+
+		// if( component &&
+		// 	component.type.toLowerCase() == type.toLowerCase() ){	// do simple update
+		// 	component.name = name;
+		// 	if( attr ){
+		// 		koMapping.fromJS( attr, {}, component.viewModel );	
+		// 	}
+		// }else{
+		// 	ko.bindingHandlers["wse_meta"].init( element, valueAccessor );
+		// }
+
+	}
+}
+
+// append the element of view in the binding
+ko.bindingHandlers["wse_view"] = {
+	init : function(element, valueAccessor){
+		var value = valueAccessor();
+
+		var subView = ko.utils.unwrapObservable(value);
+		if( subView && subView.$el ){
+			$(element).html('').append( subView.$el );
+		}
+		// PENDING
+		// handle disposal (if KO removes by the template binding)
+        // ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
+            // subView.dispose();
+        // });
+
+		return { 'controlsDescendantBindings': true };
+	}
+}
 
 // export the interface
 return Base;

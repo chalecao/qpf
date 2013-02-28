@@ -14,7 +14,16 @@ return {
 	}
 }}, {
 
+	eventsProvided : ['click'],
+
 	type : 'BUTTON',
+
+	afterrender : function(){
+		var me = this;
+		this.$el.click(function(){
+			me.trigger("click");
+		})
+	}
 });
 
 Meta.provideBinding("button", Button);

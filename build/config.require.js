@@ -16,6 +16,17 @@
 			'css' : 'require-lib/require-css/css'
 		}
 	},
-	name : "src/wse_ui",
-	out:"./output/wse_ui.min.js"
+	// name : "build/almond",
+	include : ["components/meta/button",
+				"components/meta/checkbox",
+				"components/meta/combobox",
+				"components/meta/label",
+				"components/meta/range",
+				"components/meta/spinner",
+				"components/meta/textfield",
+				"components/container/window",
+				"components/widget/vector"],
+				
+	out:"./output/wse_ui.require.js",
+	// wrap : true
 })

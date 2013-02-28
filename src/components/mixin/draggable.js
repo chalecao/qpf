@@ -92,7 +92,7 @@ add : function( elem, handle ){
 
 	$elem.attr( "data-wse-draggable", id )
 		.addClass("wse-draggable");
-
+	
 	(handle ? $(handle) : $elem)
 		.bind("mousedown", {context:this}, this._mouseDown);
 

@@ -6,6 +6,7 @@
 // @VMProp min
 // @VMProp max
 // @VMProp orientation
+// @VMProp format
 //
 // @method computePercentage
 // @method updatePosition	update the slider position manually
@@ -59,6 +60,8 @@ return {
 					<div class="wse-range-value" data-bind="text:_format(value())"></div>\
 				</div>',
 
+	eventsProvided : ["change"],
+	
 	initialize : function(){
 
 		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
@@ -76,6 +79,7 @@ return {
 				this.updatePosition();
 			}
 			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
+			
 			prevValue = newValue;
 		}, this);
 	},
@@ -98,7 +102,6 @@ return {
 		this.$el.mousedown(function(e){
 			e.preventDefault();
 		});
-
 	},
 
 	_dragHandler : function(){

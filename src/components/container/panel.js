@@ -1,40 +1,46 @@
-//============================================
-// Container with title and content
-//============================================
+//===================================
+// Panel
+// Container has title and content
+//===================================
+define(["./container",
+		"knockout"], function(Container, ko){
 
-define(function(require, exports, module){
+var Panel = Container.derive(function(){
 
-	var Layer = require('./Layer');
+return {
 
-	var Collection = Layer.Collection.extend({
-	});
+	viewModel : {
 
-	var View = Layer.View.extend({
+		title : ko.observable(""),
 
-		type : 'PANEL',
+		children : ko.observableArray([])
+	}
+}}, {
 
-		tagName : 'div',
+	type : 'PANEL',
 
-		className : 'lblend-panel',
+	template : '<div class="wse-panel-header">\
+					<div class="wse-panel-title" data-bind="html:title"></div>\
+					<div class="wse-panel-tools"></div>\
+				</div>\
+				<div class="wse-panel-body" data-bind="foreach:children">\
+					<div data-bind="wse_view:$data"></div>\
+				</div>\
+				<div class="wse-panel-footer"></div>',
 
-		template : '<h5 class="lblend-panel-label">{{name}}</h5><div class="lblend-list"></div>',
+	afterrender : function(){
+		var $el = this.$el;
+		this._$header = $el.children(".wse-panel-header");
+		this._$tools = this._$header.children(".wse-panel-tools");
+		this._$body = $el.children(".wse-panel-body");
+		this._$footer = $el.children(".wse-panel-footer");
 
-		collection : null,
+	}
+})
 
-		render : function(){
+Container.provideBinding("panel", Panel);
 
-			var self = this;
-
-			//调用父类的渲染程序
-			Layer.View.prototype.render.call(this);
-
-		}
-	});
-
-	exports.Collection = Collection;
-
-	exports.View = View;
-
-	Collection.prototype.__viewconstructor__ = View;
+return Panel;
 
 })
+

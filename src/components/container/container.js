@@ -18,20 +18,14 @@ return {
 	type : "CONTAINER",
 	
 	template : '<div data-bind="foreach:children">\
-					<div data-bind="wse_view:$data">\
+					<div data-bind="wse_view:$data"></div>\
 				</div>',
 	// add child component
 	add : function( sub ){
-		if( ! this.viewModel.children ){
-			throw new Error("viewModel must have children property");
-		}
 		this.viewModel.children.push( sub );
 	},
 	// remove child component
 	remove : function(){
-		if( ! this.viewModel.children ){
-			throw new Error("viewModel must have children property");
-		}
 		this.viewModel.children.remove( sub );
 	},
 	children : function(){
@@ -54,78 +48,46 @@ return {
 	}
 })
 
-//-------------------------------------------
-// Handle bingings in the knockout template
-var bindings = {};
-Container.provideBinding = function(name, Component ){
-	bindings[name] = Component;
-}
-var unwrap = ko.utils.unwrapObservable;
-// provide bindings to knockout
-ko.bindingHandlers["wse_container"] = {
-	init : function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext ){
-		var value = valueAccessor();
+Container.provideBinding = Base.provideBinding;
+
+// modify the wse_ui bindler
+var baseBindler = ko.bindingHandlers["wse_ui"];
+ko.bindingHandlers["wse_ui"] = {
+
+	init : function(element, valueAccessor, allBindingsAccessor, viewModel){
 		
-		var options = unwrap(value) || {},
-			type = unwrap(options.type),
-			name = unwrap(options.name),
-			attr = _.omit(options, "type", "name");
-						
-		if( options.type ){
-			var Component = bindings[ options.type ];
-			if( Component ){
-				var instance = new Component({
-					name : name || "",
-					attribute : attr
-				});
-				// initialize from the dom element
-				for(var i = 0; i < element.childNodes.length; i++){
-					var child = element.childNodes[i];
-					if( ko.bindingProvider.prototype.nodeHasBindings(child) ){
-						// Binding with the container's viewModel
-						// TODO : or replace with bindingContext??
-						ko.applyBindings(viewModel, child);
-						var sub = Base.get( child.getAttribute("data-wse-guid") );
-						if( sub ){
-							instance.add( sub );
-						}
+		//save the child nodes before the element's innerHTML is changed in the createComponentFromDataBinding method
+		var childNodes = Array.prototype.slice.call(element.childNodes);
+
+		var result = baseBindler.init(element, valueAccessor);
+
+		var component = Base.getByDom( element );
+
+		if( component && component.instanceof(Container) ){
+
+			var children = [];
+			// initialize from the dom element
+			for(var i = 0; i < childNodes.length; i++){
+				var child = childNodes[i];
+				if( ko.bindingProvider.prototype.nodeHasBindings(child) ){
+					// Binding with the container's viewModel
+					ko.applyBindings(viewModel, child);
+					var sub = Base.getByDom( child );
+					if( sub ){
+						children.push( sub );
 					}
 				}
-				// default is initialize from the children property
-				
-				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", instance.__GUID__);
-			}else{
-				console.error("Unkown UI type, " + options.type);
 			}
-		}else{
-			console.error("UI type is needed");
+
+			component.viewModel.children( children );
 		}
 
-		// not apply bindings to the descendant doms in the UI component
-		return { 'controlsDescendantBindings': true };
+		return result;
+
 	},
-	// updated the type, name, attribute
-	update : function(element){
-
-	}
-}
-// append the element of view in the binding
-ko.bindingHandlers["wse_view"] = {
 	update : function(element, valueAccessor){
-		var value = valueAccessor();
-
-		var subView = unwrap(value);
-		if( subView && subView.$el ){
-			$(element).html('').append( subView.$el );
-		}
-
+		baseBindler.update(element, valueAccessor);
 	}
-}
-
-// create component from json
-Container.fromJSON = function( json ){
-
 }
 
 Container.provideBinding("container", Container);

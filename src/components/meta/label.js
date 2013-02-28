@@ -13,7 +13,7 @@ return {
 		text : ko.observable('Label')
 	}
 } }, {
-	type : 'LABEL',
+	type : 'LABEL'
 });
 
 Meta.provideBinding("label", Label);

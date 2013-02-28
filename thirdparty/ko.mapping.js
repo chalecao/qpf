@@ -83,9 +83,9 @@
 		if (arguments.length == 0) throw new Error("When calling ko.fromJS, pass the object you want to convert.");
 
 		// When mapping is completed, even with an exception, reset the nesting level
-		window.setTimeout(function () {
+		// window.setTimeout(function () {
 			mappingNesting = 0;
-		}, 0);
+		// }, 0);
 
 		if (!mappingNesting++) {
 			dependentObservables = [];

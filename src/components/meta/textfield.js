@@ -24,8 +24,7 @@ var TextField = Meta.derive(
 	
 	type : "TEXTFIELD",
 
-	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>',
-
+	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
 })
 
 Meta.provideBinding("textfield", TextField);

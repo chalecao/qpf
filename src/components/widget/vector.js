@@ -64,7 +64,7 @@ return {
 				</div>\
 				<div class="wse-right" >\
 					<ul class="wse-list" data-bind="foreach:items">\
-						<li data-bind="wse_meta:$data"></li>\
+						<li data-bind="wse_ui:$data"></li>\
 					</ul>\
 				</div>',
 

@@ -15,6 +15,21 @@ function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
 		initialize = null;
 	}
 
+	// extend default prototype method
+	var extendedProto = {
+		// instanceof operator cannot work well,
+		// so we write a method to simulate it
+		'instanceof' : function(constructor){
+			var selfConstructor = sub;
+			while(selfConstructor){
+				if( selfConstructor === constructor ){
+					return true;
+				}
+				selfConstructor = selfConstructor.__super__;
+			}
+		}
+	}
+
 	var _super = this;
 
 	var sub = function(options){
@@ -57,12 +72,13 @@ function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
 	sub.__initialize__ = initialize;
 
 	// extend prototype function
-	_.extend( sub.prototype, _super.prototype, proto);
+	_.extend( sub.prototype, _super.prototype, extendedProto, proto);
 
 	sub.prototype.constructor = sub;
 	
 	// extend the derive method as a static method;
 	sub.derive = _super.derive;
+
 
 	return sub;
 }

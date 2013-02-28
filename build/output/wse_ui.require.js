@@ -16,6 +16,21 @@ function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
 		initialize = null;
 	}
 
+	// extend default prototype method
+	var extendedProto = {
+		// instanceof operator cannot work well,
+		// so we write a method to simulate it
+		'instanceof' : function(constructor){
+			var selfConstructor = sub;
+			while(selfConstructor){
+				if( selfConstructor === constructor ){
+					return true;
+				}
+				selfConstructor = selfConstructor.__super__;
+			}
+		}
+	}
+
 	var _super = this;
 
 	var sub = function(options){
@@ -58,12 +73,13 @@ function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
 	sub.__initialize__ = initialize;
 
 	// extend prototype function
-	_.extend( sub.prototype, _super.prototype, proto);
+	_.extend( sub.prototype, _super.prototype, extendedProto, proto);
 
 	sub.prototype.constructor = sub;
 	
 	// extend the derive method as a static method;
 	sub.derive = _super.derive;
+
 
 	return sub;
 }
@@ -135,6 +151,77 @@ return{
 	}
 }
 });
+//==========================
+// Util.js
+// provide util function to operate
+// the components
+//===========================
+define('components/Util',['knockout',
+		'exports'], function(ko, exports){
+
+	var unwrap = ko.utils.unwrapObservable;
+
+	exports.createComponentFromDataBinding = function( element, valueAccessor, availableBindings ){
+		
+		var value = valueAccessor();
+		
+		var options = unwrap(value) || {},
+			type = unwrap(options.type);
+
+		if( type ){
+			var Constructor = availableBindings[type];
+
+			if( Constructor ){
+				var component = exports.createComponentFromJSON( options, Constructor)
+				if( component ){
+					element.innerHTML = "";
+					element.appendChild( component.$el[0] );
+				}
+				// save the guid in the element data attribute
+				element.setAttribute("data-wse-guid", component.__GUID__);
+			}else{
+				console.error("Unkown UI type, " + type);
+			}
+		}else{
+			console.error("UI type is needed");
+		}
+
+		return component;
+	}
+
+	exports.createComponentFromJSON = function(options, Constructor){
+
+		var type = unwrap(options.type),
+			name = unwrap(options.name),
+			attr = _.omit(options, "type", "name");
+
+		var events = {};
+
+		// Find which property is event
+		_.each(attr, function(value, key){
+			if( key.indexOf("on") == 0 &&
+				component.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
+				typeof(value) == "function"){
+				delete attr[key];
+				events[key.substr("on".length)] = value;
+			}
+		})
+
+		var component = new Constructor({
+			name : name || "",
+			attribute : attr
+		});
+		// binding events
+		_.each(events, function(handler, name){
+			component.on(name, handler);
+		})
+
+		return component;
+
+		
+	}
+})
+;
 //=====================================
 // Base class of all components
 // it also provides some util methods like
@@ -143,8 +230,9 @@ return{
 //=====================================
 define('components/base',["core/mixin/derive",
 		"core/mixin/event",
+		"./Util",
 		"knockout",
-		"ko.mapping"], function(Derive, Events, ko, koMapping){
+		"ko.mapping"], function(Derive, Events, Util, ko, koMapping){
 
 var clazz = new Function();
 
@@ -205,6 +293,12 @@ return {	// Public properties
 	type : "BASE",
 	// Template of the component, will be applyed binging with viewModel
 	template : "",
+	// Declare the events that will be provided 
+	// Developers can use on method to subscribe these events
+	// It is used in the binding handlers to judge which parameter
+	// passed in is events
+	eventsProvided : [],
+
 	// Will be called after the component first created
 	initialize : function(){},
 	// set the attribute in the modelView
@@ -232,10 +326,6 @@ return {	// Public properties
 	// Default render method
 	dorender : function(){
 		this.$el.html(this.template);
-		// get data from Attribute
-		if( this.attribute ){
-			koMapping.fromJS(this.attribute, {}, this.viewModel);	
-		}
 		ko.applyBindings( this.viewModel, this.$el[0] );
 	},
 	// Dispose the component instance
@@ -342,65 +432,22 @@ ko.extenders.numeric = function(target, precision) {
 	return fixer;
 };
 
-// export the interface
-return Base;
-
-});
-//==================================
-// Base class of all meta component
-// Meta component is the ui component
-// that has no children
-//==================================
-define('components/meta/meta',['../base',
-		'knockout',
-		'ko.mapping'], function(Base, ko, koMapping){
-
-var Meta = Base.derive(
-{
-}, {
-	type : "META"
-})
-
 //-------------------------------------------
 // Handle bingings in the knockout template
 var bindings = {};
-Meta.provideBinding = function(name, Component ){
+Base.provideBinding = function(name, Component ){
 	bindings[name] = Component;
 }
-var unwrap = ko.utils.unwrapObservable;
 // provide bindings to knockout
-ko.bindingHandlers["wse_meta"] = {
+ko.bindingHandlers["wse_ui"] = {
 	init : function( element, valueAccessor ){
-		var value = valueAccessor();
-		
-		var options = unwrap(value) || {},
-			type = unwrap(options.type),
-			name = unwrap(options.name),
-			attr = _.omit(options, "type", "name");
-		if( type ){
-			var Component = bindings[ type ];
-			if( Component ){
-				// dispose the previous component host on the element
-				var prevComponent = Base.get( element.getAttribute("data-wse-guid") );
-				if( prevComponent ){
-					prevComponent.dispose();
-				}
 
-				var instance = new Component({
-					name : name || "",
-					attribute : attr
-				});
-				element.innerHTML = "";
-				element.appendChild( instance.$el[0] );
-
-				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", instance.__GUID__);
-			}else{
-				console.error("Unkown UI type, " + options.type);
-			}
-		}else{
-			console.error("UI type is needed");
+		// dispose the previous component host on the element
+		var prevComponent = Base.getByDom( element );
+		if( prevComponent ){
+			prevComponent.dispose();
 		}
+		var component = Util.createComponentFromDataBinding( element, valueAccessor, bindings );
 
 		// not apply bindings to the descendant doms in the UI component
 		return { 'controlsDescendantBindings': true };
@@ -427,6 +474,42 @@ ko.bindingHandlers["wse_meta"] = {
 
 	}
 }
+
+// append the element of view in the binding
+ko.bindingHandlers["wse_view"] = {
+	init : function(element, valueAccessor){
+		var value = valueAccessor();
+
+		var subView = ko.utils.unwrapObservable(value);
+		if( subView && subView.$el ){
+			$(element).html('').append( subView.$el );
+		}
+		
+		return { 'controlsDescendantBindings': true };
+	}
+}
+
+// export the interface
+return Base;
+
+});
+//==================================
+// Base class of all meta component
+// Meta component is the ui component
+// that has no children
+//==================================
+define('components/meta/meta',['../base',
+		'knockout',
+		'ko.mapping'], function(Base, ko, koMapping){
+
+var Meta = Base.derive(
+{
+}, {
+	type : "META"
+})
+
+// Inherit the static methods
+Meta.provideBinding = Base.provideBinding;
 
 return Meta;
 
@@ -583,6 +666,29 @@ Meta.provideBinding("combobox", Combobox);
 return Combobox;
 
 });
+//======================================
+// Label component
+//======================================
+define('components/meta/label',['./meta',
+		'knockout'], function(Meta, ko){
+
+var Label = Meta.derive(function(){
+return {
+	$el : $('<Label data-bind="html:text"></Label>'),
+
+	viewModel : {
+		// value of the Label
+		text : ko.observable('Label')
+	}
+} }, {
+	type : 'LABEL'
+});
+
+Meta.provideBinding("label", Label);
+
+return Label;
+
+});
 //=================================
 // mixin to provide draggable interaction
 // support multiple selection
@@ -677,7 +783,7 @@ add : function( elem, handle ){
 
 	$elem.attr( "data-wse-draggable", id )
 		.addClass("wse-draggable");
-
+	
 	(handle ? $(handle) : $elem)
 		.bind("mousedown", {context:this}, this._mouseDown);
 
@@ -980,6 +1086,7 @@ return {
 // @VMProp min
 // @VMProp max
 // @VMProp orientation
+// @VMProp format
 //
 // @method computePercentage
 // @method updatePosition	update the slider position manually
@@ -1033,6 +1140,8 @@ return {
 					<div class="wse-range-value" data-bind="text:_format(value())"></div>\
 				</div>',
 
+	eventsProvided : ["change"],
+	
 	initialize : function(){
 
 		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
@@ -1050,6 +1159,7 @@ return {
 				this.updatePosition();
 			}
 			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
+			
 			prevValue = newValue;
 		}, this);
 	},
@@ -1072,7 +1182,6 @@ return {
 		this.$el.mousedown(function(e){
 			e.preventDefault();
 		});
-
 	},
 
 	_dragHandler : function(){
@@ -1293,8 +1402,7 @@ var TextField = Meta.derive(
 	
 	type : "TEXTFIELD",
 
-	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>',
-
+	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
 })
 
 Meta.provideBinding("textfield", TextField);
@@ -1320,20 +1428,14 @@ return {
 	type : "CONTAINER",
 	
 	template : '<div data-bind="foreach:children">\
-					<div data-bind="wse_view:$data">\
+					<div data-bind="wse_view:$data"></div>\
 				</div>',
 	// add child component
 	add : function( sub ){
-		if( ! this.viewModel.children ){
-			throw new Error("viewModel must have children property");
-		}
 		this.viewModel.children.push( sub );
 	},
 	// remove child component
 	remove : function(){
-		if( ! this.viewModel.children ){
-			throw new Error("viewModel must have children property");
-		}
 		this.viewModel.children.remove( sub );
 	},
 	children : function(){
@@ -1356,83 +1458,133 @@ return {
 	}
 })
 
-//-------------------------------------------
-// Handle bingings in the knockout template
-var bindings = {};
-Container.provideBinding = function(name, Component ){
-	bindings[name] = Component;
-}
-var unwrap = ko.utils.unwrapObservable;
-// provide bindings to knockout
-ko.bindingHandlers["wse_container"] = {
-	init : function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext ){
-		var value = valueAccessor();
+Container.provideBinding = Base.provideBinding;
+
+// modify the wse_ui bindler
+var baseBindler = ko.bindingHandlers["wse_ui"];
+ko.bindingHandlers["wse_ui"] = {
+
+	init : function(element, valueAccessor, allBindingsAccessor, viewModel){
 		
-		var options = unwrap(value) || {},
-			type = unwrap(options.type),
-			name = unwrap(options.name),
-			attr = _.omit(options, "type", "name");
-						
-		if( options.type ){
-			var Component = bindings[ options.type ];
-			if( Component ){
-				var instance = new Component({
-					name : name || "",
-					attribute : attr
-				});
-				// initialize from the dom element
-				for(var i = 0; i < element.childNodes.length; i++){
-					var child = element.childNodes[i];
-					if( ko.bindingProvider.prototype.nodeHasBindings(child) ){
-						// Binding with the container's viewModel
-						// TODO : or replace with bindingContext??
-						ko.applyBindings(viewModel, child);
-						var sub = Base.get( child.getAttribute("data-wse-guid") );
-						if( sub ){
-							instance.add( sub );
-						}
+		//save the child nodes before the element's innerHTML is changed in the createComponentFromDataBinding method
+		var childNodes = Array.prototype.slice.call(element.childNodes);
+
+		var result = baseBindler.init(element, valueAccessor);
+
+		var component = Base.getByDom( element );
+
+		if( component && component.instanceof(Container) ){
+
+			var children = [];
+			// initialize from the dom element
+			for(var i = 0; i < childNodes.length; i++){
+				var child = childNodes[i];
+				if( ko.bindingProvider.prototype.nodeHasBindings(child) ){
+					// Binding with the container's viewModel
+					ko.applyBindings(viewModel, child);
+					var sub = Base.getByDom( child );
+					if( sub ){
+						children.push( sub );
 					}
 				}
-				// default is initialize from the children property
-				
-				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", instance.__GUID__);
-			}else{
-				console.error("Unkown UI type, " + options.type);
 			}
-		}else{
-			console.error("UI type is needed");
+
+			component.viewModel.children( children );
 		}
 
-		// not apply bindings to the descendant doms in the UI component
-		return { 'controlsDescendantBindings': true };
+		return result;
+
 	},
-	// updated the type, name, attribute
-	update : function(element){
-
-	}
-}
-// append the element of view in the binding
-ko.bindingHandlers["wse_view"] = {
 	update : function(element, valueAccessor){
-		var value = valueAccessor();
-
-		var subView = unwrap(value);
-		if( subView && subView.$el ){
-			$(element).html('').append( subView.$el );
-		}
-
+		baseBindler.update(element, valueAccessor);
 	}
-}
-
-// create component from json
-Container.fromJSON = function( json ){
-
 }
 
 Container.provideBinding("container", Container);
 
 return Container;
+
+});
+//===================================
+// Panel
+// Container has title and content
+//===================================
+define('components/container/panel',["./container",
+		"knockout"], function(Container, ko){
+
+var Panel = Container.derive(function(){
+
+return {
+
+	viewModel : {
+
+		title : ko.observable(""),
+
+		children : ko.observableArray([])
+	}
+}}, {
+
+	type : 'PANEL',
+
+	template : '<div class="wse-panel-header">\
+					<div class="wse-panel-title" data-bind="html:title"></div>\
+					<div class="wse-panel-tools"></div>\
+				</div>\
+				<div class="wse-panel-body" data-bind="foreach:children">\
+					<div data-bind="wse_view:$data"></div>\
+				</div>\
+				<div class="wse-panel-footer"></div>',
+
+	afterrender : function(){
+		var $el = this.$el;
+		this._$header = $el.children(".wse-panel-header");
+		this._$tools = this._$header.children(".wse-panel-tools");
+		this._$body = $el.children(".wse-panel-body");
+		this._$footer = $el.children(".wse-panel-footer");
+
+	}
+})
+
+Container.provideBinding("panel", Panel);
+
+return Panel;
+
+})
+
+;
+//===================================
+// Window componennt
+// Window is a panel wich can be drag
+// and close
+//===================================
+define('components/container/window',["./container",
+		"./panel",
+		'../mixin/draggable',
+		"knockout"], function(Container, Panel, Draggable, ko){
+
+var Window = Panel.derive(function(){
+
+return {
+
+}}, {
+
+	type : 'WINDOW',
+
+	initialize : function(){
+		Draggable.applyTo( this );
+	},
+
+	afterrender : function(){
+		
+		Panel.prototype.afterrender.call( this );
+
+		this.draggable.add( this.$el, this._$header);
+	}
+})
+
+Container.provideBinding("window", Window);
+
+return Window;
 
 });
 //====================================
@@ -1455,53 +1607,7 @@ var Widget = Base.derive(
 
 //-------------------------------------------
 // Handle bingings in the knockout template
-var bindings = {};
-Widget.provideBinding = function(name, Component ){
-	bindings[name] = Component;
-}
-var unwrap = ko.utils.unwrapObservable;
-
-ko.bindingHandlers["wse_widget"] = {
-	init : function( element, valueAccessor ){
-		var value = valueAccessor();
-		
-		var options = unwrap(value) || {},
-			type = unwrap(options.type),
-			name = unwrap(options.name),
-			attr = _.omit(options, "type", "name");
-		if( type ){
-			var Component = bindings[ type ];
-			if( Component ){
-				// dispose the previous component host on the element
-				var prevComponent = Base.get( element.getAttribute("data-wse-guid") );
-				if( prevComponent ){
-					prevComponent.dispose();
-				}
-
-				var instance = new Component({
-					name : name || "",
-					attribute : attr
-				});
-				element.innerHTML = "";
-				element.appendChild( instance.$el[0] );
-
-				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", instance.__GUID__);
-			}else{
-				console.error("Unkown UI type, " + options.type);
-			}
-		}else{
-			console.error("UI type is needed");
-		}
-
-		// not apply bindings to the descendant doms in the UI component
-		return { 'controlsDescendantBindings': true };
-	},
-
-	update : function( element, valueAccessor ){
-
-	}
-}
+Widget.provideBinding = Base.provideBinding;
 
 Widget.provideBinding("widget", Widget);
 
@@ -1574,7 +1680,7 @@ return {
 				</div>\
 				<div class="wse-right" >\
 					<ul class="wse-list" data-bind="foreach:items">\
-						<li data-bind="wse_meta:$data"></li>\
+						<li data-bind="wse_ui:$data"></li>\
 					</ul>\
 				</div>',
 
@@ -1670,16 +1776,5 @@ return {
 Widget.provideBinding("vector", Vector);
 
 return Vector;
-
-});
-define('src/wse_ui',['components/meta/button',
-		'components/meta/checkbox',
-		'components/meta/combobox',
-		'components/meta/range',
-		'components/meta/spinner',
-		'components/meta/textfield',
-		'components/container/container',
-		'components/widget/vector'],
-	function(){
 
 });
