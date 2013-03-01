@@ -38,6 +38,8 @@ return {
 }}, {
 	type : 'SPINNER',
 
+	css : 'spinner',
+
 	initialize : function(){
 		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
 
@@ -49,6 +51,8 @@ return {
 		}, this)
 	},
 
+	eventsProvided : ["change"],
+
 	template : '<div class="wse-left">\
 					<input type="text" class="wse-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
 				</div>\
@@ -59,7 +63,7 @@ return {
 					-</div>\
 				</div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		var self = this;
 		// disable selection
 		this.$el.find('.wse-increase,.wse-decrease').mousedown(function(e){

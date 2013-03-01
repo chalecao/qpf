@@ -189,6 +189,10 @@ _restore : function( restorePosition ){
 },
 
 _mouseDown : function(e){
+	
+	if( e.which !== 1){
+		return;
+	}
 
 	var self = e.data.context;
 	//disable selection

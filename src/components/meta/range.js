@@ -50,6 +50,8 @@ return {
 
 	type : "RANGE",
 
+	css : 'range',
+
 	template : '<div class="wse-range-groove">\
 					<div class="wse-range-percentage"></div>\
 				</div>\
@@ -84,7 +86,7 @@ return {
 		}, this);
 	},
 
-	afterrender : function(){
+	afterRender : function(){
 
 		// cache the element;
 		this._$groove = this.$el.find(".wse-range-groove");

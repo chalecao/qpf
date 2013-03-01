@@ -45,13 +45,15 @@ return{
 
 	off : function( target, handler ){
 		
-		var handlers = this.__handlers__;
+		var handlers = this.__handlers__ || {};
 
 		if( handlers[target] ){
 			if( handler ){
 				var arr = handlers[target];
 				// remove handler and context
-				arr.splice( arr.indexOf(handler), 2 )
+				var idx = arr.indexOf(handler);
+				if( idx >= 0)
+					arr.splice( idx, 2 );
 			}else{
 				handlers[target] = [];
 			}

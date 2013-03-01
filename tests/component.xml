@@ -1,7 +1,13 @@
-<window name="window" title="@binding[title]">
-	<button name="button" text="click me !" onclick="@binding[clickHandler]"></button>
-	<label name="label" text="@binding[info]"></label>
-	<checkbox checked="1"></checkbox>
-	<textfield text="Hi"></textfield>
-	<spinner value="20"></spinner>
+<window width="400" title="Window">
+	<tab width="300">
+		<panel title="Controls">
+			<button name="button" text="click me !" onclick="@binding[clickHandler]"></button>
+			<label name="label" text="@binding[info]"></label>
+			<checkbox checked="1" label="I am a checkbox"></checkbox>
+			<textfield text="Hi"></textfield>
+			<spinner value="20"></spinner>
+		</panel>
+		<panel title="About">
+		</panel>
+	</tab>
 </window>

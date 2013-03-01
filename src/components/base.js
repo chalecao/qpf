@@ -37,6 +37,8 @@ return {	// Public properties
 	// if property in the attribute is a observable
 	// it will be binded to the property in viewModel
 	attribute : {},
+	
+	parent : null,
 	// ui skin
 	skin : "",
 	// Class prefix
@@ -56,13 +58,39 @@ return {	// Public properties
 	if( this.skin ){
 		this.$el.addClass( this.withPrefix(this.skin, this.skinPrefix) );
 	}
+
+	if( this.css ){
+		_.each( _.union(this.css), function(className){
+			this.$el.addClass( this.withPrefix(className, this.classPrefix) );
+		}, this)
+	}
 	// Class name of wrapper element is depend on the lowercase of component type
-	this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
+	// this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
+	
+	// extend default properties to view Models
+	_.extend(this.viewModel, {
+		width : ko.observable(),
+		height : ko.observable(),
+		disable : ko.observable(false)
+	});
+	this.viewModel.width.subscribe(function(newValue){
+		this.$el.width(newValue);
+	}, this)
+	this.viewModel.height.subscribe(function(newValue){
+		this.$el.height(newValue);
+	}, this)
+	this.viewModel.disable.subscribe(function(newValue){
+		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
+	}, this)
+
 	// apply attribute to the view model
 	this._mappingAttributesToViewModel( this.attribute );
 
 	this.initialize();
-	this.render();
+	// Here we removed auto rendering at constructor
+	// to support deferred rendering after the $el is attached
+	// to the document
+	// this.render();
 
 }, {// Prototype
 	// Type of component. The className of the wrapper element is
@@ -89,18 +117,18 @@ return {	// Public properties
 		this._mappingAttributesToViewModel( source );
 	},
 	// Call to refresh the component
-	// Will trigger beforerender and afterrender hooks
-	// beforerender and afterrender hooks is mainly provide for
+	// Will trigger beforeRender and afterRender hooks
+	// beforeRender and afterRender hooks is mainly provide for
 	// the subclasses
 	render : function(){
-		this.beforerender && this.beforerender();
-		this.dorender();
-		this.afterrender && this.afterrender();
+		this.beforeRender && this.beforeRender();
+		this.doRender();
+		this.afterRender && this.afterRender();
 
 		this.trigger("render");
 	},
 	// Default render method
-	dorender : function(){
+	doRender : function(){
 		this.$el.html(this.template);
 		ko.applyBindings( this.viewModel, this.$el[0] );
 	},
@@ -153,8 +181,7 @@ Base.get = function(guid){
 	return repository[guid];
 }
 Base.getByDom = function(domNode){
-	var $domNode = $(domNode),
-		guid = $domNode.attr("data-wse-guid");
+	var guid = domNode.getAttribute("data-wse-guid");
 	return Base.get(guid);
 }
 
@@ -165,8 +192,6 @@ Base.disposeDom = function(domNode, resursive){
 	if(typeof(recursive) == "undefined"){
 		recursive = true;
 	}
-
-	domNode = $(domNode)[0];
 
 	function dispose(node){
 		var guid = node.getAttribute("data-wse-guid");
@@ -236,15 +261,22 @@ Base.provideBinding = function(name, Component ){
 }
 // provide bindings to knockout
 ko.bindingHandlers["wse_ui"] = {
-	init : function( element, valueAccessor ){
 
+	createComponent : function(element, valueAccessor){
 		// dispose the previous component host on the element
 		var prevComponent = Base.getByDom( element );
 		if( prevComponent ){
 			prevComponent.dispose();
 		}
 		var component = Util.createComponentFromDataBinding( element, valueAccessor, bindings );
+		return component;
+	},
 
+	init : function( element, valueAccessor ){
+
+		var component = ko.bindingHandlers["wse_ui"].createComponent(element, valueAccessor);
+
+		component.render();
 		// not apply bindings to the descendant doms in the UI component
 		return { 'controlsDescendantBindings': true };
 	},
@@ -278,7 +310,9 @@ ko.bindingHandlers["wse_view"] = {
 
 		var subView = ko.utils.unwrapObservable(value);
 		if( subView && subView.$el ){
-			$(element).html('').append( subView.$el );
+			Base.disposeDom(element);
+			element.innerHTML = "";
+			element.appendChild( subView.$el[0] );
 		}
 		// PENDING
 		// handle disposal (if KO removes by the template binding)

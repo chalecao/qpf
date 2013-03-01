@@ -18,7 +18,9 @@ return {
 
 	type : 'BUTTON',
 
-	afterrender : function(){
+	css : 'button',
+
+	afterRender : function(){
 		var me = this;
 		this.$el.click(function(){
 			me.trigger("click");

@@ -13,7 +13,9 @@ var Widget = Base.derive(
 {
 
 }, {
-	type : "WIDGET"
+	type : "WIDGET",
+
+	css : 'widget'
 })
 
 //-------------------------------------------

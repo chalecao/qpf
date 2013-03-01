@@ -10,7 +10,9 @@ define(['../base',
 var Meta = Base.derive(
 {
 }, {
-	type : "META"
+	type : "META",
+
+	css : 'meta'
 })
 
 // Inherit the static methods

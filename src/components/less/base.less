@@ -435,15 +435,14 @@ body{
 }
 
 //-------------------------------------
-// container : panel && window
+// container : panel
 //-------------------------------------
-.wse-ui-panel,
-.wse-ui-window{
+.wse-ui-panel{
 
 	border-radius: 5px;
 	box-shadow: 0px 1px 2px black;
 
-	.wse-panel-header{
+	&>.wse-panel-header{
 		.linear-gradient-top(#3f3f3f, rgba(255,255,255,0.1), 0%, rgba(255,255,255,0.0), 99%);
 		border-top: 1px solid #626262;
 		color:#919191;
@@ -452,13 +451,71 @@ body{
 		border-radius: 5px 5px 0px 0px;
 
 		box-shadow: 0px 1px 1px black;
-	}
-	.wse-panel-title{
-		margin-left: 10px;
+
+		&>.wse-panel-title{
+			margin-left: 10px;
+		}
+
 	}
 
-	.wse-panel-body{
+	&>.wse-panel-body{
 		padding: 10px;
-		background-color: #2D2D2F;
+		background-color: #323234;
+	}
+}
+//-------------------------------------
+// container : Window
+//-------------------------------------
+
+.wse-ui-window{
+	position: absolute;
+}
+//-------------------------------------
+// container : Tab
+//-------------------------------------
+.wse-ui-tab{
+
+
+	&>.wse-tab-header{
+		overflow: hidden;
+		margin-left: -1px;
+
+		&>.wse-tab-tabs{
+
+			margin: -1px -1px 0px -1px;
+			box-shadow: inset 0px 0px 1px black;
+			height: 28px;
+			padding: 3px 3px 1px 1px;
+			
+			&>li{
+				cursor: pointer;
+				list-style: none;
+				color:#919191;
+				border-radius: 5px 5px 0px 0px;
+				border-top: 1px solid #525252;;
+				.linear-gradient-top(#3f3f3f, rgba(255,255,255,0.05), 0%, rgba(255,255,255,0.0), 99%);
+			
+				line-height: 27px;
+				float: left;
+				text-align: center;
+				border-bottom: 1px solid #222;
+				margin-right: 1px;
+
+				&.active{
+					background-color: #323234;
+					border: 1px solid #1B1B1B;
+					border-bottom: none;
+					margin-top: -1px;
+					line-height: 29px;
+				}
+			}
+		}
+	}
+
+	&>.wse-tab-body{
+		padding: 10px;
+		background-color: #323234;
+		border-radius: 0px 0px 5px 5px;
+		box-shadow: 0px 0px 2px black;
 	}
 }

@@ -7,8 +7,6 @@ define(['./meta',
 var Checkbox = Meta.derive(function(){
 return {
 	
-	tag : "div",
-
 	viewModel : {
 		// value of the button
 		checked : ko.observable(false),
@@ -21,9 +19,10 @@ return {
 				<label data-bind="text:label"></label>',
 
 	type : 'CHECKBOX',
+	css : 'checkbox',
 
 	// binding events
-	afterrender : function(){
+	afterRender : function(){
 		var vm = this.viewModel;
 		this.$el.click(function(){
 			vm.checked( ! vm.checked() );

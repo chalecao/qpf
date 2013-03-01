@@ -19,6 +19,8 @@ return {
 
 	type : 'PANEL',
 
+	css : 'panel',
+
 	template : '<div class="wse-panel-header">\
 					<div class="wse-panel-title" data-bind="html:title"></div>\
 					<div class="wse-panel-tools"></div>\
@@ -28,7 +30,7 @@ return {
 				</div>\
 				<div class="wse-panel-footer"></div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		var $el = this.$el;
 		this._$header = $el.children(".wse-panel-header");
 		this._$tools = this._$header.children(".wse-panel-tools");

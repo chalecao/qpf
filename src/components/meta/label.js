@@ -6,14 +6,17 @@ define(['./meta',
 
 var Label = Meta.derive(function(){
 return {
-	$el : $('<Label data-bind="html:text"></Label>'),
-
 	viewModel : {
 		// value of the Label
 		text : ko.observable('Label')
 	}
 } }, {
-	type : 'LABEL'
+
+	template : '<Label data-bind="html:text"></Label>',
+
+	type : 'LABEL',
+
+	css : 'label'
 });
 
 Meta.provideBinding("label", Label);

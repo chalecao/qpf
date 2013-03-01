@@ -40,6 +40,8 @@ return {
 
 	type : "VECTOR",
 
+	css : 'vector',
+
 	initialize : function(){
 		this.$el.attr("data-bind", 'css:{"wse-vector-constrain":constrainProportion}')
 		// here has a problem that we cant be notified 
@@ -68,7 +70,7 @@ return {
 					</ul>\
 				</div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		// cache the list element
 		this._$list = this.$el.find(".wse-list");
 

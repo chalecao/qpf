@@ -12,17 +12,24 @@ var Window = Panel.derive(function(){
 
 return {
 
-}}, {
+}}, function(){
+	_.extend(this.viewModel, {
+		left : ko.observable(0),
+		top : ko.observable(0)
+	});
+}, {
 
 	type : 'WINDOW',
+
+	css : _.union('window', Panel.prototype.css),
 
 	initialize : function(){
 		Draggable.applyTo( this );
 	},
 
-	afterrender : function(){
+	afterRender : function(){
 		
-		Panel.prototype.afterrender.call( this );
+		Panel.prototype.afterRender.call( this );
 
 		this.draggable.add( this.$el, this._$header);
 	}

@@ -45,6 +45,8 @@ return {
 	
 	type : 'COMBOBOX',
 
+	css : 'combobox',
+
 	initialize : function(){
 
 		this.viewModel.selectedText = ko.computed(function(){
@@ -65,7 +67,7 @@ return {
 					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value)"></li>\
 				</ul>',
 
-	afterrender : function(){
+	afterRender : function(){
 
 		var self = this;
 		this._$selected = this.$el.find(".wse-combobox-selected");

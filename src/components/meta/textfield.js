@@ -24,6 +24,8 @@ var TextField = Meta.derive(
 	
 	type : "TEXTFIELD",
 
+	css : 'textfield',
+
 	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
 })
 

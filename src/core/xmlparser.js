@@ -47,11 +47,30 @@ define(function(require, exports, module){
 		var bindingResults = {
 			type : xmlNode.tagName.toLowerCase()
 		} 
-		attributes = xmlNode.attributes;
+
+		var convertedAttr = convertAttributes( xmlNode.attributes );
+		var bindingString = attributesToDataBindingFormat( convertedAttr, bindingResults );
+
+		var domNode = document.createElement('div');
+		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
+
+		return domNode;
+	}
+
+	function convertAttributes(attributes){
+		var ret = {};
 		for(var i = 0; i < attributes.length; i++){
-			var attr = attributes[i],
-				name = attr.nodeName,
-				value = attr.nodeValue;
+			var attr = attributes[i];
+			ret[attr.nodeName] = attr.nodeValue;
+		}
+		return ret;
+	}
+
+	function attributesToDataBindingFormat(attributes, bindingResults){
+
+		bindingResults = bindingResults || {}
+		for(var name in attributes){
+			var value = attributes[name];
 			if( value ){
 				// this value is an expression or observable
 				// in the viewModel if it has @binding[] flag
@@ -67,15 +86,11 @@ define(function(require, exports, module){
 			}
 		}
 
-		var domNode = document.createElement('div');
-
 		var bindingString = JSON.stringify(bindingResults);
 		
 		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/, "$1");
 
-		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
-
-		return domNode;
+		return bindingString;
 	}
 
 	function convert(root, parent){
@@ -100,6 +115,11 @@ define(function(require, exports, module){
 			node = node.nextSibling;
 		}
 		return children;
+	}
+
+	// provided custrom parser from Compositor
+	function provideParser(componentType /*tagName*/, parser){
+
 	}
 
 	exports.parse = parse;

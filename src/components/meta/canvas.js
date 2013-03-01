@@ -19,6 +19,9 @@ return {
 	stage : null
 }}, {
 
+	type : 'CANVAS',
+	css : 'canvas',
+
 	initialize : function(){
 
 		this.stage = Goo.create(this.$el[0]);

@@ -8,7 +8,8 @@ define(["knockout",
 		"components/meta/textfield",
 		"components/meta/combobox",
 		'components/widget/vector',
-		"components/container/window"], function(ko){
+		"components/container/window",
+		"components/container/tab"], function(ko){
 
 	var Base = require("components/base");
 	var Draggable = require("components/mixin/draggable");
@@ -23,12 +24,11 @@ define(["knockout",
 		clickHandler : function(){
 			viewModel.info("button is clicked");
 		},
-		info : ko.observable("Im a label!")
+		info : ko.observable("Im a label~")
 	}
 
 	ko.applyBindings(viewModel, $el[0]);
 
-
-	var item = Base.getByDom($el);
+	var item = Base.getByDom($el[0]);
 
 })
