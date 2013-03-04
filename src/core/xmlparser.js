@@ -40,6 +40,14 @@ define(function(require, exports, module){
 		}
 	}
 
+	var customParsers = {};
+	// provided custom parser from Compositor
+	// parser need to return a plain object which key is attributeName
+	// and value is attributeValue
+	function provideParser(componentType /*tagName*/, parser){
+		customParsers[componentType] = parser;
+	}
+
 	function parseXMLNode(xmlNode){
 		if( xmlNode.nodeType !== 1){
 			return;
@@ -49,6 +57,19 @@ define(function(require, exports, module){
 		} 
 
 		var convertedAttr = convertAttributes( xmlNode.attributes );
+		var customParser = customParsers[bindingResults.type];
+		if( customParser ){
+			var result = customParser(xmlNode);
+			if( result &&
+				typeof(result) !="object"){
+				console.error("Parser must return an object converted from attributes")
+			}else{
+				// data in the attributes has higher priority than
+				// the data from the children
+				_.extend(convertedAttr, result);
+			}
+		}
+
 		var bindingString = attributesToDataBindingFormat( convertedAttr, bindingResults );
 
 		var domNode = document.createElement('div');
@@ -88,7 +109,7 @@ define(function(require, exports, module){
 
 		var bindingString = JSON.stringify(bindingResults);
 		
-		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/, "$1");
+		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/g, "$1");
 
 		return bindingString;
 	}
@@ -117,10 +138,36 @@ define(function(require, exports, module){
 		return children;
 	}
 
-	// provided custrom parser from Compositor
-	function provideParser(componentType /*tagName*/, parser){
-
+	function getChildrenByTagName(parent, tagName){
+		var children = getChildren(parent);
+		
+		return _.filter(children, function(child){
+			return child.tagName && child.tagName.toLowerCase() === tagName;
+		})
 	}
 
+
 	exports.parse = parse;
+	//---------------------------------
+	// some util functions provided for the components
+	exports.provideParser = provideParser;
+
+	function getTextContent(xmlNode){
+		var children = getChildren(xmlNode);
+		var text = '';
+		_.each(children, function(child){
+			if(child.nodeType==3){
+				text += child.textContent.replace(/(^\s*)|(\s*$)/g, "");
+			}
+		})
+		return text;
+	}
+
+	exports.util = {
+		convertAttributes : convertAttributes,
+		attributesToDataBindingFormat : attributesToDataBindingFormat,
+		getChildren : getChildren,
+		getChildrenByTagName : getChildrenByTagName,
+		getTextContent : getTextContent
+	}
 })

@@ -2,7 +2,8 @@
 // Button component
 //======================================
 define(['./meta',
-		'knockout'], function(Meta, ko){
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
 
 var Button = Meta.derive(function(){
 return {
@@ -29,6 +30,17 @@ return {
 });
 
 Meta.provideBinding("button", Button);
+
+// provide parser when do xmlparsing
+XMLParser.provideParser("button", function(xmlNode){
+	
+	var text = XMLParser.util.getTextContent(xmlNode);
+	if(text){
+		return {
+			text : text
+		}
+	}
+})
 
 return Button;
 

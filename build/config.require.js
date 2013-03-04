@@ -24,9 +24,12 @@
 				"components/meta/range",
 				"components/meta/spinner",
 				"components/meta/textfield",
+				"components/meta/canvas",
 				"components/container/window",
+				"components/container/tab",
 				"components/widget/vector"],
 				
 	out:"./output/wse_ui.require.js",
-	// wrap : true
+
+	optimize:"none"
 })

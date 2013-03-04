@@ -16,8 +16,9 @@ return {
 
 		active : ko.observable(0),
 
-		// tabMaxwidth ?
-		tabMaxWidth : ko.observable(150)
+		maxTabWidth : 100,
+
+		minTabWidth : 30
 
 	}
 }}, {
@@ -46,9 +47,10 @@ return {
 
 	template : '<div class="wse-tab-header">\
 					<ul class="wse-tab-tabs" data-bind="foreach:children">\
-						<li data-bind="html:viewModel.title,\
-										css:{active:$index()===$parent.active()},\
-										click:$parent.active.bind($data, $index())"></li>\
+						<li data-bind="css:{active:$index()===$parent.active()},\
+										click:$parent.active.bind($data, $index())">\
+							<a data-bind="html:viewModel.title"></a>\
+						</li>\
 					</ul>\
 					<div class="wse-tab-tools"></div>\
 				</div>\
@@ -67,6 +69,8 @@ return {
 	_updateTabSize : function(){
 		var length = this.viewModel.children().length,
 			tabSize = Math.floor((this.$el.width()-20)/length);
+		// clamp
+		tabSize = Math.min(this.viewModel.maxTabWidth, Math.max(this.viewModel.minTabWidth, tabSize) );
 
 		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
 	}

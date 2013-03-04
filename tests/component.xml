@@ -1,13 +1,40 @@
-<window width="400" title="Window">
+<window width="400" left="100" top="100" title="Components">
 	<tab width="300">
-		<panel title="Controls">
-			<button name="button" text="click me !" onclick="@binding[clickHandler]"></button>
-			<label name="label" text="@binding[info]"></label>
+		<panel title="Meta">
+			<label>Button</label>
+			<button name="button" onclick="@binding[clickHandler]"> click me!</button>
+			<label>Checkbox</label>
 			<checkbox checked="1" label="I am a checkbox"></checkbox>
+
+			<label>TextField</label>
 			<textfield text="Hi"></textfield>
+
+			<label>Combobox</label>
+			<combobox value="4">
+				<item value="1">JavaScript</item>
+				<item value="2">PHP</item>
+				<item value="3">Ruby</item>
+				<item value="4">Python</item>
+			</combobox>
+
+			<label>Spinner</label>
 			<spinner value="20"></spinner>
 		</panel>
-		<panel title="About">
+		<panel title="Vector">
+			<label>
+				Spinner
+			</label>
+			<vector>
+				<spinner value="10"></spinner>
+				<spinner value="10"></spinner>
+			</vector>
+			<label>
+				Range
+			</label>
+			<vector>
+				<range value="10"></range>
+				<range value="10"></range>
+			</vector>
 		</panel>
 	</tab>
 </window>

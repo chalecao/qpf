@@ -2,13 +2,14 @@
 // Combobox component
 // 
 // @VMProp	value
-// @VMProp	options
+// @VMProp	items
 //			@property	value
 //			@property	text
 //===================================
 
 define(['./meta',
-		'knockout'], function(Meta, ko){
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
 
 var Combobox = Meta.derive(function(){
 return {
@@ -19,7 +20,7 @@ return {
 
 		value : ko.observable(),
 
-		options : ko.observableArray(),	//{value, text}
+		items : ko.observableArray(),	//{value, text}
 
 		defaultText : ko.observable("select"),
 
@@ -39,6 +40,9 @@ return {
 			value = ko.utils.unwrapObservable(value);
 			this.value(value);
 			this._blur();
+		},
+		_isSelected : function(value){
+			return this.value() === ko.utils.unwrapObservable(value);
 		}
 	}
 }}, {
@@ -51,7 +55,7 @@ return {
 
 		this.viewModel.selectedText = ko.computed(function(){
 			var val = this.value();
-			var result =  _.filter(this.options(), function(item){
+			var result =  _.filter(this.items(), function(item){
 				return ko.utils.unwrapObservable(item.value) == val;
 			})[0];
 			if( typeof(result) == "undefined"){
@@ -63,15 +67,15 @@ return {
 	},
 
 	template : '<div class="wse-combobox-selected wse-common-button" data-bind="html:selectedText,click:_toggle"></div>\
-				<ul class="wse-combobox-options" data-bind="foreach:options">\
-					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value)"></li>\
+				<ul class="wse-combobox-items" data-bind="foreach:items">\
+					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
 				</ul>',
 
 	afterRender : function(){
 
 		var self = this;
 		this._$selected = this.$el.find(".wse-combobox-selected");
-		this._$options = this.$el.find(".wse-combobox-options");
+		this._$items = this.$el.find(".wse-combobox-items");
 
 		this.$el.blur(function(){
 			self.viewModel._blur();
@@ -79,13 +83,37 @@ return {
 
 	},
 
-	//-------method provide for the users
+	//-------method provided for the developers
 	select : function(value){
 		this.viewModel.select(value);
 	}
 })
 
 Meta.provideBinding("combobox", Combobox);
+
+XMLParser.provideParser('combobox', function(xmlNode){
+	var items = [];
+	var nodes = XMLParser.util.getChildrenByTagName(xmlNode, "item");
+	_.each(nodes, function(child){
+		// Data source can from item tags of the children
+		var value = child.getAttribute("value");
+		var text = child.getAttribute("text") ||
+					XMLParser.util.getTextContent(child);
+
+		if( value !== null){
+			items.push({
+				value : value,
+				text : text
+			})
+		}
+	})
+	if( items.length){
+		return {
+			items : items
+		}
+	}
+})
+
 
 return Combobox;
 

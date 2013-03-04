@@ -1,6 +1,8 @@
 <html>
 <head>
 	<title></title>
+	<link rel="stylesheet/less" type="text/css" href="../src/components/less/base.less">
+	<script type="text/javascript" src="../thirdparty/less.js"></script>
 	<script type="text/javascript" src="../thirdparty/jquery.js"></script>
 	<script type="text/javascript" src="../thirdparty/require.js"></script>
 	<script type="text/javascript" src="../thirdparty/underscore.js"></script>
@@ -9,8 +11,7 @@
 			height:100%;
 		}
 		body{
-			background-color: rgba(40, 40, 40, 1);
-			background-image:url(imgs/dark_leather.png);
+			background-color: #B8B8B8;
 			color: white;
 			margin:0px;
 			height: 100%;
@@ -31,17 +32,10 @@
 				"knockout" : "../thirdparty/knockout",
 				"ko.mapping" : "../thirdparty/ko.mapping",
 				"goo" : "../thirdparty/goo"
-			},
-			map : {
-				"*" : {
-					"less" : "../require-lib/require-less/less",
-					"css" : "../require-lib/require-css/css"
-				}
 			}
 		})
 
-		require(['less!components/less/base.less',
-				'../tests/xml'], function(){
+		require(['../tests/xml'], function(){
 
 		})
 	</script>

@@ -1,0 +1,10 @@
+<window title="Curl Noise" 
+		left="@binding[left]" 
+		top="@binding[top]"
+		width="200">
+	<label>Spawn number</label>
+	<spinner precision="0" value="@binding[spawnNumber]"></spinner>
+	<label>Particle number</label>
+	<spinner precision="0" value="@binding[particleNumber]"></spinner>
+	<button>Run</button>
+</window>

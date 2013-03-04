@@ -2,13 +2,13 @@ define(function(){
 
 /**
  * derive a sub class from base class
- * @defaultOpt [Object|Function] default option of this sub class, 
+ * @makeDefaultOpt [Object|Function] default option of this sub class, 
  						method of the sub can use this.xxx to access this option
  * @initialize [Function](optional) initialize after the sub class is instantiated
  * @proto [Object](optional) prototype methods/property of the sub class
  *
  */
-function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
+function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
 
 	if( typeof initialize == "object"){
 		proto = initialize;
@@ -40,8 +40,8 @@ function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
 		// call defaultOpt generate function each time
 		// if it is a function, So we can make sure each 
 		// property in the object is fresh
-		_.extend( this, typeof defaultOpt == "function" ?
-						defaultOpt.call(this) : defaultOpt );
+		_.extend( this, typeof makeDefaultOpt == "function" ?
+						makeDefaultOpt.call(this) : makeDefaultOpt );
 
 		for( var name in options ){
 			if( typeof this[name] == "undefined" ){

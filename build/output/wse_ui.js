@@ -421,17 +421,32 @@ define('core/mixin/derive',[],function(){
 
 /**
  * derive a sub class from base class
- * @defaultOpt [Object|Function] default option of this sub class, 
+ * @makeDefaultOpt [Object|Function] default option of this sub class, 
  						method of the sub can use this.xxx to access this option
  * @initialize [Function](optional) initialize after the sub class is instantiated
  * @proto [Object](optional) prototype methods/property of the sub class
  *
  */
-function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
+function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
 
 	if( typeof initialize == "object"){
 		proto = initialize;
 		initialize = null;
+	}
+
+	// extend default prototype method
+	var extendedProto = {
+		// instanceof operator cannot work well,
+		// so we write a method to simulate it
+		'instanceof' : function(constructor){
+			var selfConstructor = sub;
+			while(selfConstructor){
+				if( selfConstructor === constructor ){
+					return true;
+				}
+				selfConstructor = selfConstructor.__super__;
+			}
+		}
 	}
 
 	var _super = this;
@@ -444,8 +459,8 @@ function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
 		// call defaultOpt generate function each time
 		// if it is a function, So we can make sure each 
 		// property in the object is fresh
-		_.extend( this, typeof defaultOpt == "function" ?
-						defaultOpt.call(this) : defaultOpt );
+		_.extend( this, typeof makeDefaultOpt == "function" ?
+						makeDefaultOpt.call(this) : makeDefaultOpt );
 
 		for( var name in options ){
 			if( typeof this[name] == "undefined" ){
@@ -476,12 +491,13 @@ function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
 	sub.__initialize__ = initialize;
 
 	// extend prototype function
-	_.extend( sub.prototype, _super.prototype, proto);
+	_.extend( sub.prototype, _super.prototype, extendedProto, proto);
 
 	sub.prototype.constructor = sub;
 	
 	// extend the derive method as a static method;
 	sub.derive = _super.derive;
+
 
 	return sub;
 }
@@ -538,13 +554,15 @@ return{
 
 	off : function( target, handler ){
 		
-		var handlers = this.__handlers__;
+		var handlers = this.__handlers__ || {};
 
 		if( handlers[target] ){
 			if( handler ){
 				var arr = handlers[target];
 				// remove handler and context
-				arr.splice( arr.indexOf(handler), 2 )
+				var idx = arr.indexOf(handler);
+				if( idx >= 0)
+					arr.splice( idx, 2 );
 			}else{
 				handlers[target] = [];
 			}
@@ -553,7 +571,7 @@ return{
 	}
 }
 });
-// Knockout JavaScript library v2.2.0
+// Knockout JavaScript library v2.2.1
 // (c) Steven Sanderson - http://knockoutjs.com/
 // License: MIT (http://www.opensource.org/licenses/mit-license.php)
 
@@ -579,20 +597,20 @@ var DEBUG=true;
 var ko = typeof koExports !== 'undefined' ? koExports : {};
 // Google Closure Compiler helpers (used only to make the minified file smaller)
 ko.exportSymbol = function(koPath, object) {
-	var tokens = koPath.split(".");
+    var tokens = koPath.split(".");
 
-	// In the future, "ko" may become distinct from "koExports" (so that non-exported objects are not reachable)
-	// At that point, "target" would be set to: (typeof koExports !== "undefined" ? koExports : ko)
-	var target = ko;
+    // In the future, "ko" may become distinct from "koExports" (so that non-exported objects are not reachable)
+    // At that point, "target" would be set to: (typeof koExports !== "undefined" ? koExports : ko)
+    var target = ko;
 
-	for (var i = 0; i < tokens.length - 1; i++)
-		target = target[tokens[i]];
-	target[tokens[tokens.length - 1]] = object;
+    for (var i = 0; i < tokens.length - 1; i++)
+        target = target[tokens[i]];
+    target[tokens[tokens.length - 1]] = object;
 };
 ko.exportProperty = function(owner, publicName, object) {
   owner[publicName] = object;
 };
-ko.version = "2.2.0";
+ko.version = "2.2.1";
 
 ko.exportSymbol('version', ko.version);
 ko.utils = new (function () {
@@ -1258,22 +1276,28 @@ ko.exportSymbol('utils.domNodeDisposal.removeDisposeCallback', ko.utils.domNodeD
     }
 
     function jQueryHtmlParse(html) {
-        var elems = jQuery['clean']([html]);
+        // jQuery's "parseHTML" function was introduced in jQuery 1.8.0 and is a documented public API.
+        if (jQuery['parseHTML']) {
+            return jQuery['parseHTML'](html);
+        } else {
+            // For jQuery < 1.8.0, we fall back on the undocumented internal "clean" function.
+            var elems = jQuery['clean']([html]);
 
-        // As of jQuery 1.7.1, jQuery parses the HTML by appending it to some dummy parent nodes held in an in-memory document fragment.
-        // Unfortunately, it never clears the dummy parent nodes from the document fragment, so it leaks memory over time.
-        // Fix this by finding the top-most dummy parent element, and detaching it from its owner fragment.
-        if (elems && elems[0]) {
-            // Find the top-most parent element that's a direct child of a document fragment
-            var elem = elems[0];
-            while (elem.parentNode && elem.parentNode.nodeType !== 11 /* i.e., DocumentFragment */)
-                elem = elem.parentNode;
-            // ... then detach it
-            if (elem.parentNode)
-                elem.parentNode.removeChild(elem);
+            // As of jQuery 1.7.1, jQuery parses the HTML by appending it to some dummy parent nodes held in an in-memory document fragment.
+            // Unfortunately, it never clears the dummy parent nodes from the document fragment, so it leaks memory over time.
+            // Fix this by finding the top-most dummy parent element, and detaching it from its owner fragment.
+            if (elems && elems[0]) {
+                // Find the top-most parent element that's a direct child of a document fragment
+                var elem = elems[0];
+                while (elem.parentNode && elem.parentNode.nodeType !== 11 /* i.e., DocumentFragment */)
+                    elem = elem.parentNode;
+                // ... then detach it
+                if (elem.parentNode)
+                    elem.parentNode.removeChild(elem);
+            }
+
+            return elems;
         }
-
-        return elems;
     }
 
     ko.utils.parseHtmlFragment = function(html) {
@@ -3419,10 +3443,10 @@ ko.exportSymbol('__tr_ambtns', ko.templateRewriting.applyMemoizedBindingsToNextS
     //                                           with the rendered template output.
     // You can implement your own template source if you want to fetch/store templates somewhere other than in DOM elements.
     // Template sources need to have the following functions:
-    //   text() 			- returns the template text from your storage location
-    //   text(value)		- writes the supplied template text to your storage location
-    //   data(key)			- reads values stored using data(key, value) - see below
-    //   data(key, value)	- associates "value" with this template and the key "key". Is used to store information like "isRewritten".
+    //   text()             - returns the template text from your storage location
+    //   text(value)        - writes the supplied template text to your storage location
+    //   data(key)          - reads values stored using data(key, value) - see below
+    //   data(key, value)   - associates "value" with this template and the key "key". Is used to store information like "isRewritten".
     //
     // Optionally, template sources can also have the following functions:
     //   nodes()            - returns a DOM element containing the nodes of this template, where available
@@ -4130,7 +4154,418 @@ ko.exportSymbol('nativeTemplateEngine', ko.nativeTemplateEngine);
 });
 })(window,document,navigator,window["jQuery"]);
 })();
+//==========================
+// Util.js
+// provide util function to operate
+// the components
+//===========================
+define('components/Util',['knockout',
+		'exports'], function(ko, exports){
 
+	var unwrap = ko.utils.unwrapObservable;
+
+	exports.createComponentFromDataBinding = function( element, valueAccessor, availableBindings ){
+		
+		var value = valueAccessor();
+		
+		var options = unwrap(value) || {},
+			type = unwrap(options.type);
+
+		if( type ){
+			var Constructor = availableBindings[type];
+
+			if( Constructor ){
+				var component = exports.createComponentFromJSON( options, Constructor)
+				if( component ){
+					element.innerHTML = "";
+					element.appendChild( component.$el[0] );
+				}
+				// save the guid in the element data attribute
+				element.setAttribute("data-wse-guid", component.__GUID__);
+			}else{
+				console.error("Unkown UI type, " + type);
+			}
+		}else{
+			console.error("UI type is needed");
+		}
+
+		return component;
+	}
+
+	exports.createComponentFromJSON = function(options, Constructor){
+
+		var type = unwrap(options.type),
+			name = unwrap(options.name),
+			attr = _.omit(options, "type", "name");
+
+		var events = {};
+
+		// Find which property is event
+		_.each(attr, function(value, key){
+			if( key.indexOf("on") == 0 &&
+				Constructor.prototype.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
+				typeof(value) == "function"){
+				delete attr[key];
+				events[key.substr("on".length)] = value;
+			}
+		})
+
+		var component = new Constructor({
+			name : name || "",
+			attribute : attr
+		});
+		// binding events
+		_.each(events, function(handler, name){
+			component.on(name, handler);
+		})
+
+		return component;
+	
+	}
+
+	// build a bridge of twe observables
+	// and update the value from source to target
+	// at first time
+	exports.bridge = function(target, source){
+		target.subscribe(function(newValue){
+			source(newValue);
+		})
+		source.subscribe(function(newValue){
+			target(newValue);
+		})
+	}
+})
+;
+//=====================================
+// Base class of all components
+// it also provides some util methods like
+// Base.get()
+// Base.getByDom()
+//=====================================
+define('components/base',["core/mixin/derive",
+		"core/mixin/event",
+		"./Util",
+		"knockout"], function(Derive, Events, Util, ko){
+
+var clazz = new Function();
+
+_.extend(clazz, Derive);
+_.extend(clazz.prototype, Events);
+
+var repository = {};	//repository to store all the component instance
+
+var Base = clazz.derive(function(){
+return {	// Public properties
+	// Name of component, will be used in the query of the component
+	name : "",
+	// Tag of wrapper element
+	tag : "div",
+	// Attribute of the wrapper element
+	attr : {},
+	// Jquery element as a wrapper
+	// It will be created in the constructor
+	$el : null,
+	// ViewModel for knockout binding
+	// !IMPORTANT the property in the view model can not be override
+	// set method is provided if you want to set the value in the viewModel
+	viewModel : {},
+	// Attribute will be applied to the viewModel
+	// WARNING: It will be only used in the constructor
+	// So there is no need to re-assign a new viewModel when created an instance
+	// if property in the attribute is a observable
+	// it will be binded to the property in viewModel
+	attribute : {},
+	
+	parent : null,
+	// ui skin
+	skin : "",
+	// Class prefix
+	classPrefix : "wse-ui-",
+	// Skin prefix
+	skinPrefix : "wse-skin-"
+}}, function(){	//constructor
+
+	this.__GUID__ = genGUID();
+	// add to repository
+	repository[this.__GUID__] = this;
+
+	if( ! this.$el){
+		this.$el = $(document.createElement(this.tag));
+	}
+	this.$el.attr(this.attr);
+	if( this.skin ){
+		this.$el.addClass( this.withPrefix(this.skin, this.skinPrefix) );
+	}
+
+	if( this.css ){
+		_.each( _.union(this.css), function(className){
+			this.$el.addClass( this.withPrefix(className, this.classPrefix) );
+		}, this)
+	}
+	// Class name of wrapper element is depend on the lowercase of component type
+	// this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
+	
+	// extend default properties to view Models
+	_.extend(this.viewModel, {
+		width : ko.observable(),
+		height : ko.observable(),
+		disable : ko.observable(false)
+	});
+	this.viewModel.width.subscribe(function(newValue){
+		this.$el.width(newValue);
+	}, this)
+	this.viewModel.height.subscribe(function(newValue){
+		this.$el.height(newValue);
+	}, this)
+	this.viewModel.disable.subscribe(function(newValue){
+		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
+	}, this)
+
+	// apply attribute to the view model
+	this._mappingAttributesToViewModel( this.attribute );
+
+	this.initialize();
+	// Here we removed auto rendering at constructor
+	// to support deferred rendering after the $el is attached
+	// to the document
+	// this.render();
+
+}, {// Prototype
+	// Type of component. The className of the wrapper element is
+	// depend on the type
+	type : "BASE",
+	// Template of the component, will be applyed binging with viewModel
+	template : "",
+	// Declare the events that will be provided 
+	// Developers can use on method to subscribe these events
+	// It is used in the binding handlers to judge which parameter
+	// passed in is events
+	eventsProvided : [],
+
+	// Will be called after the component first created
+	initialize : function(){},
+	// set the attribute in the modelView
+	set : function(key, value){
+		if( typeof(key) == "string" ){
+			var source = {};
+			source[key] = value;
+		}else{
+			source = key;
+		};
+		this._mappingAttributesToViewModel( source );
+	},
+	// Call to refresh the component
+	// Will trigger beforeRender and afterRender hooks
+	// beforeRender and afterRender hooks is mainly provide for
+	// the subclasses
+	render : function(){
+		this.beforeRender && this.beforeRender();
+		this.doRender();
+		this.afterRender && this.afterRender();
+
+		this.trigger("render");
+	},
+	// Default render method
+	doRender : function(){
+		this.$el.html(this.template);
+		ko.applyBindings( this.viewModel, this.$el[0] );
+	},
+	// Dispose the component instance
+	dispose : function(){
+		if( this.$el ){
+			// remove the dom element
+			this.$el.remove()
+		}
+		// remove from repository
+		repository[this.__GUID__] = null;
+
+		this.trigger("dispose");
+	},
+	withPrefix : function(className, prefix){
+		if( className.indexOf(prefix) != 0 ){
+			return prefix + className;
+		}
+	},
+	withoutPrefix : function(className, prefix){
+		if( className.indexOf(prefix) == 0){
+			return className.substr(prefix.length);
+		}
+	},
+	// mapping the attributes to viewModel 
+	_mappingAttributesToViewModel : function(attributes){
+		for(var name in attributes){
+			var attr = attributes[name];
+			var propInVM = this.viewModel[name];
+			if( ! propInVM ){
+				// console.error("Attribute "+name+" is not a valid viewModel property");
+				continue;
+			}
+			if( ko.isObservable(propInVM) ){
+				propInVM(ko.utils.unwrapObservable(attr) );
+
+				if( ko.isObservable(attr) ){
+					Util.bridge(propInVM, attr);
+				}
+			}else{
+				propInVM = ko.utils.unwrapObservable(attr);
+			}
+		}	
+	}
+})
+
+
+// get a unique component by guid
+Base.get = function(guid){
+	return repository[guid];
+}
+Base.getByDom = function(domNode){
+	var guid = domNode.getAttribute("data-wse-guid");
+	return Base.get(guid);
+}
+
+// dispose all the components attached in the domNode and
+// its children(if recursive is set true)
+Base.disposeDom = function(domNode, resursive){
+
+	if(typeof(recursive) == "undefined"){
+		recursive = true;
+	}
+
+	function dispose(node){
+		var guid = node.getAttribute("data-wse-guid");
+		var component = Base.get(guid);
+		if( component ){
+			// do not recursive traverse the children of component
+			// element
+			// hand over dispose of sub element task to the components
+			// it self
+			component.dispose();
+		}else{
+			if( recursive ){
+				for(var i = 0; i < node.childNodes.length; i++){
+					var child = node.childNodes[i];
+					if( child.nodeType == 1 ){
+						dispose( child );
+					}
+				}
+			}
+		}
+	}
+
+	dispose(domNode);
+}
+// util function of generate a unique id
+var genGUID = (function(){
+	var id = 0;
+	return function(){
+		return id++;
+	}
+})();
+
+//----------------------------
+// knockout extenders
+ko.extenders.numeric = function(target, precision) {
+
+	var fixer = ko.computed({
+		read : target,
+		write : function(newValue){	
+			if( newValue === "" ){
+				target("");
+				return;
+			}else{
+				var val = parseFloat(newValue);
+			}
+			val = isNaN( val ) ? 0 : val;
+			precision = ko.utils.unwrapObservable(precision);
+			var multiplier = Math.pow(10, precision);
+			val = Math.round(val * multiplier) / multiplier;
+			// dont update the value again when the value is still the same
+			if( target() !== val ){
+				target(val);
+			}
+		}
+	});
+
+	fixer( target() );
+
+	return fixer;
+};
+
+//-------------------------------------------
+// Handle bingings in the knockout template
+var bindings = {};
+Base.provideBinding = function(name, Component ){
+	bindings[name] = Component;
+}
+// provide bindings to knockout
+ko.bindingHandlers["wse_ui"] = {
+
+	createComponent : function(element, valueAccessor){
+		// dispose the previous component host on the element
+		var prevComponent = Base.getByDom( element );
+		if( prevComponent ){
+			prevComponent.dispose();
+		}
+		var component = Util.createComponentFromDataBinding( element, valueAccessor, bindings );
+		return component;
+	},
+
+	init : function( element, valueAccessor ){
+
+		var component = ko.bindingHandlers["wse_ui"].createComponent(element, valueAccessor);
+
+		component.render();
+		// not apply bindings to the descendant doms in the UI component
+		return { 'controlsDescendantBindings': true };
+	},
+
+	update : function( element, valueAccessor ){
+		// var value = valueAccessor();
+		// var options = unwrap(value) || {},
+		// 	type = unwrap(options.type),
+		// 	name  = unwrap(options.name),
+		// 	attr = unwrap(options.attribute);
+
+		// var component = Base.get( element.getAttribute("data-wse-guid") );
+
+		// if( component &&
+		// 	component.type.toLowerCase() == type.toLowerCase() ){	// do simple update
+		// 	component.name = name;
+		// 	if( attr ){
+		// 		koMapping.fromJS( attr, {}, component.viewModel );	
+		// 	}
+		// }else{
+		// 	ko.bindingHandlers["wse_meta"].init( element, valueAccessor );
+		// }
+
+	}
+}
+
+// append the element of view in the binding
+ko.bindingHandlers["wse_view"] = {
+	init : function(element, valueAccessor){
+		var value = valueAccessor();
+
+		var subView = ko.utils.unwrapObservable(value);
+		if( subView && subView.$el ){
+			Base.disposeDom(element);
+			element.innerHTML = "";
+			element.appendChild( subView.$el[0] );
+		}
+		// PENDING
+		// handle disposal (if KO removes by the template binding)
+        // ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
+            // subView.dispose();
+        // });
+
+		return { 'controlsDescendantBindings': true };
+	}
+}
+
+// export the interface
+return Base;
+
+});
 /// Knockout Mapping plugin v2.3.5
 /// (c) 2012 Steven Sanderson, Roy Jacobs - http://knockoutjs.com/
 /// License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -4930,213 +5365,6 @@ ko.exportSymbol('nativeTemplateEngine', ko.nativeTemplateEngine);
 		};
 	};
 }));
-//=====================================
-// Base class of all components
-// it also provides some util methods like
-// Base.get()
-// Base.getByDom()
-//=====================================
-define('components/base',["core/mixin/derive",
-		"core/mixin/event",
-		"knockout",
-		"ko.mapping"], function(Derive, Events, ko, koMapping){
-
-var clazz = new Function();
-
-_.extend(clazz, Derive);
-_.extend(clazz.prototype, Events);
-
-var repository = {};	//repository to store all the component instance
-
-var Base = clazz.derive(function(){
-return {	// Public properties
-	// Name of component, will be used in the query of the component
-	name : "",
-	// Tag of wrapper element
-	tag : "div",
-	// Attribute of the wrapper element
-	attr : {},
-	// Jquery element as a wrapper
-	// It will be created in the constructor
-	$el : null,
-	// ViewModel for knockout binding
-	// !IMPORTANT the property in the view model can not be override
-	// set method is provided if you want to set the value in the viewModel
-	viewModel : {},
-	// Attribute will be applied to the viewModel
-	// WARNING: It will be only used in the constructor
-	// So there is no need to re-assign a new viewModel when created an instance
-	attribute : {},
-	// ui skin
-	skin : "",
-	// Class prefix
-	classPrefix : "wse-ui-",
-	// Skin prefix
-	skinPrefix : "wse-skin-"
-}}, function(){	//constructor
-
-	this.__GUID__ = genGUID();
-	// add to repository
-	repository[this.__GUID__] = this;
-
-	if( ! this.$el){
-		this.$el = $(document.createElement(this.tag));
-	}
-	this.$el.attr(this.attr);
-	if( this.skin ){
-		this.$el.addClass( this.withPrefix(this.skin, this.skinPrefix) );
-	}
-	// Class name of wrapper element is depend on the lowercase of component type
-	this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
-	// apply attribute to the view model
-	koMapping.fromJS(this.attribute, {}, this.viewModel);
-
-	this.initialize();
-	this.render();
-
-}, {// Prototype
-	// Type of component. The className of the wrapper element is
-	// depend on the type
-	type : "BASE",
-	// Template of the component, will be applyed binging with viewModel
-	template : "",
-	// Will be called after the component first created
-	initialize : function(){},
-	// set the attribute in the modelView
-	set : function(key, value){
-		if( typeof(key) == "string" ){
-			var source = {};
-			source[key] = value;
-		}else{
-			source = key
-		};
-
-		koMapping.fromJS(source, {}, this.viewModel);
-	},
-	// Call to refresh the component
-	// Will trigger beforerender and afterrender hooks
-	// beforerender and afterrender hooks is mainly provide for
-	// the subclasses
-	render : function(){
-		this.beforerender && this.beforerender();
-		this.dorender();
-		this.afterrender && this.afterrender();
-
-		this.trigger("render");
-	},
-	// Default render method
-	dorender : function(){
-		this.$el.html(this.template);
-		ko.applyBindings( this.viewModel, this.$el[0] );
-	},
-	// Dispose the component instance
-	dispose : function(){
-		if( this.$el ){
-			// remove the dom element
-			this.$el.remove()
-		}
-		// remove from repository
-		repository[this.__GUID__] = null;
-
-		this.trigger("dispose");
-	},
-	withPrefix : function(className, prefix){
-		if( className.indexOf(prefix) != 0 ){
-			return prefix + className;
-		}
-	},
-	withoutPrefix : function(className, prefix){
-		if( className.indexOf(prefix) == 0){
-			return className.substr(prefix.length);
-		}
-	}
-})
-
-
-// get a unique component by guid
-Base.get = function(guid){
-	return repository[guid];
-}
-Base.getByDom = function(domNode){
-	var $domNode = $(domNode),
-		guid = $domNode.attr("data-wse-guid");
-	return Base.get(guid);
-}
-
-// dispose all the components attached in the domNode and
-// its children(if recursive is set true)
-Base.disposeDom = function(domNode, resursive){
-
-	if(typeof(recursive) == "undefined"){
-		recursive = true;
-	}
-
-	domNode = $(domNode)[0];
-
-	function dispose(node){
-		var guid = node.getAttribute("data-wse-guid");
-		var component = Base.get(guid);
-		if( component ){
-			// do not recursive traverse the children of component
-			// element
-			// hand over dispose of sub element task to the components
-			// it self
-			component.dispose();
-		}else{
-			if( recursive ){
-				for(var i = 0; i < node.childNodes.length; i++){
-					var child = node.childNodes[i];
-					if( child.nodeType == 1 ){
-						dispose( child );
-					}
-				}
-			}
-		}
-	}
-
-	dispose(domNode);
-}
-// util function of generate a unique id
-var genGUID = (function(){
-	var id = 0;
-	return function(){
-		return id++;
-	}
-})();
-
-//----------------------------
-// knockout extenders
-ko.extenders.numeric = function(target, precision) {
-
-	var fixer = ko.computed({
-		read : target,
-		write : function(newValue){	
-			if( newValue === "" ){
-				target("");
-				return;
-			}else{
-				var val = parseFloat(newValue);
-			}
-			val = isNaN( val ) ? 0 : val;
-			precision = ko.utils.unwrapObservable(precision);
-			var multiplier = Math.pow(10, precision);
-			val = Math.round(val * multiplier) / multiplier;
-			// dont update the value again when the value is still the same
-			if( target() !== val ){
-				target(val);
-			}
-		}
-	});
-
-	fixer( target() );
-
-	return fixer;
-};
-
-// export the interface
-return Base;
-
-});
 //==================================
 // Base class of all meta component
 // Meta component is the ui component
@@ -5149,84 +5377,196 @@ define('components/meta/meta',['../base',
 var Meta = Base.derive(
 {
 }, {
-	type : "META"
+	type : "META",
+
+	css : 'meta'
 })
 
-//-------------------------------------------
-// Handle bingings in the knockout template
-var bindings = {};
-Meta.provideBinding = function(name, Component ){
-	bindings[name] = Component;
-}
-var unwrap = ko.utils.unwrapObservable;
-// provide bindings to knockout
-ko.bindingHandlers["wse_meta"] = {
-	init : function( element, valueAccessor ){
-		var value = valueAccessor();
-		
-		var options = unwrap(value) || {},
-			type = unwrap(options.type),
-			name = unwrap(options.name),
-			attr = _.omit(options, "type", "name");
-		if( type ){
-			var Component = bindings[ type ];
-			if( Component ){
-				// dispose the previous component host on the element
-				var prevComponent = Base.get( element.getAttribute("data-wse-guid") );
-				if( prevComponent ){
-					prevComponent.dispose();
-				}
-
-				var instance = new Component({
-					name : name || "",
-					attribute : attr
-				});
-				element.innerHTML = "";
-				element.appendChild( instance.$el[0] );
-
-				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", instance.__GUID__);
-			}else{
-				console.error("Unkown UI type, " + options.type);
-			}
-		}else{
-			console.error("UI type is needed");
-		}
-
-		// not apply bindings to the descendant doms in the UI component
-		return { 'controlsDescendantBindings': true };
-	},
-
-	update : function( element, valueAccessor ){
-		// var value = valueAccessor();
-		// var options = unwrap(value) || {},
-		// 	type = unwrap(options.type),
-		// 	name  = unwrap(options.name),
-		// 	attr = unwrap(options.attribute);
-
-		// var component = Base.get( element.getAttribute("data-wse-guid") );
-
-		// if( component &&
-		// 	component.type.toLowerCase() == type.toLowerCase() ){	// do simple update
-		// 	component.name = name;
-		// 	if( attr ){
-		// 		koMapping.fromJS( attr, {}, component.viewModel );	
-		// 	}
-		// }else{
-		// 	ko.bindingHandlers["wse_meta"].init( element, valueAccessor );
-		// }
-
-	}
-}
+// Inherit the static methods
+Meta.provideBinding = Base.provideBinding;
 
 return Meta;
 
+});
+//===================================================
+// Xml Parser
+// parse wml and convert it to dom with knockout data-binding
+// TODO	xml valid checking, 
+//		provide xml childNodes Handler in the Components
+//===================================================
+define('core/xmlparser',['require','exports','module'],function(require, exports, module){
+
+	// return document fragment converted from the xml
+	var parse = function( xmlString ){
+		
+		if( typeof(xmlString) == "string"){
+			var xml = parseXML( xmlString );
+		}else{
+			var xml = xmlString;
+		}
+		if( xml ){
+
+			var rootDomNode = document.createElement("div");
+
+			convert( xml, rootDomNode);
+
+			return rootDomNode;
+		}
+	}
+
+	function parseXML( xmlString ){
+		var xml, parser;
+		try{
+			if( window.DOMParser ){
+				xml = (new DOMParser()).parseFromString( xmlString, "text/xml");
+			}else{
+				xml = new ActiveXObject("Microsoft.XMLDOM");
+				xml.async = "false";
+				xml.loadXML( xmlString );
+			}
+			return xml;
+		}catch(e){
+			console.error("Invalid XML:" + xmlString);
+		}
+	}
+
+	var customParsers = {};
+	// provided custom parser from Compositor
+	// parser need to return a plain object which key is attributeName
+	// and value is attributeValue
+	function provideParser(componentType /*tagName*/, parser){
+		customParsers[componentType] = parser;
+	}
+
+	function parseXMLNode(xmlNode){
+		if( xmlNode.nodeType !== 1){
+			return;
+		}
+		var bindingResults = {
+			type : xmlNode.tagName.toLowerCase()
+		} 
+
+		var convertedAttr = convertAttributes( xmlNode.attributes );
+		var customParser = customParsers[bindingResults.type];
+		if( customParser ){
+			var result = customParser(xmlNode);
+			if( result &&
+				typeof(result) !="object"){
+				console.error("Parser must return an object converted from attributes")
+			}else{
+				// data in the attributes has higher priority than
+				// the data from the children
+				_.extend(convertedAttr, result);
+			}
+		}
+
+		var bindingString = attributesToDataBindingFormat( convertedAttr, bindingResults );
+
+		var domNode = document.createElement('div');
+		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
+
+		return domNode;
+	}
+
+	function convertAttributes(attributes){
+		var ret = {};
+		for(var i = 0; i < attributes.length; i++){
+			var attr = attributes[i];
+			ret[attr.nodeName] = attr.nodeValue;
+		}
+		return ret;
+	}
+
+	function attributesToDataBindingFormat(attributes, bindingResults){
+
+		bindingResults = bindingResults || {}
+		for(var name in attributes){
+			var value = attributes[name];
+			if( value ){
+				// this value is an expression or observable
+				// in the viewModel if it has @binding[] flag
+				var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
+				if( isBinding ){
+					// add a tag to remove quotation the afterwards
+					// conveniently, or knockout will treat it as a 
+					// normal string, not expression
+					value = "{{BINDINGSTART" + isBinding[1] + "BINDINGEND}}";
+
+				}
+				bindingResults[name] = value
+			}
+		}
+
+		var bindingString = JSON.stringify(bindingResults);
+		
+		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/g, "$1");
+
+		return bindingString;
+	}
+
+	function convert(root, parent){
+
+		var children = getChildren(root);
+
+		for(var i = 0; i < children.length; i++){
+			var node = parseXMLNode( children[i] );
+			if( node ){
+				parent.appendChild(node);
+				convert( children[i], node);
+			}
+		}
+	}
+
+	function getChildren(parent){
+		
+		var children = [];
+		var node = parent.firstChild;
+		while(node){
+			children.push(node);
+			node = node.nextSibling;
+		}
+		return children;
+	}
+
+	function getChildrenByTagName(parent, tagName){
+		var children = getChildren(parent);
+		
+		return _.filter(children, function(child){
+			return child.tagName && child.tagName.toLowerCase() === tagName;
+		})
+	}
+
+
+	exports.parse = parse;
+	//---------------------------------
+	// some util functions provided for the components
+	exports.provideParser = provideParser;
+
+	function getTextContent(xmlNode){
+		var children = getChildren(xmlNode);
+		var text = '';
+		_.each(children, function(child){
+			if(child.nodeType==3){
+				text += child.textContent.replace(/(^\s*)|(\s*$)/g, "");
+			}
+		})
+		return text;
+	}
+
+	exports.util = {
+		convertAttributes : convertAttributes,
+		attributesToDataBindingFormat : attributesToDataBindingFormat,
+		getChildren : getChildren,
+		getChildrenByTagName : getChildrenByTagName,
+		getTextContent : getTextContent
+	}
 });
 //======================================
 // Button component
 //======================================
 define('components/meta/button',['./meta',
-		'knockout'], function(Meta, ko){
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
 
 var Button = Meta.derive(function(){
 return {
@@ -5238,10 +5578,32 @@ return {
 	}
 }}, {
 
+	eventsProvided : ['click'],
+
 	type : 'BUTTON',
+
+	css : 'button',
+
+	afterRender : function(){
+		var me = this;
+		this.$el.click(function(){
+			me.trigger("click");
+		})
+	}
 });
 
 Meta.provideBinding("button", Button);
+
+// provide parser when do xmlparsing
+XMLParser.provideParser("button", function(xmlNode){
+	
+	var text = XMLParser.util.getTextContent(xmlNode);
+	if(text){
+		return {
+			text : text
+		}
+	}
+})
 
 return Button;
 
@@ -5255,8 +5617,6 @@ define('components/meta/checkbox',['./meta',
 var Checkbox = Meta.derive(function(){
 return {
 	
-	tag : "div",
-
 	viewModel : {
 		// value of the button
 		checked : ko.observable(false),
@@ -5269,9 +5629,10 @@ return {
 				<label data-bind="text:label"></label>',
 
 	type : 'CHECKBOX',
+	css : 'checkbox',
 
 	// binding events
-	afterrender : function(){
+	afterRender : function(){
 		var vm = this.viewModel;
 		this.$el.click(function(){
 			vm.checked( ! vm.checked() );
@@ -5288,13 +5649,14 @@ return Checkbox;
 // Combobox component
 // 
 // @VMProp	value
-// @VMProp	options
+// @VMProp	items
 //			@property	value
 //			@property	text
 //===================================
 
 define('components/meta/combobox',['./meta',
-		'knockout'], function(Meta, ko){
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
 
 var Combobox = Meta.derive(function(){
 return {
@@ -5305,7 +5667,7 @@ return {
 
 		value : ko.observable(),
 
-		options : ko.observableArray(),	//{value, text}
+		items : ko.observableArray(),	//{value, text}
 
 		defaultText : ko.observable("select"),
 
@@ -5325,17 +5687,22 @@ return {
 			value = ko.utils.unwrapObservable(value);
 			this.value(value);
 			this._blur();
+		},
+		_isSelected : function(value){
+			return this.value() === ko.utils.unwrapObservable(value);
 		}
 	}
 }}, {
 	
 	type : 'COMBOBOX',
 
+	css : 'combobox',
+
 	initialize : function(){
 
 		this.viewModel.selectedText = ko.computed(function(){
 			var val = this.value();
-			var result =  _.filter(this.options(), function(item){
+			var result =  _.filter(this.items(), function(item){
 				return ko.utils.unwrapObservable(item.value) == val;
 			})[0];
 			if( typeof(result) == "undefined"){
@@ -5347,15 +5714,15 @@ return {
 	},
 
 	template : '<div class="wse-combobox-selected wse-common-button" data-bind="html:selectedText,click:_toggle"></div>\
-				<ul class="wse-combobox-options" data-bind="foreach:options">\
-					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value)"></li>\
+				<ul class="wse-combobox-items" data-bind="foreach:items">\
+					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
 				</ul>',
 
-	afterrender : function(){
+	afterRender : function(){
 
 		var self = this;
 		this._$selected = this.$el.find(".wse-combobox-selected");
-		this._$options = this.$el.find(".wse-combobox-options");
+		this._$items = this.$el.find(".wse-combobox-items");
 
 		this.$el.blur(function(){
 			self.viewModel._blur();
@@ -5363,13 +5730,37 @@ return {
 
 	},
 
-	//-------method provide for the users
+	//-------method provided for the developers
 	select : function(value){
 		this.viewModel.select(value);
 	}
 })
 
 Meta.provideBinding("combobox", Combobox);
+
+XMLParser.provideParser('combobox', function(xmlNode){
+	var items = [];
+	var nodes = XMLParser.util.getChildrenByTagName(xmlNode, "item");
+	_.each(nodes, function(child){
+		// Data source can from item tags of the children
+		var value = child.getAttribute("value");
+		var text = child.getAttribute("text") ||
+					XMLParser.util.getTextContent(child);
+
+		if( value !== null){
+			items.push({
+				value : value,
+				text : text
+			})
+		}
+	})
+	if( items.length){
+		return {
+			items : items
+		}
+	}
+})
+
 
 return Combobox;
 
@@ -5378,21 +5769,36 @@ return Combobox;
 // Label component
 //======================================
 define('components/meta/label',['./meta',
-		'knockout'], function(Meta, ko){
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
 
 var Label = Meta.derive(function(){
 return {
-	$el : $('<Label data-bind="html:text"></Label>'),
-
 	viewModel : {
 		// value of the Label
 		text : ko.observable('Label')
 	}
 } }, {
-	type : 'LABEL'
+
+	template : '<Label data-bind="html:text"></Label>',
+
+	type : 'LABEL',
+
+	css : 'label'
 });
 
 Meta.provideBinding("label", Label);
+
+// provide parser when do xmlparsing
+XMLParser.provideParser("label", function(xmlNode){
+
+	var text = XMLParser.util.getTextContent(xmlNode);
+	if(text){
+		return {
+			text : text
+		}
+	}
+})
 
 return Label;
 
@@ -5588,6 +5994,10 @@ _restore : function( restorePosition ){
 },
 
 _mouseDown : function(e){
+	
+	if( e.which !== 1){
+		return;
+	}
 
 	var self = e.data.context;
 	//disable selection
@@ -5794,6 +6204,7 @@ return {
 // @VMProp min
 // @VMProp max
 // @VMProp orientation
+// @VMProp format
 //
 // @method computePercentage
 // @method updatePosition	update the slider position manually
@@ -5837,6 +6248,8 @@ return {
 
 	type : "RANGE",
 
+	css : 'range',
+
 	template : '<div class="wse-range-groove">\
 					<div class="wse-range-percentage"></div>\
 				</div>\
@@ -5847,6 +6260,8 @@ return {
 					<div class="wse-range-value" data-bind="text:_format(value())"></div>\
 				</div>',
 
+	eventsProvided : ["change"],
+	
 	initialize : function(){
 
 		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
@@ -5864,11 +6279,12 @@ return {
 				this.updatePosition();
 			}
 			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
+			
 			prevValue = newValue;
 		}, this);
 	},
 
-	afterrender : function(){
+	afterRender : function(){
 
 		// cache the element;
 		this._$groove = this.$el.find(".wse-range-groove");
@@ -6018,6 +6434,8 @@ return {
 }}, {
 	type : 'SPINNER',
 
+	css : 'spinner',
+
 	initialize : function(){
 		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
 
@@ -6029,6 +6447,8 @@ return {
 		}, this)
 	},
 
+	eventsProvided : ["change"],
+
 	template : '<div class="wse-left">\
 					<input type="text" class="wse-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
 				</div>\
@@ -6039,7 +6459,7 @@ return {
 					-</div>\
 				</div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		var self = this;
 		// disable selection
 		this.$el.find('.wse-increase,.wse-decrease').mousedown(function(e){
@@ -6106,10 +6526,1790 @@ var TextField = Meta.derive(
 	
 	type : "TEXTFIELD",
 
+	css : 'textfield',
+
 	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
 })
 
 Meta.provideBinding("textfield", TextField);
+
+});
+/**
+ * GooJS
+ *
+ * A simple, flexible canvas drawing library,
+ * Provides:
+ * + Retained mode drawing
+ * + Drawing element management
+ * + Render tree management
+ * + Both pixel based picking and shape based picking
+ * + Mouse events dispatch
+ * + Common shape 
+ * + Word wrap and wordbreak of text
+ * @author shenyi01@baidu.com
+ *
+ */
+ (function(factory){
+ 	// AMD
+ 	if( typeof define !== "undefined" && define["amd"] ){
+ 		define('goo',["exports"], factory);
+ 	// No module loader
+ 	}else{
+ 		factory( window["GooJS"] = {} );
+ 	}
+
+})(function(_exports){
+
+var GooJS = _exports;
+
+GooJS.create = function(dom){
+		//elements to be rendered in the scene
+	var renderPool = {},
+		//canvas element
+		container = null,
+		//context of canvans
+		context = null,
+		//width of canvas
+		clientWidth = 0,
+		//height of canvas
+		clientHeight = 0,
+		//a ghost canvas for pixel based picking
+		ghostCanvas = null,
+		//context of ghost canvas
+		ghostCanvasContext = null,
+		//store the element for picking, 
+		//index is the color drawed in the ghost canvas
+		elementLookupTable = [],
+
+		ghostImageData;
+
+	function add(elem){
+		elem && 
+			(renderPool[elem.__GUID__] = elem);
+	}
+	/**
+	 * @param elem element id || element
+	 */
+	function remove(elem){
+		if(typeof(elem) == 'string'){
+			elem = elementsMap[elem];
+		}
+		
+		delete renderPool[elem.__GUID__];
+	}
+	
+	function render(){
+
+		context.clearRect(0, 0, clientWidth, clientHeight);
+		ghostCanvasContext.clearRect(0, 0, clientWidth, clientHeight);
+		
+		elementLookupTable = [];
+
+		var renderQueue = getSortedRenderQueue(renderPool);		
+
+		for(var i =0; i < renderQueue.length; i++){
+			var r = renderQueue[i];
+			
+			draw(r);
+
+			drawGhost(r);
+		}
+		////////get image data
+		ghostImageData = ghostCanvasContext.getImageData(0, 0, ghostCanvas.width, ghostCanvas.height);
+
+		function draw(r){
+			
+			if( ! r.visible){
+				return ;
+			}
+
+			context.save();
+
+			// set style
+			if(r.style){
+				// support mutiple style bind
+				if( ! r.style instanceof GooJS.Style){
+
+					for(var name in r.style){
+						
+						r.style[name].bind(context);
+ 					}
+				}else{
+
+					r.style.bind(context);
+				}
+			}
+			// set transform
+			r._transform && context.transform(r._transform[0],
+											r._transform[1],
+											r._transform[2],
+											r._transform[3],
+											r._transform[4],
+											r._transform[5]);
+
+			r.draw(context);
+			//clip from current shape;
+			r.clip && context.clip();
+			//draw its children
+			var renderQueue = getSortedRenderQueue(r.children);
+			for(var i = 0; i < renderQueue.length; i++){
+				draw(renderQueue[i]);
+			}
+
+			context.restore();
+		}
+
+		function drawGhost(r){
+			if( ! r.visible){
+				return;
+			}
+
+			elementLookupTable.push(r);
+
+			ghostCanvasContext.save();
+
+			var rgb = packID(elementLookupTable.length),
+				color = 'rgb('+rgb.r+','+rgb.g+','+rgb.b+')';
+
+			ghostCanvasContext.fillStyle = color;
+			ghostCanvasContext.strokeStyle = color;
+
+			if(r.intersectLineWidth){
+				ghostCanvasContext.lineWidth = r.intersectLineWidth;
+			}
+			else if(r.style && r.style.lineWidth){
+				ghostCanvasContext.lineWidth = r.style.lineWidth;
+			}
+
+			// set transform
+			r._transform && ghostCanvasContext.transform(r._transform[0],
+											r._transform[1],
+											r._transform[2],
+											r._transform[3],
+											r._transform[4],
+											r._transform[5]);
+		
+			if(r instanceof GooJS.Text){
+			}
+			else if(r instanceof GooJS.Image){
+			}
+			else{
+				r.draw(ghostCanvasContext);
+			}
+			// set clip
+			r.clip && ghostCanvasContext.clip();
+
+			//draw its children
+			var renderQueue = getSortedRenderQueue(r.children);
+			for(var i = 0; i < renderQueue.length; i++){
+				drawGhost(renderQueue[i]);
+			}
+
+			ghostCanvasContext.restore();
+		}
+
+		function getSortedRenderQueue(pool){
+			var renderQueue = [];
+
+			for (var guid in pool) {
+			
+				renderQueue.push(pool[guid]);
+			};
+
+			//z值从小到大排, 相同按照GUID的顺序
+			renderQueue.sort(function(x, y){
+				if(x.z == y.z)
+					return x.__GUID__ > y.__GUID__ ? 1 : -1;
+				
+				return x.z > y.z ? 1 : -1;
+			})
+			return renderQueue;
+		}
+	}
+
+	function getMousePosition(e){
+		var offsetX = e.pageX - this.offsetLeft,
+			offsetY = e.pageY - this.offsetTop,
+			p = this,
+			props = {};
+			
+		while(p = p.offsetParent){
+			offsetX -= p.offsetLeft;
+			offsetY -= p.offsetTop;
+		}
+		return {
+			x : offsetX,
+			y : offsetY,
+			pageX : e.pageX,
+			pageY : e.pageY
+		}
+	}
+	
+	function clickHandler(e){
+	
+		findTrigger.call(this, e, 'click');
+	}
+	
+	function mouseDownHandler(e){
+		
+		findTrigger.call(this, e, 'mousedown');
+	}
+	
+	function mouseUpHandler(e){
+
+		var props = getMousePosition.call(this, e);
+
+		for(var i = 0; i < elementLookupTable.length; i++){
+			
+			var elem = elementLookupTable[i];
+			
+			MouseEvent.throw("mouseup", elem, props);
+		}
+	}
+	
+	function mouseMoveHandler(e){
+		
+		var props = getMousePosition.call(this, e);
+
+		for(var i = 0; i < elementLookupTable.length; i++){
+			
+			var elem = elementLookupTable[i];
+
+			MouseEvent.throw("mousemove", elem, props);
+		}
+
+		var trigger = findTrigger.call(this, e, 'mouseover');
+		trigger && (trigger.__mouseover__ = true);
+	}
+	
+	function mouseOutHandler(e){
+		
+		var props = getMousePosition.call(this, e);
+
+		for(var i = 0; i < elementLookupTable.length; i++){
+
+			var elem = elementLookupTable[i];
+			if(elem.__mouseover__){
+				MouseEvent.throw("mouseout", elem, props);
+				elem.__mouseover__ = false;
+			}
+		}
+	}
+
+	function packID(id){
+		var r = id >> 16,
+			g = (id - (r << 8)) >> 8,
+			b = id - (r << 16) - (g<<8);
+		return {
+			r : r,
+			g : g,
+			b : b
+		}
+	}
+
+	function unpackID(r, g, b){
+		return (r << 16) + (g<<8) + b;
+	}
+	/**
+	 * 查询被点击的元素
+	 */
+	function findTrigger(e, type){
+
+		var props = getMousePosition.call(this, e),
+			x = props.x,
+			y = props.y,
+			trigger = null;
+
+		var cursor = ((y-1) * ghostCanvas.width + x-1)*4,
+			r = ghostImageData.data[cursor],
+			g = ghostImageData.data[cursor+1],
+			b = ghostImageData.data[cursor+2],
+			a = ghostImageData.data[cursor+3],
+			id = unpackID(r, g, b);
+
+		if( id && ( a == 255 || a == 0)){
+			trigger = elementLookupTable[id-1];
+
+			if(type == 'mouseover' && trigger.__mouseover__){
+				return null;
+			}
+			MouseEvent.throw(type, trigger, props);
+		}
+		for(var i = 0; i < elementLookupTable.length; i++){
+			var elem = elementLookupTable[i];
+
+			if(elem.__mouseover__ && elem != trigger){
+				MouseEvent.throw('mouseout', elem, props);
+				elem.__mouseover__ = false;
+			}
+		}
+		return trigger;
+	}
+	
+	function initContext(dom){
+		if(typeof(dom) == "string"){
+			dom = document.getElementById(dom);
+		}
+		container = dom;
+		// dom.addEventListener('click', clickHandler);
+		// dom.addEventListener('mousedown', mouseDownHandler);
+		// dom.addEventListener('mouseup', mouseUpHandler);
+		// dom.addEventListener('mousemove', mouseMoveHandler);
+		// dom.addEventListener('mouseout', mouseOutHandler);
+		
+		clientWidth = dom.width;
+		clientHeight = dom.height;
+		
+		context = dom.getContext('2d');
+
+		//ghost canvas for hit test
+		ghostCanvas = document.createElement('canvas');
+		ghostCanvas.width = clientWidth;
+		ghostCanvas.height = clientHeight;
+		ghostCanvasContext = ghostCanvas.getContext('2d');
+
+	}
+
+	function resize(width, height){
+		container.width = width;
+		container.height = height;
+
+		ghostCanvas.width = width;
+		ghostCanvas.height = height;
+
+		clientWidth = width;
+		clientHeight = height;
+	}
+	
+	initContext(dom);
+	
+	return {
+		
+		'add' : add,
+		
+		'remove' : remove,
+		
+		'render' : render,
+		
+		'initContext' : initContext,
+
+		'resize' : resize,
+
+		'getContext' : function(){return context;},
+		
+		'getClientWidth' : function(){return clientWidth},
+		
+		'getClientHeight' : function(){return clientHeight},
+		
+		'getContainer' : function(){return container},
+
+		'getGhostCanvas' : function(){return ghostCanvas},
+
+		'getGhostContext' : function(){return ghostCanvasContext}
+	}
+}
+
+/**********************
+ * Util methods of GooJS
+ *********************/
+GooJS.Util = {}
+
+var genGUID = (function(){
+	var guid = 0;
+	
+	return function(){
+		return ++guid;
+	}
+})()
+
+function each(arr, callback, context){
+	if( ! arr){
+		return;
+	}
+	if( Array.prototype.forEach ){
+		Array.prototype.forEach.call( arr, callback, context );
+	}else{
+		for( var i = 0; i < arr.length; i++){
+			callback.call( context, arr[i], i);
+		}
+	}
+}
+
+function extend(obj){
+	each(Array.prototype.slice.call(arguments, 1), function(source, idx){
+		if( source ){	
+			for (var prop in source) {
+				obj[prop] = source[prop];
+			}
+		}
+    });
+    return obj;
+}
+
+function trim(str){
+	return (str || '').replace(/^(\s|\u00A0)+|(\s|\u00A0)+$/g, '');
+}
+
+
+function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
+
+	if( typeof initialize == "object"){
+		proto = initialize;
+		initialize = null;
+	}
+
+	// extend default prototype method
+	var extendedProto = {
+		// instanceof operator cannot work well,
+		// so we write a method to simulate it
+		'instanceof' : function(constructor){
+			var selfConstructor = sub;
+			while(selfConstructor){
+				if( selfConstructor === constructor ){
+					return true;
+				}
+				selfConstructor = selfConstructor.__super__;
+			}
+		}
+	}
+
+	var _super = this;
+
+	var sub = function(options){
+
+		// call super constructor
+		_super.call( this );
+
+		// call makeDefaultOpt each time
+		// if it is a function, So we can make sure each 
+		// property in the object is fresh
+		extend( this, typeof makeDefaultOpt == "function" ?
+						makeDefaultOpt.call(this) : makeDefaultOpt );
+
+		for( var name in options ){
+			if( typeof this[name] == "undefined" ){
+				console.warn( name+" is not an option");
+			}
+		}
+		extend( this, options );
+
+		if( this.constructor == sub){
+			// find the base class, and the initialize function will be called 
+			// in the order of inherit
+			var base = sub,
+				initializeChain = [initialize];
+			while(base.__super__){
+				base = base.__super__;
+				initializeChain.unshift( base.__initialize__ );
+			}
+			for(var i = 0; i < initializeChain.length; i++){
+				if( initializeChain[i] ){
+					initializeChain[i].call( this );
+				}
+			}
+		}
+	};
+	// save super constructor
+	sub.__super__ = _super;
+	// initialize function will be called after all the super constructor is called
+	sub.__initialize__ = initialize;
+
+	// extend prototype function
+	extend( sub.prototype, _super.prototype, extendedProto, proto);
+
+	sub.prototype.constructor = sub;
+	
+	// extend the derive method as a static method;
+	sub.derive = _super.derive;
+
+
+	return sub;
+}
+/***********************
+ * Mouse Event
+ * @prop 	cancelBubble
+ * @prop 	target
+ * @prop 	sourceTarget
+ * @prop 	x
+ * @prop 	y
+ * @prop 	pageX
+ * @prop 	pageY
+ ***********************/
+function MouseEvent(props){
+
+	this.cancelBubble = false;
+
+	extend(this, props);
+}
+
+MouseEvent.prototype.stopPropagation = function(){
+	
+	this.cancelBubble = true;
+}
+
+MouseEvent.throw = function(eventType, target, props){
+
+	var e = new MouseEvent(props);
+	e.sourceTarget = target;
+
+	// enable bubble
+	while(target && !e.cancelBubble ){
+		e.target = target;
+		target.trigger(eventType, e);
+
+		target = target.parent;
+	}
+}
+/***************************************
+ * Event interface
+ * + on(eventName, handler)
+ * + trigger(eventName[, arg1[, arg2]])
+ * + off(eventName[, handler])
+ **************************************/
+var Event = {
+	
+	trigger : function(){
+		if( ! this.__handlers__){
+			return;
+		}
+		var name = arguments[0];
+		var params = Array.prototype.slice.call( arguments, 1 );
+
+		var handlers = this.__handlers__[ name ];
+		if( handlers ){
+			for( var i = 0; i < handlers.length; i+=2){
+				var handler = handlers[i],
+					context = handlers[i+1];
+				handler.apply(context || this, params);
+			}
+		}
+	},
+
+	on : function( target, handler, context ){
+
+		if( ! target){
+			return;
+		}
+		var handlers = this.__handlers__ || ( this.__handlers__={} );
+		if( ! handlers[target] ){
+			handlers[target] = [];
+		}
+		if( handlers[target].indexOf(handler) == -1){
+			// struct in list
+			// [handler,context,handler,context,handler,context..]
+			handlers[target].push( handler );
+			handlers[target].push( context );
+		}
+	},
+
+	off : function( target, handler ){
+		
+		var handlers = this.__handlers__;
+
+		if( handlers[target] ){
+			if( handler ){
+				var arr = handlers[target];
+				// remove handler and context
+				arr.splice( arr.indexOf(handler), 2 )
+			}else{
+				handlers[target] = [];
+			}
+		}
+	}
+}
+GooJS.Event = Event;
+
+/******************************************
+ * Math Library of GooJS 
+ *****************************************/
+_Math = {};
+GooJS.Math = _Math;
+
+_Math.max = function(array){
+	var max = 0;
+	for(var i =0; i < array.length; i++){
+		if(array[i] > max){
+			max = array[i];
+		}
+	}
+	return max;
+}
+_Math.min = function(array){
+	var min = 9999999999;
+	for(var i = 0; i < array.length; i++){
+		if(array[i] < min){
+			min = array[i];
+		}
+	}
+	return min;
+}
+
+_Math.computeAABB = function(points){
+	var left = points[0][0],
+		right = points[0][0],
+		top = points[0][1],
+		bottom = points[0][1];
+	
+	for(var i = 1; i < points.length; i++){
+		left = points[i][0] < left ? points[i][0] : left;
+		right = points[i][0] > right ? points[i][0] : right;
+		top = points[i][1] < top ? points[i][1] : top;
+		bottom = points[i][1] > bottom ? points[i][1] : bottom;
+	}
+	return [[left, top], [right, bottom]];
+}
+
+_Math.intersectAABB = function(point, AABB){
+	var x = point[0],
+		y = point[1];
+	return  (AABB[0][0] < x && x < AABB[1][0]) && (AABB[0][1] < y && y< AABB[1][1]);
+}
+var _offset = [0.5, 0.5];
+_Math.fixPos = function(pos){
+	return _Math.Vector.add(pos, _offset);
+}
+_Math.fixPosArray = function(poslist){
+	var ret = [],
+		len = poslist.length;
+	for(var i = 0; i < len; i++){
+		ret.push( _Math.Vector.add(poslist[i], _offset) );
+	}
+	return ret;
+}
+
+_Math.unfixAA = function(pos){
+	return _Math.Vector.sub(pos, [0.5, 0.5]);
+}
+
+_Math.Vector = {};
+
+_Math.Vector.add = function(v1, v2){
+	
+	return [v1[0]+v2[0], v1[1]+v2[1]];
+}
+
+_Math.Vector.sub = function(v1, v2){
+	
+	return [v1[0]-v2[0], v1[1]-v2[1]];
+}
+
+_Math.Vector.abs = function(v){
+	
+	return Math.sqrt(v[0]*v[0]+v[1]*v[1]);
+}
+
+_Math.Vector.mul = function(p1, p2){
+	return [p1[0]*p2[0], p1[1]*p2[1]];
+}
+
+_Math.Vector.scale = function(v, s){
+	return [v[0]*s, v[1]*s];
+}
+
+_Math.Vector.expand = function(v){
+	return [v[0], v[0], 1];
+}
+/**
+ * dot 
+ */
+_Math.Vector.dot = function(p1, p2){
+	return p1[0]*p2[0]+p1[1]*p2[1];
+}
+/**
+ * normalize
+ */
+_Math.Vector.normalize = function(v){
+	var d = _Math.Vector.length(v),
+		r = [];
+	r[0] = v[0]/d;
+	r[1] = v[1]/d;
+	return r
+}
+/**
+ * 距离
+ */
+_Math.Vector.distance = function(v1, v2){
+	return this.length(this.sub(v1, v2));
+}
+
+_Math.Vector.middle = function(v1, v2){
+	return [(v1[0]+v2[0])/2,
+			(v1[1]+v2[1])/2];
+}
+
+
+_Math.Matrix = {};
+
+_Math.Matrix.identity = function(){
+	return [1, 0, 
+			0, 1, 
+			0, 0];
+}
+/**
+ * Multiplication of 3x2 matrix
+ *	a	c	e
+ *	b	d	f
+ *	0	0	1
+ */
+_Math.Matrix.mul = function(m1, m2){
+	return [
+      m1[0] * m2[0] + m1[2] * m2[1],
+      m1[1] * m2[0] + m1[3] * m2[1],
+      m1[0] * m2[2] + m1[2] * m2[3],
+      m1[1] * m2[2] + m1[3] * m2[3],
+      m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+      m1[1] * m2[4] + m1[3] * m2[5] + m1[5]
+   ];
+}
+
+_Math.Matrix.translate = function(m, v){
+	return this.mul([1, 0, 0, 1, v[0], v[1]], m);
+}
+
+_Math.Matrix.rotate = function(m, angle){
+	var sin = Math.sin(angle),
+		cos = Math.cos(angle);
+	return this.mul([cos, sin, -sin, cos, 0, 0], m);
+}
+
+_Math.Matrix.scale = function(m, v){
+	return this.mul([v[0], 0, 0, v[1], 0, 0], m);
+}
+
+/**
+ * Inverse of 3x3 matrix, from tdl
+ * http://code.google.com/p/webglsamples/source/browse/tdl/math.js
+ */
+_Math.Matrix.inverse = function(m){
+	var t00 = m[1*3+1] * m[2*3+2] - m[1*3+2] * m[2*3+1],
+		t10 = m[0*3+1] * m[2*3+2] - m[0*3+2] * m[2*3+1],
+		t20 = m[0*3+1] * m[1*3+2] - m[0*3+2] * m[1*3+1],
+		d = 1.0 / (m[0*3+0] * t00 - m[1*3+0] * t10 + m[2*3+0] * t20);
+	return [ d * t00, -d * t10, d * t20,
+			-d * (m[1*3+0] * m[2*3+2] - m[1*3+2] * m[2*3+0]),
+			d * (m[0*3+0] * m[2*3+2] - m[0*3+2] * m[2*3+0]),
+			-d * (m[0*3+0] * m[1*3+2] - m[0*3+2] * m[1*3+0]),
+			d * (m[1*3+0] * m[2*3+1] - m[1*3+1] * m[2*3+0]),
+			-d * (m[0*3+0] * m[2*3+1] - m[0*3+1] * m[2*3+0]),
+			d * (m[0*3+0] * m[1*3+1] - m[0*3+1] * m[1*3+0])];
+}
+/**
+ * Expand a 3x2 matrix to 3x3
+ *	a	c	e
+ *	b	d	f
+ *	0	0	1
+ * http://www.whatwg.org/specs/web-apps/current-work/multipage/the-canvas-element.html#transformations
+ */
+_Math.Matrix.expand = function(m){
+	return [
+		m[0], m[1], 0, 
+		m[2], m[3], 0, 
+		m[4], m[5], 1
+	]
+}
+/**
+ * 矩阵左乘
+ */
+_Math.Matrix.mulVector = function(m, v){
+	var r = [];
+	for(var i =0; i < 3; i++){
+		r[i] = v[0]*m[i]+v[1]*m[i+3]+v[2]*m[i+6];
+	}
+	return r;
+}
+/*************************************
+ * Base Element
+ ************************************/
+GooJS.Element = function(){
+	
+	//a flag to judge if mouse is over the element
+	this.__mouseover__ = false;
+	
+	this.id = 0;
+	// auto generated guid
+	this.__GUID__ = genGUID();
+	
+	//Axis Aligned Bounding Box
+	this.AABB = [[0, 0], [0, 0]];
+	// z index
+	this.z = 0;
+	// GooJS.Style
+	this.style = null;
+	
+	this._position = [0, 0],
+	this._rotation = 0,
+	this._scale = [1, 1];
+
+	this._transform = null;
+	// inverse matrix of transform matrix
+	this._transformInverse = null;
+	// data stored by user
+	this._data = {};
+	// visible flag
+	this.visible = true;
+
+	this.children = {};
+	// virtual width of the stroke line for intersect
+	this.intersectLineWidth = 0;
+}
+
+GooJS.Element.prototype = {
+	
+	// flag of fill when drawing the element
+	fill : true,
+	// flag of stroke when drawing the element
+	stroke : true,
+	// Clip flag
+	// If it is true, this element can be used as a mask
+	// and all the children will be clipped in its shape
+	//
+	// TODO: add an other mask flag to distinguish with the clip?
+	clip : false,
+	// fix aa problem
+	// https://developer.mozilla.org/en-US/docs/HTML/Canvas/Tutorial/Applying_styles_and_colors?redirectlocale=en-US&redirectslug=Canvas_tutorial%2FApplying_styles_and_colors#section_8
+	fixAA : true,
+
+	// intersect with the bounding box
+	intersectAABB : function(x, y){
+		return _Math.intersectAABB([x,y], this.AABB);
+	},
+	// set position on the xy plane
+	position : function(x, y){
+		this._position = [x, y];
+		this.updateTransform();
+		// this.updateTransformInverse();
+	},
+	// set rotation on the xy plane
+	rotation : function(angle){
+		this._rotation = angle;
+		this.updateTransform();
+		// this.updateTransformInverse();
+	},
+	// do scale on the xy plane
+	scale : function(v){
+		if(typeof v == 'number'){
+			v = [v, v];
+		}
+		this._scale = v;
+		this.updateTransform();
+		// this.updateTransformInverse();
+	},
+	updateTransform : function(){
+		var M = _Math.Matrix;
+		var _transform = M.identity();
+		if( this._scale)
+			_transform = M.scale(_transform, this._scale);
+		if( this._rotation)
+			_transform = M.rotate(_transform, this._rotation);
+		if( this._position)
+			_transform = M.translate(_transform, this._position);
+		this._transform = _transform;
+		return _transform;
+	},
+
+	updateTransformInverse : function(){
+		this._transformInverse = _Math.Matrix.inverse(
+									_Math.Matrix.expand(this._transform));
+	},
+
+	getTransformInverse : function(){
+		return this._transformInverse;	
+	},
+
+	getTransform : function(){
+		if( ! this._transform){
+			this.updateTransform();
+		}
+		return this._transform;
+	},
+
+	setTransform : function(m){
+		this._transform = m;
+		// this.updateTransformInverse();
+	},
+
+	pushMatrix : function(m){
+		this._transform = _Math.Matrix.mul(m, this._transform);
+	},
+
+	popMatrix : function(){
+		var t = this._transform;
+		this._transform = _Math.Matrix.identity();
+		return t;
+	},
+
+	getTransformedAABB : function(){
+		var point = [],
+			M = _Math.Matrix,
+			V = _Math.Vector;
+		point[0] = M.mulVector(this._transform, V.expand(this.AABB[0]));
+		point[1] = M.mulVector(this._transform, V.expand(this.AABB[1]));
+		point[2] = M.mulVector(this._transform, [this.AABB[0][0], this.AABB[1][1], 1]);
+		point[3] = M.mulVector(this._transform, [this.AABB[1][0], this.AABB[0][1], 1]);
+		return _Math.computeAABB(point);
+	},
+
+	intersect : function(x, y, ghost){},
+	
+	draw : function(context){},
+	
+	computeAABB : function(){},
+
+	add : function(elem){
+		if( elem ){
+			this.children[elem.__GUID__] = elem;
+			elem.parent = this;
+		}
+	},
+
+	remove : function(elem){
+		delete this.children[elem.__GUID__];
+		elem.parent = null;
+	},
+
+	data : function(key, value){
+		if( typeof value == "undefined" ){
+			return this._data[key];
+		}else{
+			this._data[key] = value;
+			return this._data[key];
+		}
+	}
+}
+
+extend( GooJS.Element.prototype, Event );
+GooJS.Element.derive = derive;
+
+/***********************************************
+ * Style
+ * @config 	fillStyle | fill,
+ * @config 	strokeStyle | stroke,
+ * @config	lineWidth,
+ * @config	shadowColor,
+ * @config	shadowOffsetX,
+ * @config	shadowOffsetY,
+ * @config	shadowBlur,
+ * @config 	globalAlpha | alpha
+ * @config	shadow
+ **********************************************/
+GooJS.Style = function(opt_options){
+	
+	extend(this, opt_options);
+}
+
+GooJS.Style.__STYLES__ = ['fillStyle', 
+						'strokeStyle', 
+						'lineWidth', 
+						'shadowColor', 
+						'shadowOffsetX', 
+						'shadowOffsetY',
+						'shadowBlur',
+						'globalAlpha',
+						'font'];
+
+GooJS.Style.__STYLEALIAS__ = {			//extend some simplify style name
+						 'fill' : 'fillStyle',
+						 'stroke' : 'strokeStyle',
+						 'alpha' : 'globalAlpha',
+						 'shadow' : ['shadowOffsetX', 
+						 			'shadowOffsetY', 
+						 			'shadowBlur', 
+						 			'shadowColor']
+						}
+var shadowSyntaxRegex = /(.*?)\s+(.*?)\s+(.*?)\s+(rgb\(.*?\))/
+GooJS.Style.prototype.bind = function(ctx){
+
+	var styles = GooJS.Style.__STYLES__,
+		styleAlias = GooJS.Style.__STYLEALIAS__;
+	for( var alias in styleAlias ){
+		if( this.hasOwnProperty(alias) ){
+			var name = styleAlias[alias];
+			var value = this[alias];
+			// composite styles, like shadow, the value can be "0 0 10 #000"
+			if( name.constructor == Array ){
+				var res = shadowSyntaxRegex.exec(trim(value));
+				if( ! res )
+					continue;
+				value = res.slice(1);
+				each( value, function(item, idx){
+					if( name[idx] ){
+						ctx[ name[idx] ] = item;
+					}
+				}, this)
+			}else{
+				ctx[ name ] = value;
+			}
+		}
+	}
+	each(styles, function(styleName){
+		if( this.hasOwnProperty( styleName ) ){
+			ctx[styleName] = this[styleName];
+		}	
+	}, this)
+
+}
+
+/*************************************************
+ * Line Shape
+ *************************************************/
+GooJS.Line = GooJS.Element.derive(function(){
+return {
+	start : [0, 0],
+	end : [0, 0],
+	width : 0	//virtual width of the line for intersect computation 
+}}, {
+computeAABB : function(){
+
+	this.AABB = _Math.computeAABB([this.start, this.end]);
+	
+	if(this.AABB[0][0] == this.AABB[1][0]){	//line is vertical
+		this.AABB[0][0] -= this.width/2;
+		this.AABB[1][0] += this.width/2;
+	}
+	if(this.AABB[0][1] == this.AABB[1][1]){	//line is horizontal
+		this.AABB[0][1] -= this.width/2;
+		this.AABB[1][1] += this.width/2;
+	}
+},
+draw : function(ctx){
+	
+	var start = this.fixAA ? _Math.fixPos(start) : start,
+		end = this.fixAA ? _Math.fixPos(end) : end;
+
+	ctx.beginPath();
+	ctx.moveTo(start[0], start[1]);
+	ctx.lineTo(end[0], end[1]);
+	ctx.stroke();
+
+},
+intersect : function(x, y){
+	
+	if(!this.intersectAABB(x, y)){
+		return false;
+	}
+	//计算投影点
+	var V = _Math.Vector,
+		a = [x, y]
+		b = this.start,
+		c = this.end,
+		ba = [a[0]-b[0], a[1]-b[1]],
+		bc = [c[0]-b[0], c[1]-b[1]],
+		dd = V.dot(V.normalize(bc), ba),	//ba在bc上的投影长度
+		d = V.add(b, V.scale(V.normalize(bc), dd));		//投影点	
+		
+		var distance = V.length(V.sub(a, d));
+		return distance < this.width/2;
+}
+});
+
+/**********************************************
+ * Rectangle Shape
+ ***********************************************/
+GooJS.Rectangle = GooJS.Element.derive(function(){
+return {
+	start 	: [0, 0],
+	size 	: [0, 0]
+}}, {
+computeAABB : function(){
+	
+	this.AABB = _Math.computeAABB([this.start, _Math.Vector.add(this.start, this.size)]);
+},
+draw : function(ctx){
+
+	var start = this.fixAA ? _Math.fixPos(this.start) : this.start;
+
+	ctx.beginPath();
+	ctx.rect(start[0], start[1], this.size[0], this.size[1]);
+	if(this.stroke){
+		ctx.stroke();
+	}
+	if(this.fill){
+		ctx.fill();
+	}
+},
+intersect : function(x, y){
+	
+	return this.intersectAABB(x, y);
+}
+});
+/**************************************************
+ * Rounded Rectangle Shape
+ **************************************************/
+GooJS.RoundedRectangle = GooJS.Element.derive(function(){
+return {
+	start 	: [0, 0],
+	size	: [0, 0],
+	radius 	: 0
+}}, {
+computeAABB : function(){
+	this.AABB = _Math.computeAABB([this.start, _Math.Vector.add(this.start, this.size)])
+},
+draw : function(ctx){
+
+	if( this.radius.constructor == Number){
+		// topleft, topright, bottomright, bottomleft
+		var radius = [this.radius, this.radius, this.radius, this.radius];
+	}else if( this.radius.length == 2){
+		var radius = [this.radius[0], this.radius[1], this.radius[0], this.radius[1]];
+	}else{
+		var radius = this.radius;
+	}
+
+	var V = _Math.Vector,
+		start = this.fixAA ? _Math.fixPos(this.start) : this.start,
+		size = this.size;
+	var v1 = V.add(start, [radius[0], 0]),	//left top
+		v2 = V.add(start, [size[0], 0]),//right top
+		v3 = V.add(start, size),		//right bottom
+		v4 = V.add(start, [0, size[1]]);//left bottom
+	ctx.beginPath();
+	ctx.moveTo( v1[0], v1[1] );
+	radius[1] ? 
+		ctx.arcTo( v2[0], v2[1], v3[0], v3[1], radius[1]) :
+		ctx.lineTo( v2[0], v2[1] );
+	radius[2] ?
+		ctx.arcTo( v3[0], v3[1], v4[0], v4[1], radius[2]) :
+		ctx.lineTo( v3[0], v3[1] );
+	radius[3] ?
+		ctx.arcTo( v4[0], v4[1], start[0], start[1], radius[3]) :
+		ctx.lineTo( v4[0], v4[1] );
+	radius[0] ? 
+		ctx.arcTo( start[0], start[1], v2[0], v2[1], radius[0]) :
+		ctx.lineTo( start[0], start[1]);
+	
+	if( this.stroke ){
+		ctx.stroke();
+	}
+	if( this.fill ){
+		ctx.fill();
+	}
+},
+intersect : function(x, y){
+	// TODO
+	return false;
+}
+})
+
+/**************************************************
+ * circle
+ **************************************************/
+GooJS.Circle = GooJS.Element.derive(function(){
+return {
+	'center' : [0, 0],
+	'radius' : 0
+}}, {
+computeAABB : function(){
+	
+	this.AABB = [[this.center[0]-this.radius, this.center[1]-this.radius],
+				 [this.center[0]+this.radius, this.center[1]+this.radius]]
+},
+draw : function(ctx){
+
+	var center = this.fixAA ? _Math.fixPos( this.center ) : this.center;
+
+	ctx.beginPath();
+	ctx.arc(center[0], center[1], this.radius, 0, 2*Math.PI, false);
+	if(this.stroke){
+		ctx.stroke();
+	}
+	if(this.fill){
+		ctx.fill();
+	}
+},
+intersect : function(x, y){
+
+	return _Math.Vector.length([this.center[0]-x, this.center[1]-y]) < this.radius;
+}
+})
+
+/**************************************************
+ * Arc shape
+ **************************************************/
+GooJS.Arc = GooJS.Element.derive(function(){
+return {
+	center 		: [0, 0],
+	radius 		: 0,
+	startAngle 	: 0,
+	endAngle 	: Math.PI*2,
+	clockwise 	: true
+}}, {
+computeAABB : function(){
+	// TODO
+	this.AABB = [[0, 0], [0, 0]];
+},
+draw : function(ctx){
+
+	var center = this.fixAA ? _Math.fixPos( this.center ) : this.center;
+
+	ctx.beginPath();
+	ctx.arc(center[0], center[1], this.radius, this.startAngle, this.endAngle,  ! this.clockwise);
+	if(this.stroke){
+		ctx.stroke();
+	}
+	if(this.fill){
+		ctx.fill();
+	}
+
+},
+intersect : function(x, y){
+	// TODO
+	return false;
+}
+});
+/*********************************************
+ * Polygon Shape
+ ********************************************/
+GooJS.Polygon = GooJS.Element.derive(function(){
+return {
+	'points' : []
+}}, {
+computeAABB : function(){
+	
+	this.AABB = _Math.computeAABB(this.points);
+},
+draw : function(ctx){
+
+	var points = this.fixAA ? _Math.fixPosArray(this.points) : this.points;
+
+	ctx.beginPath();
+	
+	ctx.moveTo(points[0][0], points[0][1]);
+	for(var i =1; i < points.length; i++){
+		ctx.lineTo(points[i][0], points[i][1]);
+	}
+	ctx.closePath();
+	if(this.stroke){
+		ctx.stroke();
+	}
+	if(this.fill){
+		ctx.fill();
+	}
+},
+intersect : function(x, y){
+	
+	if(!this.intersectAABB(x, y)){
+		return false;
+	}
+
+	var len = this.points.length,
+		angle = 0,
+		V = _Math.Vector,
+		points = this.points;
+	for(var i =0; i < len; i++){
+		var vec1 = V.normalize([points[i][0]-x, points[i][1]-y]),
+			j = (i+1)%len,
+			vec2 =  V.normalize([points[j][0]-x, points[j][1]-y]),
+			foo = Math.acos(V.dot(vec1, vec2));
+			
+			angle += foo;
+	}
+	return Math.length(angle - 2*Math.PI) < 0.1;
+}
+});
+
+/*********************************************
+ * Sector Shape
+ ********************************************/
+GooJS.Sector = GooJS.Element.derive(function(){
+return {
+	center 		: [0, 0],
+	innerRadius : 0,
+	outerRadius : 0,
+	startAngle 	: 0,
+	endAngle 	: 0,
+	clockwise 	: true
+}},{
+computeAABB : function(){
+
+	this.AABB = [0, 0];
+},
+intersect : function(x, y){
+
+	var V = _Math.Vector,
+		startAngle = this.startAngle,
+		endAngle = this.endAngle,
+		r1 = this.innerRadius,
+		r2 = this.outerRadius,
+		c = this.center,
+		v = V.sub([x, y], c),
+		r = V.length(v),
+		pi2 = Math.PI * 2;
+
+	if(r < r1 || r > r2){
+		return false;
+	}
+	var angle = Math.atan2(v[1], v[0]);
+
+	//need to constraint the angle between 0 - 360
+
+	if(angle < 0){
+		angle = angle+pi2;
+	}
+	
+	if(this.clockwise){
+		
+		return angle < endAngle && angle > startAngle;
+	}else{
+		startAngle =  pi2 - startAngle;
+		endAngle = pi2 - endAngle;
+		return angle > endAngle && angle < startAngle;
+	}
+
+},
+draw : function(ctx){
+
+	var V = _Math.Vector;
+		startAngle = this.startAngle,
+		endAngle = this.endAngle,
+		r1 = this.innerRadius,
+		r2 = this.outerRadius,
+		c = this.fixAA ? _Math.fixPos( this.center ) : this.center;
+
+	if( ! this.clockwise ){
+		startAngle =  Math.PI*2 - startAngle;
+		endAngle =  Math.PI*2 - endAngle;
+	}
+
+	var	startInner = V.add(c, [r1 * Math.cos(startAngle), r1 * Math.sin(startAngle)]),
+		startOuter = V.add(c, [r2 * Math.cos(startAngle), r2 * Math.sin(startAngle)]),
+		endInner = V.add(c, [r1 * Math.cos(endAngle), r1 * Math.sin(endAngle)]),
+		endOuter = V.add(c, [r2 * Math.cos(endAngle), r2 * Math.sin(endAngle)]);
+
+	ctx.beginPath();
+	ctx.moveTo(startInner[0], startInner[1]);
+	ctx.lineTo(startOuter[0], startOuter[1]);
+	ctx.arc(c[0], c[1], r2, startAngle, endAngle, ! this.clockwise);
+	ctx.lineTo(endInner[0], endInner[1]);
+	ctx.arc(c[0], c[1], r1, endAngle, startAngle, this.clockwise);
+
+	if(this.stroke){
+		ctx.stroke();
+	}
+	if(this.fill){
+		ctx.fill();
+	}
+
+}
+});
+
+/*********************************************
+ * Path Shape
+ *********************************************/
+GooJS.Path = GooJS.Element.derive(function(){
+return {
+	segments 	: [],
+	globalStyle : true
+}}, {
+computeAABB : function(){
+	this.AABB = [[0, 0], [0, 0]];
+},
+draw : function(ctx){
+	
+	if(this.globalStyle){
+		this.drawWithSameStyle(ctx);
+	}else{
+		this.drawWithDifferentStyle(ctx);
+	}
+},
+drawWithSameStyle : function(ctx){
+	
+	var l = this.segments.length,
+		segs = this.segments;
+
+	ctx.beginPath();
+	ctx.moveTo(segs[0].point[0], segs[0].point[1]);
+	for(var i =1; i < l; i++){
+
+		if(segs[i-1].handleOut || segs[i].handleIn){
+			var prevHandleOut = segs[i-1].handleOut || segs[i-1].point,
+				handleIn = segs[i].handleIn || segs[i].point;
+			ctx.bezierCurveTo(prevHandleOut[0], prevHandleOut[1],
+					handleIn[0], handleIn[1], segs[i].point[0], segs[i].point[1]);
+		}
+		else{
+			ctx.lineTo(segs[i].point[0], segs[i].point[1]);
+		}
+
+	}
+	if(this.fill){
+		ctx.fill();
+	}
+	if(this.stroke){
+		ctx.stroke();
+	}	
+},
+drawWithDifferentStyle : function(ctx){
+	
+	var l = this.segments.length,
+		segs = this.segments;
+
+	for(var i =0; i < l-1; i++){
+
+		ctx.save();
+		segs[i].style && segs[i].style.bind(ctx);
+
+		ctx.beginPath();
+		ctx.moveTo(segs[i].point[0], segs[i].point[1]);
+
+		if(segs[i].handleOut || segs[i+1].handleIn){
+			var handleOut = segs[i].handleOut || segs[i].point,
+				nextHandleIn = segs[i+1].handleIn || segs[i+1].point;
+			ctx.bezierCurveTo(handleOut[0], handleOut[1],
+					nextHandleIn[0], nextHandleIn[1], segs[i+1].point[0], segs[i+1].point[1]);
+		}
+		else{
+			ctx.lineTo(segs[i+1].point[0], segs[i+1].point[1]);
+		}
+
+		if(this.stroke){
+			ctx.stroke();
+		}
+		if(this.fill){
+			ctx.fill();
+		}
+		ctx.restore();
+	}
+},
+smooth : function(degree){
+	var Vector = _Math.Vector,
+		len = this.segments.length,
+		middlePoints = [],
+		segs = this.segments;
+
+	function computeVector(a, b, c){
+		var m = Vector.middle(b, c);
+		return Vector.sub(a, m);
+	}
+
+	for(var i = 0; i < len; i++){
+		var point = segs[i].point,
+			nextPoint = (i == len-1) ? segs[0].point : segs[i+1].point;
+		middlePoints.push(
+				Vector.middle(point, nextPoint));
+	}
+
+	for(var i = 0; i < len; i++){
+		var point = segs[i].point,
+			middlePoint = middlePoints[i],
+			prevMiddlePoint = (i == 0) ? middlePoints[len-1] : middlePoints[i-1],
+			degree = segs[i].smoothLevel || degree || 1;
+		var middleMiddlePoint = Vector.middle(middlePoint, prevMiddlePoint);
+			v1 = Vector.sub(middlePoint, middleMiddlePoint),
+			v2 = Vector.sub(prevMiddlePoint, middleMiddlePoint);
+
+		var dv = computeVector(point, prevMiddlePoint, middlePoint);
+		//use degree to scale the handle length
+		segs[i].handleIn = Vector.add(Vector.add(middleMiddlePoint, Vector.scale(v2, degree)), dv);
+		segs[i].handleOut = Vector.add(Vector.add(middleMiddlePoint, Vector.scale(v1, degree)), dv);
+	}
+	segs[0].handleOut = segs[0].handleIn = null;
+	segs[len-1].handleIn = segs[len-1].handleOut = null;
+	
+},
+pushPoints : function(points){
+	for(var i = 0; i < points.length; i++){
+		this.segments.push({
+			point : points[i],
+			handleIn : null,
+			handleOut : null
+		})
+	}
+}
+});
+/**
+ * Image
+ */
+GooJS.Image = GooJS.Element.derive(function(){
+return {
+	img 	: '',
+	start 	: [0, 0],
+	size 	: 0,
+	onload 	: function(){}
+}}, function(){
+	if(typeof this.img == 'string'){
+		var self = this;
+		GooJS.Image.load( this.img, function(img){
+			self.img = img;
+			self.onload.call( self );
+		})
+	}
+}, {
+computeAABB : function(){
+
+	this.AABB = _Math.computeAABB([this.start, [this.start[0]+this.size[0], this.start[1]+this.size[1]]]);
+},
+draw : function(ctx){
+
+	var start = this.fixAA ? _Math.fixPos(this.start) : this.start;
+
+	if(typeof this.img != 'string'){
+		this.size ? 
+			ctx.drawImage(this.img, start[0], start[1], this.size[0], this.size[1]) :
+			ctx.drawImage(this.img, start[0], start[1]);
+	}
+
+},
+intersect : function(x, y){
+
+	return this.intersectAABB(x, y);
+}
+});
+
+_imageCache = {};
+
+GooJS.Image.load = function( src, callback ){
+
+	if( _imageCache[src] ){
+		var img = _imageCache[src];
+		if( img.constructor == Array ){
+			img.push( callback );
+		}else{
+			callback(img);
+		}
+	}else{
+		_imageCache[src] = [callback];
+		var img = new Image();
+		img.onload = function(){
+			each( _imageCache[src], function(cb){
+				cb( img );
+			})
+			_imageCache[src] = img;
+		}
+		img.src = src;
+	}
+}
+
+/************************************************
+ * Text
+ ***********************************************/
+GooJS.Text = GooJS.Element.derive(function(){
+
+return {
+	text 			: '',
+	start 			: [0, 0],
+	size 			: [0, 0],
+	font 			: '',
+	textAlign 		: '',
+	textBaseline 	: ''
+}}, {
+computeAABB : function(){
+
+	this.AABB = _Math.computeAABB([this.start, [this.start[0]+this.size[0], this.start[1]+this.size[1]]]);
+},
+draw : function(ctx){
+	var start = this.fixAA ? _Math.fixPos(this.start) : this.start;
+	if(this.font){
+		ctx.font = this.font;
+	}
+	if(this.textAlign){
+		ctx.textAlign = this.textAlign;
+	}
+	if(this.textBaseline){
+		ctx.textBaseline = this.textBaseline
+	}
+	if(this.fill){
+		this.size.length && this.size[0] ?
+			ctx.fillText(this.text, start[0], start[1], this.size[0]) :
+			ctx.fillText(this.text, start[0], start[1]);
+	}
+	if(this.stroke){
+		this.size.length && this.size[0] ?
+			ctx.strokeText(this.text, start[0], start[1], this.size[0]) :
+			ctx.strokeText(this.text, start[0], start[1]);
+	}
+},
+resize : function(ctx){
+
+	if(! this.size[0] || this.needResize){
+		this.size[0] = ctx.measureText(this.text).width;
+		this.size[1] = ctx.measureText('m').width;
+	}
+},
+intersect : function(x, y){
+
+	return this.intersectAABB(x, y);
+}
+});
+/***********************************
+ * Text Box
+ * Support word wrap and word break
+ * Drawing is based on the GooJS.Text
+ * TODO: support word wrap of non-english text
+ * 		shift first line by (lineHeight-fontSize)/2
+ ***********************************/
+GooJS.TextBox = GooJS.Element.derive(function(){
+return {
+	text 			: '',
+	textAlign 		: '',
+	textBaseline 	: 'top',
+	font			: '',
+
+	start 			: [0, 0],
+	width 			: 0,
+	wordWrap		: false,
+	wordBreak		: false,
+	lineHeight 		: 0,
+	stroke 			: false,
+	// private prop, save GooJS.Text instances
+	_texts 			: []
+}}, function(){
+	// to verify if the text is changed
+	this._oldText = "";
+}, {
+computeAABB : function(){
+},
+draw : function(ctx){
+	if( this.text != this._oldText){
+		this._oldText = this.text;
+
+		//set font for measureText
+		if( this.font ){
+			ctx.font = this.font;
+		}
+		if( this.wordBreak){
+			this._texts = this.computeWordBreak( ctx );
+		}
+		else if(this.wordWrap){
+			this._texts = this.computeWordWrap( ctx );
+		}
+		else{
+			var txt = new GooJS.Text({
+				text : this.text,
+				textBaseline : this.textBaseline
+			})
+			this.extendCommonProperties(txt);
+			this._texts = [txt]
+		}
+	}
+	each(this._texts, function(_text){
+		_text.draw(ctx);
+	})
+},
+computeWordWrap : function( ctx ){
+	if( ! this.text){
+		return;
+	}
+	var words = this.text.split(' '),
+		len = words.length,
+		lineWidth = 0,
+		wordWidth,
+		wordText,
+		texts = [],
+		txt;
+
+	for( var i = 0; i < len; i++){
+		wordText = i == len-1 ? words[i] : words[i]+' ';
+		wordWidth = ctx.measureText( wordText ).width;
+		if( lineWidth + wordWidth > this.width ||
+			! txt ){	//first line
+			// create a new text line and put current word
+			// in the head of new line
+			txt = new GooJS.Text({
+				text : wordText, //append last word
+				start : _Math.Vector.add(this.start, [0, this.lineHeight*texts.length])
+			})
+			this.extendCommonProperties(txt);
+			texts.push( txt );
+
+			lineWidth = wordWidth;
+		}else{
+			lineWidth += wordWidth;
+			txt.text += wordText;
+		}
+	}
+	return texts;
+},
+computeWordBreak : function( ctx ){
+	if( ! this.text){
+		return;
+	}
+	var len = this.text.length,
+		letterWidth,
+		letter,
+		lineWidth = ctx.measureText(this.text[0]).width,
+		texts = [],
+		txt;
+	for(var i = 0; i < len; i++){
+		letter = this.text[i];
+		letterWidth = ctx.measureText( letter ).width;
+		if( lineWidth + letterWidth > this.width || 
+			! txt ){	//first line
+			var txt = new GooJS.Text({
+				text : letter,
+				start : _Math.Vector.add(this.start, [0, this.lineHeight*texts.length])
+			});
+			this.extendCommonProperties(txt);
+			texts.push(txt);
+			// clear prev line states
+			lineWidth = letterWidth;
+		}else{
+			lineWidth += letterWidth;
+			txt.text += letter;
+		}
+	}
+	return texts;
+},
+extendCommonProperties : function(txt){
+	var props = {};
+	extend(txt, {
+		textAlign : this.textAlign,
+		textBaseline : this.textBaseline,
+		style : this.style,
+		font : this.font,
+		fill : this.fill,
+		stroke : this.stroke
+	})
+},
+intersect : function(x, y){
+
+}
+})
+
+});// end of factory function;
+//==============================
+// Canvas, 
+// Use Goo.js as drawing library 
+//==============================
+define('components/meta/canvas',["goo",
+		"./meta"], function(Goo, Meta){
+
+var Canvas = Meta.derive(function(){
+
+return {
+
+	tag : "canvas",
+
+	viewModel : {
+		width : ko.observable(256),
+		height : ko.observable(256)
+	},
+
+	stage : null
+}}, {
+
+	type : 'CANVAS',
+	css : 'canvas',
+
+	initialize : function(){
+
+		this.stage = Goo.create(this.$el[0]);
+
+		this.viewModel.width.subscribe(function(newValue){
+			this.resize();
+		}, this);
+		this.viewModel.height.subscribe(function(newValue){
+			this.resize();
+		}, this);
+	},
+
+	resize : function(){
+		this.stage.resize( this.viewModel.width(), this.viewModel.height());
+	}
+});
+
+Meta.provideBinding("canvas", Canvas);
+
+return Canvas;
 
 });
 //============================================
@@ -6130,16 +8330,20 @@ return {
 }, {
 
 	type : "CONTAINER",
+
+	css : 'container',
 	
 	template : '<div data-bind="foreach:children">\
 					<div data-bind="wse_view:$data"></div>\
 				</div>',
 	// add child component
 	add : function( sub ){
+		sub.parent = this;
 		this.viewModel.children.push( sub );
 	},
 	// remove child component
 	remove : function(){
+		sub.parent = null;
 		this.viewModel.children.remove( sub );
 	},
 	children : function(){
@@ -6162,87 +8366,63 @@ return {
 	}
 })
 
-//-------------------------------------------
-// Handle bingings in the knockout template
-var bindings = {};
-Container.provideBinding = function(name, Component ){
-	bindings[name] = Component;
-}
-var unwrap = ko.utils.unwrapObservable;
-// provide bindings to knockout
-ko.bindingHandlers["wse_container"] = {
-	init : function(element, valueAccessor, allBindingsAccessor, viewModel, bindingContext ){
-		var value = valueAccessor();
+Container.provideBinding = Base.provideBinding;
+
+// modify the wse_ui bindler
+var baseBindler = ko.bindingHandlers["wse_ui"];
+ko.bindingHandlers["wse_ui"] = {
+
+	init : function(element, valueAccessor, allBindingsAccessor, viewModel){
 		
-		var options = unwrap(value) || {},
-			type = unwrap(options.type),
-			name = unwrap(options.name),
-			attr = _.omit(options, "type", "name");
-						
-		if( options.type ){
-			var Component = bindings[ options.type ];
-			if( Component ){
-				var instance = new Component({
-					name : name || "",
-					attribute : attr
-				});
-				var children = [];
-				// initialize from the dom element
-				for(var i = 0; i < element.childNodes.length; i++){
-					var child = element.childNodes[i];
-					if( ko.bindingProvider.prototype.nodeHasBindings(child) ){
-						// Binding with the container's viewModel
-						// TODO : or replace with bindingContext??
-						ko.applyBindings(viewModel, child);
-						var sub = Base.get( child.getAttribute("data-wse-guid") );
-						if( sub ){
-							children.push( sub );
-						}
+		//save the child nodes before the element's innerHTML is changed in the createComponentFromDataBinding method
+		var childNodes = Array.prototype.slice.call(element.childNodes);
+
+		var component = baseBindler.createComponent(element, valueAccessor);
+
+		if( component && component.instanceof(Container) ){
+			// hold the renderring of children until parent is renderred
+			// If the child renders first, the element is still not attached
+			// to the document. So any changes of observable will not work.
+			// Even worse, the dependantObservable is disposed so the observable
+			// is detached in to the dom
+			// https://groups.google.com/forum/?fromgroups=#!topic/knockoutjs/aREJNrD-Miw
+			var subViewModel = {
+				'__deferredrender__' : true	
+			}
+			_.extend(subViewModel, viewModel);
+			// initialize from the dom element
+			for(var i = 0; i < childNodes.length; i++){
+				var child = childNodes[i];
+				if( ko.bindingProvider.prototype.nodeHasBindings(child) ){
+					// Binding with the container's viewModel
+					ko.applyBindings(subViewModel, child);
+					var sub = Base.getByDom( child );
+					if( sub ){
+						component.add( sub );
 					}
 				}
-				// default is initialize from the children property
-				// apppend to the wrapper
-				element.innerHTML = "";
-				element.appendChild( instance.$el[0] );
-				// Here we must update the observable after the element appended to 
-				// its parent, or it has no effect
-				// TODO : find why
-				instance.viewModel.children(children);
-				
-				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", instance.__GUID__);
-			}else{
-				console.error("Unkown UI type, " + options.type);
 			}
-		}else{
-			console.error("UI type is needed");
+		}
+		if( ! viewModel['__deferredrender__']){
+			// do render in the hierarchy from parent to child
+			// traverse tree in pre-order
+			function render(node){
+				node.render();
+				if( node.instanceof(Container) ){
+					_.each(node.children(), function(child){
+						render(child);
+					})
+				}
+			}
+			render( component );
 		}
 
-		// not apply bindings to the descendant doms in the UI component
 		return { 'controlsDescendantBindings': true };
+
 	},
-	// updated the type, name, attribute
-	update : function(element){
-
+	update : function(element, valueAccessor){
+		baseBindler.update(element, valueAccessor);
 	}
-}
-// append the element of view in the binding
-ko.bindingHandlers["wse_view"] = {
-	init : function(element, valueAccessor){
-		var value = valueAccessor();
-
-		var subView = unwrap(value);
-		if( subView && subView.$el ){
-			$(element).html('').append( subView.$el );
-		}
-		
-		return { 'controlsDescendantBindings': true };
-	}
-}
-
-// create component from json
-Container.fromJSON = function( json ){
-
 }
 
 Container.provideBinding("container", Container);
@@ -6271,6 +8451,8 @@ return {
 
 	type : 'PANEL',
 
+	css : 'panel',
+
 	template : '<div class="wse-panel-header">\
 					<div class="wse-panel-title" data-bind="html:title"></div>\
 					<div class="wse-panel-tools"></div>\
@@ -6280,7 +8462,7 @@ return {
 				</div>\
 				<div class="wse-panel-footer"></div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		var $el = this.$el;
 		this._$header = $el.children(".wse-panel-header");
 		this._$tools = this._$header.children(".wse-panel-tools");
@@ -6311,17 +8493,40 @@ var Window = Panel.derive(function(){
 
 return {
 
+	$el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
+
+	viewModel : {
+
+		children : ko.observableArray(),
+		title : ko.observable("Window"),
+
+		left : ko.observable(0),
+		top : ko.observable(0),
+
+		_leftPx : ko.computed(function(){
+			return this.viewModel.left()+"px";
+		}, this, {
+			deferEvaluation : true
+		}),
+		_topPx : ko.computed(function(){
+			return this.viewModel.top()+"px";
+		}, this, {
+			deferEvaluation : true
+		})
+	}
 }}, {
 
 	type : 'WINDOW',
+
+	css : _.union('window', Panel.prototype.css),
 
 	initialize : function(){
 		Draggable.applyTo( this );
 	},
 
-	afterrender : function(){
+	afterRender : function(){
 		
-		Panel.prototype.afterrender.call( this );
+		Panel.prototype.afterRender.call( this );
 
 		this.draggable.add( this.$el, this._$header);
 	}
@@ -6330,6 +8535,132 @@ return {
 Container.provideBinding("window", Window);
 
 return Window;
+
+});
+//============================================
+// Tab Container
+// Children of tab container must be a panel
+//============================================
+define('components/container/tab',["./panel",
+		"./container",
+		"../base",
+		"knockout"], function(Panel, Container, Base, ko){
+
+var Tab = Panel.derive(function(){
+
+return {
+	viewModel : {
+		
+		children : ko.observableArray(),
+
+		active : ko.observable(0),
+
+		maxTabWidth : 100,
+
+		minTabWidth : 30
+
+	}
+}}, {
+
+	type : "TAB",
+
+	css : 'tab',
+
+	add : function(item){
+		if( item.instanceof(Panel) ){
+			Panel.prototype.add.call(this, item);
+		}else{
+			console.error("Children of tab container must be instance of panel");
+		}
+		// compute the tab value;
+		this.viewModel.children.subscribe(this._updateTabSize, this)
+	},
+
+	eventsProvided : ['change'],
+
+	initialize : function(){
+		this.viewModel.active.subscribe(function(idx){
+			this.trigger('change', idx, this.viewModel.children()[idx]);
+		}, this)
+	},
+
+	template : '<div class="wse-tab-header">\
+					<ul class="wse-tab-tabs" data-bind="foreach:children">\
+						<li data-bind="css:{active:$index()===$parent.active()},\
+										click:$parent.active.bind($data, $index())">\
+							<a data-bind="html:viewModel.title"></a>\
+						</li>\
+					</ul>\
+					<div class="wse-tab-tools"></div>\
+				</div>\
+				<div class="wse-tab-body">\
+					<div class="wse-tab-views" data-bind="foreach:children">\
+						<div data-bind="wse_tab_view:$data,\
+										visible:$index()===$parent.active()"></div>\
+					</div>\
+				</div>\
+				<div class="wse-tab-footer"></div>',
+
+	afterRender : function(){
+		this._updateTabSize();
+	},
+
+	_updateTabSize : function(){
+		var length = this.viewModel.children().length,
+			tabSize = Math.floor((this.$el.width()-20)/length);
+		// clamp
+		tabSize = Math.min(this.viewModel.maxTabWidth, Math.max(this.viewModel.minTabWidth, tabSize) );
+
+		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
+	}
+
+})
+
+ko.bindingHandlers["wse_tab_view"] = {
+
+	_afterRender : function(){
+		var element = this.element,
+			subView = this.view,
+			$body = subView._$body,
+			$bodyPlaceHolder = $('<div class="wse-panel-body-placeholder"></div>')[0];
+
+		// put a placeholder in the body for replace back
+		$body.replaceWith($bodyPlaceHolder);
+		element.appendChild($body[0]);
+
+		subView.off("render", ko.bindingHandlers["wse_tab_view"]._afterRender );
+	},
+
+	init : function(element, valueAccessor){
+
+		var subView = ko.utils.unwrapObservable( valueAccessor() );
+		if( subView && subView.$el){
+			subView.$el.detach();
+			Base.disposeDom(element);
+			element.innerHTML = "";
+			if( subView._$body ){
+				ko.bindingHandlers["wse_tab_view"]._afterRender.call({element:element, view:subView});
+			}else{
+				// append the view after render
+				subView.on("render", ko.bindingHandlers["wse_tab_view"]._afterRender, {
+					element : element,
+					view : subView
+				});
+			}
+		}
+
+		//handle disposal (if KO removes by the template binding)
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
+        	subView.$el.children(".wse-panel-body-placeholder").replaceWith(subView._$body);
+        });
+
+		return { 'controlsDescendantBindings': true };
+	}
+}
+
+Container.provideBinding("tab", Tab);
+
+return Tab;
 
 });
 //====================================
@@ -6347,59 +8678,14 @@ var Widget = Base.derive(
 {
 
 }, {
-	type : "WIDGET"
+	type : "WIDGET",
+
+	css : 'widget'
 })
 
 //-------------------------------------------
 // Handle bingings in the knockout template
-var bindings = {};
-Widget.provideBinding = function(name, Component ){
-	bindings[name] = Component;
-}
-var unwrap = ko.utils.unwrapObservable;
-
-ko.bindingHandlers["wse_widget"] = {
-	init : function( element, valueAccessor ){
-		var value = valueAccessor();
-		
-		var options = unwrap(value) || {},
-			type = unwrap(options.type),
-			name = unwrap(options.name),
-			attr = _.omit(options, "type", "name");
-		if( type ){
-			var Component = bindings[ type ];
-			if( Component ){
-				// dispose the previous component host on the element
-				var prevComponent = Base.get( element.getAttribute("data-wse-guid") );
-				if( prevComponent ){
-					prevComponent.dispose();
-				}
-
-				var instance = new Component({
-					name : name || "",
-					attribute : attr
-				});
-				element.innerHTML = "";
-				element.appendChild( instance.$el[0] );
-
-				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", instance.__GUID__);
-			}else{
-				console.error("Unkown UI type, " + options.type);
-			}
-		}else{
-			console.error("UI type is needed");
-		}
-
-		// not apply bindings to the descendant doms in the UI component
-		return { 'controlsDescendantBindings': true };
-	},
-
-	update : function( element, valueAccessor ){
-
-	}
-}
-
+Widget.provideBinding = Base.provideBinding;
 Widget.provideBinding("widget", Widget);
 
 return Widget;
@@ -6415,9 +8701,10 @@ return Widget;
 //===================================
 define('components/widget/vector',['./widget',
 		'../base',
+		'core/xmlparser',
 		'knockout',
 		'../meta/spinner',
-		'../meta/range'], function(Widget, Base, ko){
+		'../meta/range'], function(Widget, Base, XMLParser, ko){
 
 var Vector = Widget.derive(function(){
 return {
@@ -6447,6 +8734,8 @@ return {
 
 	type : "VECTOR",
 
+	css : 'vector',
+
 	initialize : function(){
 		this.$el.attr("data-bind", 'css:{"wse-vector-constrain":constrainProportion}')
 		// here has a problem that we cant be notified 
@@ -6471,11 +8760,11 @@ return {
 				</div>\
 				<div class="wse-right" >\
 					<ul class="wse-list" data-bind="foreach:items">\
-						<li data-bind="wse_meta:$data"></li>\
+						<li data-bind="wse_ui:$data"></li>\
 					</ul>\
 				</div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		// cache the list element
 		this._$list = this.$el.find(".wse-list");
 
@@ -6566,11 +8855,31 @@ return {
 
 Widget.provideBinding("vector", Vector);
 
+XMLParser.provideParser("vector", function(xmlNode){
+	var items = [];
+	var children = XMLParser.util.getChildren(xmlNode);
+	_.chain(children).filter(function(child){
+		var tagName = child.tagName && child.tagName.toLowerCase();
+		return tagName && (tagName === "spinner" ||
+							tagName === "range");
+	}).each(function(child){
+		var attributes = XMLParser.util.convertAttributes(child.attributes);
+		attributes.type = child.tagName.toLowerCase();
+		items.push(attributes);
+	})
+	if(items.length){
+		return {
+			items : items
+		}
+	}
+})
+
 return Vector;
 
 });
 var wse_ui = {
 	core : {
+		xmlparser : require('core/xmlparser'),
 		mixin : {
 			derive : require('core/mixin/derive'),
 			event : require('core/mixin/event')
@@ -6589,18 +8898,27 @@ var wse_ui = {
 			label : require('components/meta/label'),
 			range : require('components/meta/range'),
 			spinner : require('components/meta/spinner'),
-			textfield : require('components/meta/textfield')
+			textfield : require('components/meta/textfield'),
+			canvas : require("components/meta/canvas")
 		},
 		container : {
 			container : require('components/container/container'),
 			panel : require('components/container/panel'),
-			window : require('components/container/window')
+			window : require('components/container/window'),
+			tab : require("components/container/tab")
+		},
+		widget : {
+			widget : require("components/widget/widget"),
+			vector : require("components/widget/vector")
 		}
-	}	
+	}
 }
 
 for(var name in wse_ui){
 	_exports[name] = wse_ui[name];
 }
+
+_exports["knockout"] = require("knockout");
+_exports["goo"] = require("goo");
 
 })

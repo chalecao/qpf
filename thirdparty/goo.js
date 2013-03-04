@@ -400,10 +400,11 @@ function each(arr, callback, context){
 }
 
 function extend(obj){
-	var sources = Array.prototype.slice.call(arguments, 1);
-	each(sources, function(source, idx){
-		for (var prop in source) {
-			obj[prop] = source[prop];
+	each(Array.prototype.slice.call(arguments, 1), function(source, idx){
+		if( source ){	
+			for (var prop in source) {
+				obj[prop] = source[prop];
+			}
 		}
     });
     return obj;
@@ -413,82 +414,80 @@ function trim(str){
 	return (str || '').replace(/^(\s|\u00A0)+|(\s|\u00A0)+$/g, '');
 }
 
-/*
-GooJS.Util.RGB2HSV = function(r, g, b){
-	var max = _Math.max([r, g, b]),
-		min = _Math.min([r, g, b]),
-		h, s, v;
 
-	if( r == max){
-		h = (g-b)/(max-min);
-	}
-	else if(g == max){
-		h = 2 + (b-r)/(max-min);
-	}
-	else if(b == max){
-		h = 4 + (r-g)/(max-min);
+function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
+
+	if( typeof initialize == "object"){
+		proto = initialize;
+		initialize = null;
 	}
 
-	h = h * 60;
-	if(h < 0){
-		h = h + 360;
+	// extend default prototype method
+	var extendedProto = {
+		// instanceof operator cannot work well,
+		// so we write a method to simulate it
+		'instanceof' : function(constructor){
+			var selfConstructor = sub;
+			while(selfConstructor){
+				if( selfConstructor === constructor ){
+					return true;
+				}
+				selfConstructor = selfConstructor.__super__;
+			}
+		}
 	}
-}
-*/
-GooJS.Util.HSV2RGB = function(h, s, v){
+
+	var _super = this;
+
+	var sub = function(options){
+
+		// call super constructor
+		_super.call( this );
+
+		// call makeDefaultOpt each time
+		// if it is a function, So we can make sure each 
+		// property in the object is fresh
+		extend( this, typeof makeDefaultOpt == "function" ?
+						makeDefaultOpt.call(this) : makeDefaultOpt );
+
+		for( var name in options ){
+			if( typeof this[name] == "undefined" ){
+				console.warn( name+" is not an option");
+			}
+		}
+		extend( this, options );
+
+		if( this.constructor == sub){
+			// find the base class, and the initialize function will be called 
+			// in the order of inherit
+			var base = sub,
+				initializeChain = [initialize];
+			while(base.__super__){
+				base = base.__super__;
+				initializeChain.unshift( base.__initialize__ );
+			}
+			for(var i = 0; i < initializeChain.length; i++){
+				if( initializeChain[i] ){
+					initializeChain[i].call( this );
+				}
+			}
+		}
+	};
+	// save super constructor
+	sub.__super__ = _super;
+	// initialize function will be called after all the super constructor is called
+	sub.__initialize__ = initialize;
+
+	// extend prototype function
+	extend( sub.prototype, _super.prototype, extendedProto, proto);
+
+	sub.prototype.constructor = sub;
 	
-	var r, g, b;
+	// extend the derive method as a static method;
+	sub.derive = _super.derive;
 
-	if(h.constructor == Array ){
-		s = h[1];
-		v = h[2];
-		h = h[0];
-	}
-	if(s == 0){
-		r = g = b = v;
-	}
-	else{
-		var i = Math.floor(h/60);
-	}
-	var f = h/60-i,
-		p = v*(1-s),
-		q = v*(1-s*f),
-		t = v*(1-s*(1-f));
 
-	switch(i){
-		case 0:
-			r = v;
-			g = t;
-			b = p;
-			break;
-		case 1:
-			r = q;
-			g = v;
-			b = p;
-			break;
-		case 2:
-			r = p;
-			g = v;
-			b = t;
-			break;
-		case 3:
-			r = p;
-			g = q;
-			b = v;
-			break;
-		case 4:
-			r = t;
-			g = p;
-			b = v;
-			break;
-		case 5:
-			r = v;
-			g = p;
-			b = q;
-			break;
-	}
-
-	return "rgb("+ parseInt(r*255)+"," + parseInt(g*255)+","+parseInt(b*255)+")";
+	return sub;
 }
 /***********************
  * Mouse Event
@@ -545,7 +544,7 @@ var Event = {
 			for( var i = 0; i < handlers.length; i+=2){
 				var handler = handlers[i],
 					context = handlers[i+1];
-				handler.apply(context, params);
+				handler.apply(context || this, params);
 			}
 		}
 	},
@@ -563,7 +562,7 @@ var Event = {
 			// struct in list
 			// [handler,context,handler,context,handler,context..]
 			handlers[target].push( handler );
-			handlers[target].push( context || this );
+			handlers[target].push( context );
 		}
 	},
 
@@ -943,41 +942,8 @@ GooJS.Element.prototype = {
 }
 
 extend( GooJS.Element.prototype, Event );
+GooJS.Element.derive = derive;
 
-GooJS.Element.derive = function(defaultOpt, callback /*optional*/, proto /*optional*/){
-	
-	if( typeof callback == "object"){
-		proto = callback;
-		callback = null;
-	}
-	var _super = this;
-
-	var sub = function( options ){
-
-		_super.call( this );
-
-		extend( this, defaultOpt );
-		for( var name in options ){
-			if( typeof this[name] == "undefined" ){
-				console.warn( name+" is not an option");
-			}
-		}
-		extend( this, options );
-
-		this.computeAABB();
-
-		callback && callback.call( this );
-	}
-
-	if( proto ){
-		extend( sub.prototype, _super.prototype, proto );
-	}
-
-	// extend static methods;
-	sub.derive = _super.derive;
-
-	return sub;
-}
 /***********************************************
  * Style
  * @config 	fillStyle | fill,
@@ -1050,11 +1016,12 @@ GooJS.Style.prototype.bind = function(ctx){
 /*************************************************
  * Line Shape
  *************************************************/
-GooJS.Line = GooJS.Element.derive({
+GooJS.Line = GooJS.Element.derive(function(){
+return {
 	start : [0, 0],
 	end : [0, 0],
 	width : 0	//virtual width of the line for intersect computation 
-}, {
+}}, {
 computeAABB : function(){
 
 	this.AABB = _Math.computeAABB([this.start, this.end]);
@@ -1102,10 +1069,11 @@ intersect : function(x, y){
 /**********************************************
  * Rectangle Shape
  ***********************************************/
-GooJS.Rectangle = GooJS.Element.derive({
+GooJS.Rectangle = GooJS.Element.derive(function(){
+return {
 	start 	: [0, 0],
 	size 	: [0, 0]
-}, {
+}}, {
 computeAABB : function(){
 	
 	this.AABB = _Math.computeAABB([this.start, _Math.Vector.add(this.start, this.size)]);
@@ -1131,11 +1099,12 @@ intersect : function(x, y){
 /**************************************************
  * Rounded Rectangle Shape
  **************************************************/
-GooJS.RoundedRectangle = GooJS.Element.derive({
+GooJS.RoundedRectangle = GooJS.Element.derive(function(){
+return {
 	start 	: [0, 0],
 	size	: [0, 0],
 	radius 	: 0
-}, {
+}}, {
 computeAABB : function(){
 	this.AABB = _Math.computeAABB([this.start, _Math.Vector.add(this.start, this.size)])
 },
@@ -1188,10 +1157,11 @@ intersect : function(x, y){
 /**************************************************
  * circle
  **************************************************/
-GooJS.Circle = GooJS.Element.derive({
+GooJS.Circle = GooJS.Element.derive(function(){
+return {
 	'center' : [0, 0],
 	'radius' : 0
-}, {
+}}, {
 computeAABB : function(){
 	
 	this.AABB = [[this.center[0]-this.radius, this.center[1]-this.radius],
@@ -1219,13 +1189,14 @@ intersect : function(x, y){
 /**************************************************
  * Arc shape
  **************************************************/
-GooJS.Arc = GooJS.Element.derive({
+GooJS.Arc = GooJS.Element.derive(function(){
+return {
 	center 		: [0, 0],
 	radius 		: 0,
 	startAngle 	: 0,
 	endAngle 	: Math.PI*2,
 	clockwise 	: true
-}, {
+}}, {
 computeAABB : function(){
 	// TODO
 	this.AABB = [[0, 0], [0, 0]];
@@ -1252,9 +1223,10 @@ intersect : function(x, y){
 /*********************************************
  * Polygon Shape
  ********************************************/
-GooJS.Polygon = GooJS.Element.derive({
+GooJS.Polygon = GooJS.Element.derive(function(){
+return {
 	'points' : []
-}, {
+}}, {
 computeAABB : function(){
 	
 	this.AABB = _Math.computeAABB(this.points);
@@ -1302,14 +1274,15 @@ intersect : function(x, y){
 /*********************************************
  * Sector Shape
  ********************************************/
-GooJS.Sector = GooJS.Element.derive({
+GooJS.Sector = GooJS.Element.derive(function(){
+return {
 	center 		: [0, 0],
 	innerRadius : 0,
 	outerRadius : 0,
 	startAngle 	: 0,
 	endAngle 	: 0,
 	clockwise 	: true
-},{
+}},{
 computeAABB : function(){
 
 	this.AABB = [0, 0];
@@ -1386,10 +1359,11 @@ draw : function(ctx){
 /*********************************************
  * Path Shape
  *********************************************/
-GooJS.Path = GooJS.Element.derive({
+GooJS.Path = GooJS.Element.derive(function(){
+return {
 	segments 	: [],
 	globalStyle : true
-}, {
+}}, {
 computeAABB : function(){
 	this.AABB = [[0, 0], [0, 0]];
 },
@@ -1509,12 +1483,13 @@ pushPoints : function(points){
 /**
  * Image
  */
-GooJS.Image = GooJS.Element.derive({
+GooJS.Image = GooJS.Element.derive(function(){
+return {
 	img 	: '',
 	start 	: [0, 0],
 	size 	: 0,
 	onload 	: function(){}
-}, function(){
+}}, function(){
 	if(typeof this.img == 'string'){
 		var self = this;
 		GooJS.Image.load( this.img, function(img){
@@ -1571,14 +1546,16 @@ GooJS.Image.load = function( src, callback ){
 /************************************************
  * Text
  ***********************************************/
-GooJS.Text = GooJS.Element.derive({
+GooJS.Text = GooJS.Element.derive(function(){
+
+return {
 	text 			: '',
 	start 			: [0, 0],
 	size 			: [0, 0],
 	font 			: '',
 	textAlign 		: '',
 	textBaseline 	: ''
-}, {
+}}, {
 computeAABB : function(){
 
 	this.AABB = _Math.computeAABB([this.start, [this.start[0]+this.size[0], this.start[1]+this.size[1]]]);
@@ -1624,7 +1601,8 @@ intersect : function(x, y){
  * TODO: support word wrap of non-english text
  * 		shift first line by (lineHeight-fontSize)/2
  ***********************************/
-GooJS.TextBox = GooJS.Element.derive({
+GooJS.TextBox = GooJS.Element.derive(function(){
+return {
 	text 			: '',
 	textAlign 		: '',
 	textBaseline 	: 'top',
@@ -1638,12 +1616,11 @@ GooJS.TextBox = GooJS.Element.derive({
 	stroke 			: false,
 	// private prop, save GooJS.Text instances
 	_texts 			: []
-}, function(){
+}}, function(){
 	// to verify if the text is changed
 	this._oldText = "";
 }, {
 computeAABB : function(){
-	
 },
 draw : function(ctx){
 	if( this.text != this._oldText){

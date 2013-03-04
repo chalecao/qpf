@@ -1,0 +1,45 @@
+<!Doctype html>
+<html>
+	<style type="text/css" media="screen">
+		body{
+			margin:0px;
+			padding:0px;
+			background-color: #B8B8B8;
+		}
+	</style>
+	<head>
+		<title>curl noise</title>
+		<meta charset="utf8" />
+		<link rel="stylesheet/less" type="text/css" href="../../src/components/less/base.less">
+		<script type="text/javascript" src="../../thirdparty/jquery.js"></script>
+		<script type="text/javascript" src="../../thirdparty/less.js"></script>
+		<script type="text/javascript" src="../../thirdparty/require.js"></script>
+		<script type="text/javascript" src="lib/three.min.js"></script>
+		<script type="text/javascript" src="../../thirdparty/underscore.js"></script>
+		<script type="text/javascript" src="postprocessing.js"></script>
+		<script type="text/javascript" src="curlnoise.js"></script>
+	</head>
+	<body>
+		<canvas id="Viewport"></canvas>
+
+		<script type="text/javascript">
+			requirejs.config({
+				paths : {
+					"wse_ui" : "../../build/output/wse_ui.require",
+					"knockout" : "../../thirdparty/knockout",
+					"ko.mapping" : "../../thirdparty/ko.mapping",
+					"goo" : "../../thirdparty/goo",
+
+					"main" : '../../examples/curlnoise/index'
+				},
+				shim : {
+					"main" : ['knockout', "wse_ui", "./shaders"]
+				}
+			})
+
+			require(['main'], function(){
+				
+			})
+		</script>
+	</body>
+</html>

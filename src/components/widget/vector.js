@@ -8,9 +8,10 @@
 //===================================
 define(['./widget',
 		'../base',
+		'core/xmlparser',
 		'knockout',
 		'../meta/spinner',
-		'../meta/range'], function(Widget, Base, ko){
+		'../meta/range'], function(Widget, Base, XMLParser, ko){
 
 var Vector = Widget.derive(function(){
 return {
@@ -160,6 +161,25 @@ return {
 })
 
 Widget.provideBinding("vector", Vector);
+
+XMLParser.provideParser("vector", function(xmlNode){
+	var items = [];
+	var children = XMLParser.util.getChildren(xmlNode);
+	_.chain(children).filter(function(child){
+		var tagName = child.tagName && child.tagName.toLowerCase();
+		return tagName && (tagName === "spinner" ||
+							tagName === "range");
+	}).each(function(child){
+		var attributes = XMLParser.util.convertAttributes(child.attributes);
+		attributes.type = child.tagName.toLowerCase();
+		items.push(attributes);
+	})
+	if(items.length){
+		return {
+			items : items
+		}
+	}
+})
 
 return Vector;
 

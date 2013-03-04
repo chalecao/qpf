@@ -37,6 +37,10 @@ return {
 	resize : function(){
 		this.stage.resize( this.viewModel.width(), this.viewModel.height());
 	}
-}
+});
+
+Meta.provideBinding("canvas", Canvas);
+
+return Canvas;
 
 })

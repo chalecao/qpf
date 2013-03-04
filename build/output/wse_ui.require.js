@@ -3,13 +3,13 @@ define('core/mixin/derive',[],function(){
 
 /**
  * derive a sub class from base class
- * @defaultOpt [Object|Function] default option of this sub class, 
+ * @makeDefaultOpt [Object|Function] default option of this sub class, 
  						method of the sub can use this.xxx to access this option
  * @initialize [Function](optional) initialize after the sub class is instantiated
  * @proto [Object](optional) prototype methods/property of the sub class
  *
  */
-function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
+function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
 
 	if( typeof initialize == "object"){
 		proto = initialize;
@@ -41,8 +41,8 @@ function derive(defaultOpt, initialize/*optional*/, proto/*optional*/){
 		// call defaultOpt generate function each time
 		// if it is a function, So we can make sure each 
 		// property in the object is fresh
-		_.extend( this, typeof defaultOpt == "function" ?
-						defaultOpt.call(this) : defaultOpt );
+		_.extend( this, typeof makeDefaultOpt == "function" ?
+						makeDefaultOpt.call(this) : makeDefaultOpt );
 
 		for( var name in options ){
 			if( typeof this[name] == "undefined" ){
@@ -136,13 +136,15 @@ return{
 
 	off : function( target, handler ){
 		
-		var handlers = this.__handlers__;
+		var handlers = this.__handlers__ || {};
 
 		if( handlers[target] ){
 			if( handler ){
 				var arr = handlers[target];
 				// remove handler and context
-				arr.splice( arr.indexOf(handler), 2 )
+				var idx = arr.indexOf(handler);
+				if( idx >= 0)
+					arr.splice( idx, 2 );
 			}else{
 				handlers[target] = [];
 			}
@@ -156,7 +158,7 @@ return{
 // provide util function to operate
 // the components
 //===========================
-define('components/Util',['knockout',
+define('components/util',['knockout',
 		'exports'], function(ko, exports){
 
 	var unwrap = ko.utils.unwrapObservable;
@@ -200,7 +202,7 @@ define('components/Util',['knockout',
 		// Find which property is event
 		_.each(attr, function(value, key){
 			if( key.indexOf("on") == 0 &&
-				component.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
+				Constructor.prototype.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
 				typeof(value) == "function"){
 				delete attr[key];
 				events[key.substr("on".length)] = value;
@@ -217,8 +219,19 @@ define('components/Util',['knockout',
 		})
 
 		return component;
+	
+	}
 
-		
+	// build a bridge of twe observables
+	// and update the value from source to target
+	// at first time
+	exports.bridge = function(target, source){
+		target.subscribe(function(newValue){
+			source(newValue);
+		})
+		source.subscribe(function(newValue){
+			target(newValue);
+		})
 	}
 })
 ;
@@ -230,9 +243,8 @@ define('components/Util',['knockout',
 //=====================================
 define('components/base',["core/mixin/derive",
 		"core/mixin/event",
-		"./Util",
-		"knockout",
-		"ko.mapping"], function(Derive, Events, Util, ko, koMapping){
+		"./util",
+		"knockout"], function(Derive, Events, Util, ko){
 
 var clazz = new Function();
 
@@ -259,7 +271,11 @@ return {	// Public properties
 	// Attribute will be applied to the viewModel
 	// WARNING: It will be only used in the constructor
 	// So there is no need to re-assign a new viewModel when created an instance
+	// if property in the attribute is a observable
+	// it will be binded to the property in viewModel
 	attribute : {},
+	
+	parent : null,
 	// ui skin
 	skin : "",
 	// Class prefix
@@ -279,13 +295,39 @@ return {	// Public properties
 	if( this.skin ){
 		this.$el.addClass( this.withPrefix(this.skin, this.skinPrefix) );
 	}
+
+	if( this.css ){
+		_.each( _.union(this.css), function(className){
+			this.$el.addClass( this.withPrefix(className, this.classPrefix) );
+		}, this)
+	}
 	// Class name of wrapper element is depend on the lowercase of component type
-	this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
+	// this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
+	
+	// extend default properties to view Models
+	_.extend(this.viewModel, {
+		width : ko.observable(),
+		height : ko.observable(),
+		disable : ko.observable(false)
+	});
+	this.viewModel.width.subscribe(function(newValue){
+		this.$el.width(newValue);
+	}, this)
+	this.viewModel.height.subscribe(function(newValue){
+		this.$el.height(newValue);
+	}, this)
+	this.viewModel.disable.subscribe(function(newValue){
+		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
+	}, this)
+
 	// apply attribute to the view model
-	koMapping.fromJS(this.attribute, {}, this.viewModel);
+	this._mappingAttributesToViewModel( this.attribute );
 
 	this.initialize();
-	this.render();
+	// Here we removed auto rendering at constructor
+	// to support deferred rendering after the $el is attached
+	// to the document
+	// this.render();
 
 }, {// Prototype
 	// Type of component. The className of the wrapper element is
@@ -307,24 +349,23 @@ return {	// Public properties
 			var source = {};
 			source[key] = value;
 		}else{
-			source = key
+			source = key;
 		};
-
-		koMapping.fromJS(source, {}, this.viewModel);
+		this._mappingAttributesToViewModel( source );
 	},
 	// Call to refresh the component
-	// Will trigger beforerender and afterrender hooks
-	// beforerender and afterrender hooks is mainly provide for
+	// Will trigger beforeRender and afterRender hooks
+	// beforeRender and afterRender hooks is mainly provide for
 	// the subclasses
 	render : function(){
-		this.beforerender && this.beforerender();
-		this.dorender();
-		this.afterrender && this.afterrender();
+		this.beforeRender && this.beforeRender();
+		this.doRender();
+		this.afterRender && this.afterRender();
 
 		this.trigger("render");
 	},
 	// Default render method
-	dorender : function(){
+	doRender : function(){
 		this.$el.html(this.template);
 		ko.applyBindings( this.viewModel, this.$el[0] );
 	},
@@ -348,6 +389,26 @@ return {	// Public properties
 		if( className.indexOf(prefix) == 0){
 			return className.substr(prefix.length);
 		}
+	},
+	// mapping the attributes to viewModel 
+	_mappingAttributesToViewModel : function(attributes){
+		for(var name in attributes){
+			var attr = attributes[name];
+			var propInVM = this.viewModel[name];
+			if( ! propInVM ){
+				// console.error("Attribute "+name+" is not a valid viewModel property");
+				continue;
+			}
+			if( ko.isObservable(propInVM) ){
+				propInVM(ko.utils.unwrapObservable(attr) );
+
+				if( ko.isObservable(attr) ){
+					Util.bridge(propInVM, attr);
+				}
+			}else{
+				propInVM = ko.utils.unwrapObservable(attr);
+			}
+		}	
 	}
 })
 
@@ -357,8 +418,7 @@ Base.get = function(guid){
 	return repository[guid];
 }
 Base.getByDom = function(domNode){
-	var $domNode = $(domNode),
-		guid = $domNode.attr("data-wse-guid");
+	var guid = domNode.getAttribute("data-wse-guid");
 	return Base.get(guid);
 }
 
@@ -369,8 +429,6 @@ Base.disposeDom = function(domNode, resursive){
 	if(typeof(recursive) == "undefined"){
 		recursive = true;
 	}
-
-	domNode = $(domNode)[0];
 
 	function dispose(node){
 		var guid = node.getAttribute("data-wse-guid");
@@ -440,15 +498,22 @@ Base.provideBinding = function(name, Component ){
 }
 // provide bindings to knockout
 ko.bindingHandlers["wse_ui"] = {
-	init : function( element, valueAccessor ){
 
+	createComponent : function(element, valueAccessor){
 		// dispose the previous component host on the element
 		var prevComponent = Base.getByDom( element );
 		if( prevComponent ){
 			prevComponent.dispose();
 		}
 		var component = Util.createComponentFromDataBinding( element, valueAccessor, bindings );
+		return component;
+	},
 
+	init : function( element, valueAccessor ){
+
+		var component = ko.bindingHandlers["wse_ui"].createComponent(element, valueAccessor);
+
+		component.render();
 		// not apply bindings to the descendant doms in the UI component
 		return { 'controlsDescendantBindings': true };
 	},
@@ -482,9 +547,16 @@ ko.bindingHandlers["wse_view"] = {
 
 		var subView = ko.utils.unwrapObservable(value);
 		if( subView && subView.$el ){
-			$(element).html('').append( subView.$el );
+			Base.disposeDom(element);
+			element.innerHTML = "";
+			element.appendChild( subView.$el[0] );
 		}
-		
+		// PENDING
+		// handle disposal (if KO removes by the template binding)
+        // ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
+            // subView.dispose();
+        // });
+
 		return { 'controlsDescendantBindings': true };
 	}
 }
@@ -505,7 +577,9 @@ define('components/meta/meta',['../base',
 var Meta = Base.derive(
 {
 }, {
-	type : "META"
+	type : "META",
+
+	css : 'meta'
 })
 
 // Inherit the static methods
@@ -514,11 +588,185 @@ Meta.provideBinding = Base.provideBinding;
 return Meta;
 
 });
+//===================================================
+// Xml Parser
+// parse wml and convert it to dom with knockout data-binding
+// TODO	xml valid checking, 
+//		provide xml childNodes Handler in the Components
+//===================================================
+define('core/xmlparser',['require','exports','module'],function(require, exports, module){
+
+	// return document fragment converted from the xml
+	var parse = function( xmlString ){
+		
+		if( typeof(xmlString) == "string"){
+			var xml = parseXML( xmlString );
+		}else{
+			var xml = xmlString;
+		}
+		if( xml ){
+
+			var rootDomNode = document.createElement("div");
+
+			convert( xml, rootDomNode);
+
+			return rootDomNode;
+		}
+	}
+
+	function parseXML( xmlString ){
+		var xml, parser;
+		try{
+			if( window.DOMParser ){
+				xml = (new DOMParser()).parseFromString( xmlString, "text/xml");
+			}else{
+				xml = new ActiveXObject("Microsoft.XMLDOM");
+				xml.async = "false";
+				xml.loadXML( xmlString );
+			}
+			return xml;
+		}catch(e){
+			console.error("Invalid XML:" + xmlString);
+		}
+	}
+
+	var customParsers = {};
+	// provided custom parser from Compositor
+	// parser need to return a plain object which key is attributeName
+	// and value is attributeValue
+	function provideParser(componentType /*tagName*/, parser){
+		customParsers[componentType] = parser;
+	}
+
+	function parseXMLNode(xmlNode){
+		if( xmlNode.nodeType !== 1){
+			return;
+		}
+		var bindingResults = {
+			type : xmlNode.tagName.toLowerCase()
+		} 
+
+		var convertedAttr = convertAttributes( xmlNode.attributes );
+		var customParser = customParsers[bindingResults.type];
+		if( customParser ){
+			var result = customParser(xmlNode);
+			if( result &&
+				typeof(result) !="object"){
+				console.error("Parser must return an object converted from attributes")
+			}else{
+				// data in the attributes has higher priority than
+				// the data from the children
+				_.extend(convertedAttr, result);
+			}
+		}
+
+		var bindingString = attributesToDataBindingFormat( convertedAttr, bindingResults );
+
+		var domNode = document.createElement('div');
+		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
+
+		return domNode;
+	}
+
+	function convertAttributes(attributes){
+		var ret = {};
+		for(var i = 0; i < attributes.length; i++){
+			var attr = attributes[i];
+			ret[attr.nodeName] = attr.nodeValue;
+		}
+		return ret;
+	}
+
+	function attributesToDataBindingFormat(attributes, bindingResults){
+
+		bindingResults = bindingResults || {}
+		for(var name in attributes){
+			var value = attributes[name];
+			if( value ){
+				// this value is an expression or observable
+				// in the viewModel if it has @binding[] flag
+				var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
+				if( isBinding ){
+					// add a tag to remove quotation the afterwards
+					// conveniently, or knockout will treat it as a 
+					// normal string, not expression
+					value = "{{BINDINGSTART" + isBinding[1] + "BINDINGEND}}";
+
+				}
+				bindingResults[name] = value
+			}
+		}
+
+		var bindingString = JSON.stringify(bindingResults);
+		
+		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/g, "$1");
+
+		return bindingString;
+	}
+
+	function convert(root, parent){
+
+		var children = getChildren(root);
+
+		for(var i = 0; i < children.length; i++){
+			var node = parseXMLNode( children[i] );
+			if( node ){
+				parent.appendChild(node);
+				convert( children[i], node);
+			}
+		}
+	}
+
+	function getChildren(parent){
+		
+		var children = [];
+		var node = parent.firstChild;
+		while(node){
+			children.push(node);
+			node = node.nextSibling;
+		}
+		return children;
+	}
+
+	function getChildrenByTagName(parent, tagName){
+		var children = getChildren(parent);
+		
+		return _.filter(children, function(child){
+			return child.tagName && child.tagName.toLowerCase() === tagName;
+		})
+	}
+
+
+	exports.parse = parse;
+	//---------------------------------
+	// some util functions provided for the components
+	exports.provideParser = provideParser;
+
+	function getTextContent(xmlNode){
+		var children = getChildren(xmlNode);
+		var text = '';
+		_.each(children, function(child){
+			if(child.nodeType==3){
+				text += child.textContent.replace(/(^\s*)|(\s*$)/g, "");
+			}
+		})
+		return text;
+	}
+
+	exports.util = {
+		convertAttributes : convertAttributes,
+		attributesToDataBindingFormat : attributesToDataBindingFormat,
+		getChildren : getChildren,
+		getChildrenByTagName : getChildrenByTagName,
+		getTextContent : getTextContent
+	}
+});
 //======================================
 // Button component
 //======================================
 define('components/meta/button',['./meta',
-		'knockout'], function(Meta, ko){
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
 
 var Button = Meta.derive(function(){
 return {
@@ -530,10 +778,32 @@ return {
 	}
 }}, {
 
+	eventsProvided : ['click'],
+
 	type : 'BUTTON',
+
+	css : 'button',
+
+	afterRender : function(){
+		var me = this;
+		this.$el.click(function(){
+			me.trigger("click");
+		})
+	}
 });
 
 Meta.provideBinding("button", Button);
+
+// provide parser when do xmlparsing
+XMLParser.provideParser("button", function(xmlNode){
+	
+	var text = XMLParser.util.getTextContent(xmlNode);
+	if(text){
+		return {
+			text : text
+		}
+	}
+})
 
 return Button;
 
@@ -547,8 +817,6 @@ define('components/meta/checkbox',['./meta',
 var Checkbox = Meta.derive(function(){
 return {
 	
-	tag : "div",
-
 	viewModel : {
 		// value of the button
 		checked : ko.observable(false),
@@ -561,9 +829,10 @@ return {
 				<label data-bind="text:label"></label>',
 
 	type : 'CHECKBOX',
+	css : 'checkbox',
 
 	// binding events
-	afterrender : function(){
+	afterRender : function(){
 		var vm = this.viewModel;
 		this.$el.click(function(){
 			vm.checked( ! vm.checked() );
@@ -580,13 +849,14 @@ return Checkbox;
 // Combobox component
 // 
 // @VMProp	value
-// @VMProp	options
+// @VMProp	items
 //			@property	value
 //			@property	text
 //===================================
 
 define('components/meta/combobox',['./meta',
-		'knockout'], function(Meta, ko){
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
 
 var Combobox = Meta.derive(function(){
 return {
@@ -597,7 +867,7 @@ return {
 
 		value : ko.observable(),
 
-		options : ko.observableArray(),	//{value, text}
+		items : ko.observableArray(),	//{value, text}
 
 		defaultText : ko.observable("select"),
 
@@ -617,17 +887,22 @@ return {
 			value = ko.utils.unwrapObservable(value);
 			this.value(value);
 			this._blur();
+		},
+		_isSelected : function(value){
+			return this.value() === ko.utils.unwrapObservable(value);
 		}
 	}
 }}, {
 	
 	type : 'COMBOBOX',
 
+	css : 'combobox',
+
 	initialize : function(){
 
 		this.viewModel.selectedText = ko.computed(function(){
 			var val = this.value();
-			var result =  _.filter(this.options(), function(item){
+			var result =  _.filter(this.items(), function(item){
 				return ko.utils.unwrapObservable(item.value) == val;
 			})[0];
 			if( typeof(result) == "undefined"){
@@ -639,15 +914,15 @@ return {
 	},
 
 	template : '<div class="wse-combobox-selected wse-common-button" data-bind="html:selectedText,click:_toggle"></div>\
-				<ul class="wse-combobox-options" data-bind="foreach:options">\
-					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value)"></li>\
+				<ul class="wse-combobox-items" data-bind="foreach:items">\
+					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
 				</ul>',
 
-	afterrender : function(){
+	afterRender : function(){
 
 		var self = this;
 		this._$selected = this.$el.find(".wse-combobox-selected");
-		this._$options = this.$el.find(".wse-combobox-options");
+		this._$items = this.$el.find(".wse-combobox-items");
 
 		this.$el.blur(function(){
 			self.viewModel._blur();
@@ -655,13 +930,37 @@ return {
 
 	},
 
-	//-------method provide for the users
+	//-------method provided for the developers
 	select : function(value){
 		this.viewModel.select(value);
 	}
 })
 
 Meta.provideBinding("combobox", Combobox);
+
+XMLParser.provideParser('combobox', function(xmlNode){
+	var items = [];
+	var nodes = XMLParser.util.getChildrenByTagName(xmlNode, "item");
+	_.each(nodes, function(child){
+		// Data source can from item tags of the children
+		var value = child.getAttribute("value");
+		var text = child.getAttribute("text") ||
+					XMLParser.util.getTextContent(child);
+
+		if( value !== null){
+			items.push({
+				value : value,
+				text : text
+			})
+		}
+	})
+	if( items.length){
+		return {
+			items : items
+		}
+	}
+})
+
 
 return Combobox;
 
@@ -670,21 +969,36 @@ return Combobox;
 // Label component
 //======================================
 define('components/meta/label',['./meta',
-		'knockout'], function(Meta, ko){
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
 
 var Label = Meta.derive(function(){
 return {
-	$el : $('<Label data-bind="html:text"></Label>'),
-
 	viewModel : {
 		// value of the Label
 		text : ko.observable('Label')
 	}
 } }, {
-	type : 'LABEL'
+
+	template : '<Label data-bind="html:text"></Label>',
+
+	type : 'LABEL',
+
+	css : 'label'
 });
 
 Meta.provideBinding("label", Label);
+
+// provide parser when do xmlparsing
+XMLParser.provideParser("label", function(xmlNode){
+
+	var text = XMLParser.util.getTextContent(xmlNode);
+	if(text){
+		return {
+			text : text
+		}
+	}
+})
 
 return Label;
 
@@ -880,6 +1194,10 @@ _restore : function( restorePosition ){
 },
 
 _mouseDown : function(e){
+	
+	if( e.which !== 1){
+		return;
+	}
 
 	var self = e.data.context;
 	//disable selection
@@ -1130,6 +1448,8 @@ return {
 
 	type : "RANGE",
 
+	css : 'range',
+
 	template : '<div class="wse-range-groove">\
 					<div class="wse-range-percentage"></div>\
 				</div>\
@@ -1164,7 +1484,7 @@ return {
 		}, this);
 	},
 
-	afterrender : function(){
+	afterRender : function(){
 
 		// cache the element;
 		this._$groove = this.$el.find(".wse-range-groove");
@@ -1314,6 +1634,8 @@ return {
 }}, {
 	type : 'SPINNER',
 
+	css : 'spinner',
+
 	initialize : function(){
 		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
 
@@ -1325,6 +1647,8 @@ return {
 		}, this)
 	},
 
+	eventsProvided : ["change"],
+
 	template : '<div class="wse-left">\
 					<input type="text" class="wse-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
 				</div>\
@@ -1335,7 +1659,7 @@ return {
 					-</div>\
 				</div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		var self = this;
 		// disable selection
 		this.$el.find('.wse-increase,.wse-decrease').mousedown(function(e){
@@ -1402,10 +1726,58 @@ var TextField = Meta.derive(
 	
 	type : "TEXTFIELD",
 
+	css : 'textfield',
+
 	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
 })
 
 Meta.provideBinding("textfield", TextField);
+
+});
+//==============================
+// Canvas, 
+// Use Goo.js as drawing library 
+//==============================
+define('components/meta/canvas',["goo",
+		"./meta"], function(Goo, Meta){
+
+var Canvas = Meta.derive(function(){
+
+return {
+
+	tag : "canvas",
+
+	viewModel : {
+		width : ko.observable(256),
+		height : ko.observable(256)
+	},
+
+	stage : null
+}}, {
+
+	type : 'CANVAS',
+	css : 'canvas',
+
+	initialize : function(){
+
+		this.stage = Goo.create(this.$el[0]);
+
+		this.viewModel.width.subscribe(function(newValue){
+			this.resize();
+		}, this);
+		this.viewModel.height.subscribe(function(newValue){
+			this.resize();
+		}, this);
+	},
+
+	resize : function(){
+		this.stage.resize( this.viewModel.width(), this.viewModel.height());
+	}
+});
+
+Meta.provideBinding("canvas", Canvas);
+
+return Canvas;
 
 });
 //============================================
@@ -1426,16 +1798,20 @@ return {
 }, {
 
 	type : "CONTAINER",
+
+	css : 'container',
 	
 	template : '<div data-bind="foreach:children">\
 					<div data-bind="wse_view:$data"></div>\
 				</div>',
 	// add child component
 	add : function( sub ){
+		sub.parent = this;
 		this.viewModel.children.push( sub );
 	},
 	// remove child component
 	remove : function(){
+		sub.parent = null;
 		this.viewModel.children.remove( sub );
 	},
 	children : function(){
@@ -1469,30 +1845,47 @@ ko.bindingHandlers["wse_ui"] = {
 		//save the child nodes before the element's innerHTML is changed in the createComponentFromDataBinding method
 		var childNodes = Array.prototype.slice.call(element.childNodes);
 
-		var result = baseBindler.init(element, valueAccessor);
-
-		var component = Base.getByDom( element );
+		var component = baseBindler.createComponent(element, valueAccessor);
 
 		if( component && component.instanceof(Container) ){
-
-			var children = [];
+			// hold the renderring of children until parent is renderred
+			// If the child renders first, the element is still not attached
+			// to the document. So any changes of observable will not work.
+			// Even worse, the dependantObservable is disposed so the observable
+			// is detached in to the dom
+			// https://groups.google.com/forum/?fromgroups=#!topic/knockoutjs/aREJNrD-Miw
+			var subViewModel = {
+				'__deferredrender__' : true	
+			}
+			_.extend(subViewModel, viewModel);
 			// initialize from the dom element
 			for(var i = 0; i < childNodes.length; i++){
 				var child = childNodes[i];
 				if( ko.bindingProvider.prototype.nodeHasBindings(child) ){
 					// Binding with the container's viewModel
-					ko.applyBindings(viewModel, child);
+					ko.applyBindings(subViewModel, child);
 					var sub = Base.getByDom( child );
 					if( sub ){
-						children.push( sub );
+						component.add( sub );
 					}
 				}
 			}
-
-			component.viewModel.children( children );
+		}
+		if( ! viewModel['__deferredrender__']){
+			// do render in the hierarchy from parent to child
+			// traverse tree in pre-order
+			function render(node){
+				node.render();
+				if( node.instanceof(Container) ){
+					_.each(node.children(), function(child){
+						render(child);
+					})
+				}
+			}
+			render( component );
 		}
 
-		return result;
+		return { 'controlsDescendantBindings': true };
 
 	},
 	update : function(element, valueAccessor){
@@ -1526,6 +1919,8 @@ return {
 
 	type : 'PANEL',
 
+	css : 'panel',
+
 	template : '<div class="wse-panel-header">\
 					<div class="wse-panel-title" data-bind="html:title"></div>\
 					<div class="wse-panel-tools"></div>\
@@ -1535,7 +1930,7 @@ return {
 				</div>\
 				<div class="wse-panel-footer"></div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		var $el = this.$el;
 		this._$header = $el.children(".wse-panel-header");
 		this._$tools = this._$header.children(".wse-panel-tools");
@@ -1566,17 +1961,40 @@ var Window = Panel.derive(function(){
 
 return {
 
+	$el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
+
+	viewModel : {
+
+		children : ko.observableArray(),
+		title : ko.observable("Window"),
+
+		left : ko.observable(0),
+		top : ko.observable(0),
+
+		_leftPx : ko.computed(function(){
+			return this.viewModel.left()+"px";
+		}, this, {
+			deferEvaluation : true
+		}),
+		_topPx : ko.computed(function(){
+			return this.viewModel.top()+"px";
+		}, this, {
+			deferEvaluation : true
+		})
+	}
 }}, {
 
 	type : 'WINDOW',
+
+	css : _.union('window', Panel.prototype.css),
 
 	initialize : function(){
 		Draggable.applyTo( this );
 	},
 
-	afterrender : function(){
+	afterRender : function(){
 		
-		Panel.prototype.afterrender.call( this );
+		Panel.prototype.afterRender.call( this );
 
 		this.draggable.add( this.$el, this._$header);
 	}
@@ -1585,6 +2003,132 @@ return {
 Container.provideBinding("window", Window);
 
 return Window;
+
+});
+//============================================
+// Tab Container
+// Children of tab container must be a panel
+//============================================
+define('components/container/tab',["./panel",
+		"./container",
+		"../base",
+		"knockout"], function(Panel, Container, Base, ko){
+
+var Tab = Panel.derive(function(){
+
+return {
+	viewModel : {
+		
+		children : ko.observableArray(),
+
+		active : ko.observable(0),
+
+		maxTabWidth : 100,
+
+		minTabWidth : 30
+
+	}
+}}, {
+
+	type : "TAB",
+
+	css : 'tab',
+
+	add : function(item){
+		if( item.instanceof(Panel) ){
+			Panel.prototype.add.call(this, item);
+		}else{
+			console.error("Children of tab container must be instance of panel");
+		}
+		// compute the tab value;
+		this.viewModel.children.subscribe(this._updateTabSize, this)
+	},
+
+	eventsProvided : ['change'],
+
+	initialize : function(){
+		this.viewModel.active.subscribe(function(idx){
+			this.trigger('change', idx, this.viewModel.children()[idx]);
+		}, this)
+	},
+
+	template : '<div class="wse-tab-header">\
+					<ul class="wse-tab-tabs" data-bind="foreach:children">\
+						<li data-bind="css:{active:$index()===$parent.active()},\
+										click:$parent.active.bind($data, $index())">\
+							<a data-bind="html:viewModel.title"></a>\
+						</li>\
+					</ul>\
+					<div class="wse-tab-tools"></div>\
+				</div>\
+				<div class="wse-tab-body">\
+					<div class="wse-tab-views" data-bind="foreach:children">\
+						<div data-bind="wse_tab_view:$data,\
+										visible:$index()===$parent.active()"></div>\
+					</div>\
+				</div>\
+				<div class="wse-tab-footer"></div>',
+
+	afterRender : function(){
+		this._updateTabSize();
+	},
+
+	_updateTabSize : function(){
+		var length = this.viewModel.children().length,
+			tabSize = Math.floor((this.$el.width()-20)/length);
+		// clamp
+		tabSize = Math.min(this.viewModel.maxTabWidth, Math.max(this.viewModel.minTabWidth, tabSize) );
+
+		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
+	}
+
+})
+
+ko.bindingHandlers["wse_tab_view"] = {
+
+	_afterRender : function(){
+		var element = this.element,
+			subView = this.view,
+			$body = subView._$body,
+			$bodyPlaceHolder = $('<div class="wse-panel-body-placeholder"></div>')[0];
+
+		// put a placeholder in the body for replace back
+		$body.replaceWith($bodyPlaceHolder);
+		element.appendChild($body[0]);
+
+		subView.off("render", ko.bindingHandlers["wse_tab_view"]._afterRender );
+	},
+
+	init : function(element, valueAccessor){
+
+		var subView = ko.utils.unwrapObservable( valueAccessor() );
+		if( subView && subView.$el){
+			subView.$el.detach();
+			Base.disposeDom(element);
+			element.innerHTML = "";
+			if( subView._$body ){
+				ko.bindingHandlers["wse_tab_view"]._afterRender.call({element:element, view:subView});
+			}else{
+				// append the view after render
+				subView.on("render", ko.bindingHandlers["wse_tab_view"]._afterRender, {
+					element : element,
+					view : subView
+				});
+			}
+		}
+
+		//handle disposal (if KO removes by the template binding)
+        ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
+        	subView.$el.children(".wse-panel-body-placeholder").replaceWith(subView._$body);
+        });
+
+		return { 'controlsDescendantBindings': true };
+	}
+}
+
+Container.provideBinding("tab", Tab);
+
+return Tab;
 
 });
 //====================================
@@ -1602,13 +2146,14 @@ var Widget = Base.derive(
 {
 
 }, {
-	type : "WIDGET"
+	type : "WIDGET",
+
+	css : 'widget'
 })
 
 //-------------------------------------------
 // Handle bingings in the knockout template
 Widget.provideBinding = Base.provideBinding;
-
 Widget.provideBinding("widget", Widget);
 
 return Widget;
@@ -1624,9 +2169,10 @@ return Widget;
 //===================================
 define('components/widget/vector',['./widget',
 		'../base',
+		'core/xmlparser',
 		'knockout',
 		'../meta/spinner',
-		'../meta/range'], function(Widget, Base, ko){
+		'../meta/range'], function(Widget, Base, XMLParser, ko){
 
 var Vector = Widget.derive(function(){
 return {
@@ -1656,6 +2202,8 @@ return {
 
 	type : "VECTOR",
 
+	css : 'vector',
+
 	initialize : function(){
 		this.$el.attr("data-bind", 'css:{"wse-vector-constrain":constrainProportion}')
 		// here has a problem that we cant be notified 
@@ -1684,7 +2232,7 @@ return {
 					</ul>\
 				</div>',
 
-	afterrender : function(){
+	afterRender : function(){
 		// cache the list element
 		this._$list = this.$el.find(".wse-list");
 
@@ -1774,6 +2322,25 @@ return {
 })
 
 Widget.provideBinding("vector", Vector);
+
+XMLParser.provideParser("vector", function(xmlNode){
+	var items = [];
+	var children = XMLParser.util.getChildren(xmlNode);
+	_.chain(children).filter(function(child){
+		var tagName = child.tagName && child.tagName.toLowerCase();
+		return tagName && (tagName === "spinner" ||
+							tagName === "range");
+	}).each(function(child){
+		var attributes = XMLParser.util.convertAttributes(child.attributes);
+		attributes.type = child.tagName.toLowerCase();
+		items.push(attributes);
+	})
+	if(items.length){
+		return {
+			items : items
+		}
+	}
+})
 
 return Vector;
 

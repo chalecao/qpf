@@ -6,7 +6,7 @@
 //=====================================
 define(["core/mixin/derive",
 		"core/mixin/event",
-		"./Util",
+		"./util",
 		"knockout"], function(Derive, Events, Util, ko){
 
 var clazz = new Function();
