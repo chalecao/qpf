@@ -34,6 +34,10 @@ return {
 		}, this);
 	},
 
+	doRender : function(){
+		this.stage.render();
+	},
+
 	resize : function(){
 		this.stage.resize( this.viewModel.width(), this.viewModel.height());
 	}

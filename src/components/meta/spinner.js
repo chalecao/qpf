@@ -72,7 +72,6 @@ return {
 		this._$value = this.$el.find(".wse-spinner-value")
 		// numeric input only
 		this._$value.keydown(function(event){
-			
 			// Allow: backspace, delete, tab, escape and dot
 			if ( event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9 || event.keyCode == 27 || event.keyCode == 190 ||
 				 // Allow: Ctrl+A

@@ -417,6 +417,190 @@ var requirejs, require, define;
 
 define("build/almond", function(){});
 
+//===================================================
+// Xml Parser
+// parse wml and convert it to dom with knockout data-binding
+// TODO	xml valid checking, 
+//		provide xml childNodes Handler in the Components
+//===================================================
+define('core/xmlparser',['require','exports','module'],function(require, exports, module){
+	
+	// return document fragment converted from the xml
+	var parse = function( xmlString ){
+		
+		if( typeof(xmlString) == "string"){
+			var xml = parseXML( xmlString );
+		}else{
+			var xml = xmlString;
+		}
+		if( xml ){
+
+			var rootDomNode = document.createElement("div");
+
+			convert( xml, rootDomNode);
+
+			return rootDomNode;
+		}
+	}
+
+	function parseXML( xmlString ){
+		var xml, parser;
+		try{
+			if( window.DOMParser ){
+				xml = (new DOMParser()).parseFromString( xmlString, "text/xml");
+			}else{
+				xml = new ActiveXObject("Microsoft.XMLDOM");
+				xml.async = "false";
+				xml.loadXML( xmlString );
+			}
+			return xml;
+		}catch(e){
+			console.error("Invalid XML:" + xmlString);
+		}
+	}
+
+	var customParsers = {};
+	// provided custom parser from Compositor
+	// parser need to return a plain object which key is attributeName
+	// and value is attributeValue
+	function provideParser(componentType /*tagName*/, parser){
+		customParsers[componentType] = parser;
+	}
+
+	function parseXMLNode(xmlNode){
+		if( xmlNode.nodeType !== 1){
+			return;
+		}
+		var bindingResults = {
+			type : xmlNode.tagName.toLowerCase()
+		} 
+
+		var convertedAttr = convertAttributes( xmlNode.attributes );
+		var customParser = customParsers[bindingResults.type];
+		if( customParser ){
+			var result = customParser(xmlNode);
+			if( result &&
+				typeof(result) !="object"){
+				console.error("Parser must return an object converted from attributes")
+			}else{
+				// data in the attributes has higher priority than
+				// the data from the children
+				_.extend(convertedAttr, result);
+			}
+		}
+
+		var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
+
+		var domNode = document.createElement('div');
+		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
+
+		return domNode;
+	}
+
+	function convertAttributes(attributes){
+		var ret = {};
+		for(var i = 0; i < attributes.length; i++){
+			var attr = attributes[i];
+			ret[attr.nodeName] = attr.nodeValue;
+		}
+		return ret;
+	}
+
+	function objectToDataBindingFormat(attributes, bindingResults){
+
+		bindingResults = bindingResults || {};
+
+		var preProcess = function(attributes, bindingResults){
+
+			_.each(attributes, function(value, name){
+				// recursive
+				if( value.constructor == Array){
+					bindingResults[name] = [];
+					preProcess(value, bindingResults[name]);
+				}else if( value.constructor == Object){
+					bindingResults[name] = {};
+					preProcess(value, bindingResults[name]);
+				}else if( value ){
+					// this value is an expression or observable
+					// in the viewModel if it has @binding[] flag
+					var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
+					if( isBinding ){
+						// add a tag to remove quotation the afterwards
+						// conveniently, or knockout will treat it as a 
+						// normal string, not expression
+						value = "{{BINDINGSTART" + isBinding[1] + "BINDINGEND}}";
+
+					}
+					bindingResults[name] = value
+				}
+			});
+		}
+		preProcess( attributes, bindingResults );
+
+		var bindingString = JSON.stringify(bindingResults);
+		
+		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/g, "$1");
+
+		return bindingString;
+	}
+
+	function convert(root, parent){
+
+		var children = getChildren(root);
+
+		for(var i = 0; i < children.length; i++){
+			var node = parseXMLNode( children[i] );
+			if( node ){
+				parent.appendChild(node);
+				convert( children[i], node);
+			}
+		}
+	}
+
+	function getChildren(parent){
+		
+		var children = [];
+		var node = parent.firstChild;
+		while(node){
+			children.push(node);
+			node = node.nextSibling;
+		}
+		return children;
+	}
+
+	function getChildrenByTagName(parent, tagName){
+		var children = getChildren(parent);
+		
+		return _.filter(children, function(child){
+			return child.tagName && child.tagName.toLowerCase() === tagName;
+		})
+	}
+
+
+	exports.parse = parse;
+	//---------------------------------
+	// some util functions provided for the components
+	exports.provideParser = provideParser;
+
+	function getTextContent(xmlNode){
+		var children = getChildren(xmlNode);
+		var text = '';
+		_.each(children, function(child){
+			if(child.nodeType==3){
+				text += child.textContent.replace(/(^\s*)|(\s*$)/g, "");
+			}
+		})
+		return text;
+	}
+
+	exports.util = {
+		convertAttributes : convertAttributes,
+		objectToDataBindingFormat : objectToDataBindingFormat,
+		getChildren : getChildren,
+		getChildrenByTagName : getChildrenByTagName,
+		getTextContent : getTextContent
+	}
+});
 define('core/mixin/derive',[],function(){
 
 /**
@@ -2638,7 +2822,7 @@ ko.exportSymbol('bindingProvider', ko.bindingProvider);
                 // Use evaluatedBindings if given, otherwise fall back on asking the bindings provider to give us some bindings
                 var evaluatedBindings = (typeof bindings == "function") ? bindings(bindingContextInstance, node) : bindings;
                 parsedBindings = evaluatedBindings || ko.bindingProvider['instance']['getBindings'](node, bindingContextInstance);
-
+                
                 if (parsedBindings) {
                     // First run all the inits, so bindings can register for notification on changes
                     if (initPhase === 0) {
@@ -4159,7 +4343,7 @@ ko.exportSymbol('nativeTemplateEngine', ko.nativeTemplateEngine);
 // provide util function to operate
 // the components
 //===========================
-define('components/Util',['knockout',
+define('components/util',['knockout',
 		'exports'], function(ko, exports){
 
 	var unwrap = ko.utils.unwrapObservable;
@@ -4228,10 +4412,20 @@ define('components/Util',['knockout',
 	// at first time
 	exports.bridge = function(target, source){
 		target.subscribe(function(newValue){
-			source(newValue);
+			try{
+				source(newValue);
+			}catch(e){
+				// Normally when source is computed value
+				// and it don't have a write function  
+				console.error(e.toString());
+			}
 		})
 		source.subscribe(function(newValue){
-			target(newValue);
+			try{
+				target(newValue);
+			}catch(e){
+				console.error(e.toString());
+			}
 		})
 	}
 })
@@ -4244,7 +4438,7 @@ define('components/Util',['knockout',
 //=====================================
 define('components/base',["core/mixin/derive",
 		"core/mixin/event",
-		"./Util",
+		"./util",
 		"knockout"], function(Derive, Events, Util, ko){
 
 var clazz = new Function();
@@ -4292,6 +4486,7 @@ return {	// Public properties
 	if( ! this.$el){
 		this.$el = $(document.createElement(this.tag));
 	}
+
 	this.$el.attr(this.attr);
 	if( this.skin ){
 		this.$el.addClass( this.withPrefix(this.skin, this.skinPrefix) );
@@ -4307,19 +4502,23 @@ return {	// Public properties
 	
 	// extend default properties to view Models
 	_.extend(this.viewModel, {
+		id : ko.observable(""),
 		width : ko.observable(),
 		height : ko.observable(),
 		disable : ko.observable(false)
 	});
 	this.viewModel.width.subscribe(function(newValue){
 		this.$el.width(newValue);
-	}, this)
+	}, this);
 	this.viewModel.height.subscribe(function(newValue){
 		this.$el.height(newValue);
-	}, this)
+	}, this);
 	this.viewModel.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
-	}, this)
+	}, this);
+	this.viewModel.id.subscribe(function(newValue){
+		this.$el.attr("id", newValue);
+	}, this);
 
 	// apply attribute to the view model
 	this._mappingAttributesToViewModel( this.attribute );
@@ -4352,7 +4551,7 @@ return {	// Public properties
 		}else{
 			source = key;
 		};
-		this._mappingAttributesToViewModel( source );
+		this._mappingAttributesToViewModel( source, true );
 	},
 	// Call to refresh the component
 	// Will trigger beforeRender and afterRender hooks
@@ -4392,7 +4591,7 @@ return {	// Public properties
 		}
 	},
 	// mapping the attributes to viewModel 
-	_mappingAttributesToViewModel : function(attributes){
+	_mappingAttributesToViewModel : function(attributes, onlyUpdate){
 		for(var name in attributes){
 			var attr = attributes[name];
 			var propInVM = this.viewModel[name];
@@ -4402,12 +4601,13 @@ return {	// Public properties
 			}
 			if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
-
+			}else{
+				this.viewModel[name] = ko.utils.unwrapObservable(attr);
+			}
+			if( ! onlyUpdate){
 				if( ko.isObservable(attr) ){
 					Util.bridge(propInVM, attr);
 				}
-			}else{
-				propInVM = ko.utils.unwrapObservable(attr);
 			}
 		}	
 	}
@@ -5388,179 +5588,6 @@ Meta.provideBinding = Base.provideBinding;
 return Meta;
 
 });
-//===================================================
-// Xml Parser
-// parse wml and convert it to dom with knockout data-binding
-// TODO	xml valid checking, 
-//		provide xml childNodes Handler in the Components
-//===================================================
-define('core/xmlparser',['require','exports','module'],function(require, exports, module){
-
-	// return document fragment converted from the xml
-	var parse = function( xmlString ){
-		
-		if( typeof(xmlString) == "string"){
-			var xml = parseXML( xmlString );
-		}else{
-			var xml = xmlString;
-		}
-		if( xml ){
-
-			var rootDomNode = document.createElement("div");
-
-			convert( xml, rootDomNode);
-
-			return rootDomNode;
-		}
-	}
-
-	function parseXML( xmlString ){
-		var xml, parser;
-		try{
-			if( window.DOMParser ){
-				xml = (new DOMParser()).parseFromString( xmlString, "text/xml");
-			}else{
-				xml = new ActiveXObject("Microsoft.XMLDOM");
-				xml.async = "false";
-				xml.loadXML( xmlString );
-			}
-			return xml;
-		}catch(e){
-			console.error("Invalid XML:" + xmlString);
-		}
-	}
-
-	var customParsers = {};
-	// provided custom parser from Compositor
-	// parser need to return a plain object which key is attributeName
-	// and value is attributeValue
-	function provideParser(componentType /*tagName*/, parser){
-		customParsers[componentType] = parser;
-	}
-
-	function parseXMLNode(xmlNode){
-		if( xmlNode.nodeType !== 1){
-			return;
-		}
-		var bindingResults = {
-			type : xmlNode.tagName.toLowerCase()
-		} 
-
-		var convertedAttr = convertAttributes( xmlNode.attributes );
-		var customParser = customParsers[bindingResults.type];
-		if( customParser ){
-			var result = customParser(xmlNode);
-			if( result &&
-				typeof(result) !="object"){
-				console.error("Parser must return an object converted from attributes")
-			}else{
-				// data in the attributes has higher priority than
-				// the data from the children
-				_.extend(convertedAttr, result);
-			}
-		}
-
-		var bindingString = attributesToDataBindingFormat( convertedAttr, bindingResults );
-
-		var domNode = document.createElement('div');
-		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
-
-		return domNode;
-	}
-
-	function convertAttributes(attributes){
-		var ret = {};
-		for(var i = 0; i < attributes.length; i++){
-			var attr = attributes[i];
-			ret[attr.nodeName] = attr.nodeValue;
-		}
-		return ret;
-	}
-
-	function attributesToDataBindingFormat(attributes, bindingResults){
-
-		bindingResults = bindingResults || {}
-		for(var name in attributes){
-			var value = attributes[name];
-			if( value ){
-				// this value is an expression or observable
-				// in the viewModel if it has @binding[] flag
-				var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
-				if( isBinding ){
-					// add a tag to remove quotation the afterwards
-					// conveniently, or knockout will treat it as a 
-					// normal string, not expression
-					value = "{{BINDINGSTART" + isBinding[1] + "BINDINGEND}}";
-
-				}
-				bindingResults[name] = value
-			}
-		}
-
-		var bindingString = JSON.stringify(bindingResults);
-		
-		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/g, "$1");
-
-		return bindingString;
-	}
-
-	function convert(root, parent){
-
-		var children = getChildren(root);
-
-		for(var i = 0; i < children.length; i++){
-			var node = parseXMLNode( children[i] );
-			if( node ){
-				parent.appendChild(node);
-				convert( children[i], node);
-			}
-		}
-	}
-
-	function getChildren(parent){
-		
-		var children = [];
-		var node = parent.firstChild;
-		while(node){
-			children.push(node);
-			node = node.nextSibling;
-		}
-		return children;
-	}
-
-	function getChildrenByTagName(parent, tagName){
-		var children = getChildren(parent);
-		
-		return _.filter(children, function(child){
-			return child.tagName && child.tagName.toLowerCase() === tagName;
-		})
-	}
-
-
-	exports.parse = parse;
-	//---------------------------------
-	// some util functions provided for the components
-	exports.provideParser = provideParser;
-
-	function getTextContent(xmlNode){
-		var children = getChildren(xmlNode);
-		var text = '';
-		_.each(children, function(child){
-			if(child.nodeType==3){
-				text += child.textContent.replace(/(^\s*)|(\s*$)/g, "");
-			}
-		})
-		return text;
-	}
-
-	exports.util = {
-		convertAttributes : convertAttributes,
-		attributesToDataBindingFormat : attributesToDataBindingFormat,
-		getChildren : getChildren,
-		getChildrenByTagName : getChildrenByTagName,
-		getTextContent : getTextContent
-	}
-});
 //======================================
 // Button component
 //======================================
@@ -5606,932 +5633,6 @@ XMLParser.provideParser("button", function(xmlNode){
 })
 
 return Button;
-
-});
-//======================================
-// Checkbox component
-//======================================
-define('components/meta/checkbox',['./meta',
-		'knockout'], function(Meta, ko){
-
-var Checkbox = Meta.derive(function(){
-return {
-	
-	viewModel : {
-		// value of the button
-		checked : ko.observable(false),
-		label : ko.observable("")
-	}
-}}, {
-
-	template : '<input type="checkbox" data-bind="checked:checked" />\
-				<span data-bind="css:{checked:checked}"></span>\
-				<label data-bind="text:label"></label>',
-
-	type : 'CHECKBOX',
-	css : 'checkbox',
-
-	// binding events
-	afterRender : function(){
-		var vm = this.viewModel;
-		this.$el.click(function(){
-			vm.checked( ! vm.checked() );
-		})
-	}
-});
-
-Meta.provideBinding("checkbox", Checkbox);
-
-return Checkbox;
-
-})	;
-//===================================
-// Combobox component
-// 
-// @VMProp	value
-// @VMProp	items
-//			@property	value
-//			@property	text
-//===================================
-
-define('components/meta/combobox',['./meta',
-		'core/xmlparser',
-		'knockout'], function(Meta, XMLParser, ko){
-
-var Combobox = Meta.derive(function(){
-return {
-
-	$el : $('<div data-bind="css:{active:active}" tabindex="0"></div>'),
-
-	viewModel : {
-
-		value : ko.observable(),
-
-		items : ko.observableArray(),	//{value, text}
-
-		defaultText : ko.observable("select"),
-
-		active : ko.observable(false),
-
-		//events
-		_focus : function(){
-			this.active(true);
-		},
-		_blur : function(){
-			this.active(false);
-		},
-		_toggle : function(){
-			this.active( ! this.active() );
-		},
-		_select : function(value){
-			value = ko.utils.unwrapObservable(value);
-			this.value(value);
-			this._blur();
-		},
-		_isSelected : function(value){
-			return this.value() === ko.utils.unwrapObservable(value);
-		}
-	}
-}}, {
-	
-	type : 'COMBOBOX',
-
-	css : 'combobox',
-
-	initialize : function(){
-
-		this.viewModel.selectedText = ko.computed(function(){
-			var val = this.value();
-			var result =  _.filter(this.items(), function(item){
-				return ko.utils.unwrapObservable(item.value) == val;
-			})[0];
-			if( typeof(result) == "undefined"){
-				return this.defaultText();
-			}
-			return ko.utils.unwrapObservable(result.text);
-		}, this.viewModel);
-
-	},
-
-	template : '<div class="wse-combobox-selected wse-common-button" data-bind="html:selectedText,click:_toggle"></div>\
-				<ul class="wse-combobox-items" data-bind="foreach:items">\
-					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
-				</ul>',
-
-	afterRender : function(){
-
-		var self = this;
-		this._$selected = this.$el.find(".wse-combobox-selected");
-		this._$items = this.$el.find(".wse-combobox-items");
-
-		this.$el.blur(function(){
-			self.viewModel._blur();
-		})
-
-	},
-
-	//-------method provided for the developers
-	select : function(value){
-		this.viewModel.select(value);
-	}
-})
-
-Meta.provideBinding("combobox", Combobox);
-
-XMLParser.provideParser('combobox', function(xmlNode){
-	var items = [];
-	var nodes = XMLParser.util.getChildrenByTagName(xmlNode, "item");
-	_.each(nodes, function(child){
-		// Data source can from item tags of the children
-		var value = child.getAttribute("value");
-		var text = child.getAttribute("text") ||
-					XMLParser.util.getTextContent(child);
-
-		if( value !== null){
-			items.push({
-				value : value,
-				text : text
-			})
-		}
-	})
-	if( items.length){
-		return {
-			items : items
-		}
-	}
-})
-
-
-return Combobox;
-
-});
-//======================================
-// Label component
-//======================================
-define('components/meta/label',['./meta',
-		'core/xmlparser',
-		'knockout'], function(Meta, XMLParser, ko){
-
-var Label = Meta.derive(function(){
-return {
-	viewModel : {
-		// value of the Label
-		text : ko.observable('Label')
-	}
-} }, {
-
-	template : '<Label data-bind="html:text"></Label>',
-
-	type : 'LABEL',
-
-	css : 'label'
-});
-
-Meta.provideBinding("label", Label);
-
-// provide parser when do xmlparsing
-XMLParser.provideParser("label", function(xmlNode){
-
-	var text = XMLParser.util.getTextContent(xmlNode);
-	if(text){
-		return {
-			text : text
-		}
-	}
-})
-
-return Label;
-
-});
-//=================================
-// mixin to provide draggable interaction
-// support multiple selection
-//
-// @property	helper
-// @property	axis "x" | "y"
-// @property	container
-// @method		add( target[, handle] )
-// @method		remove( target )
-//=================================
-
-define('components/mixin/draggable',["core/mixin/derive",
-		"core/mixin/event",
-		"knockout"], function(Derive, Event, ko){
-
-var clazz = new Function();
-_.extend(clazz, Derive);
-_.extend(clazz.prototype, Event);
-
-//---------------------------------
-var DraggableItem = clazz.derive(function(){
-return {
-
-	id : 0,
-
-	target : null,
-
-	handle : null,
-
-	margins : {},
-
-	// original position of the target relative to 
-	// its offsetParent, here we get it with jQuery.position method
-	originPosition : {},
-
-	// offset of the offsetParent, which is get with jQuery.offset
-	// method
-	offsetParentOffset : {},
-	// cache the size of the draggable target
-	width : 0,
-	height : 0,
-	// save the original css position of dragging target
-	// to be restored when stop the drag
-	positionType : "",
-	//
-	// data to be transferred
-	data : {},
-
-	// instance of [Draggable]
-	host : null
-}}, {
-	
-	setData : function( data ){
-
-	},
-
-	remove : function(){
-		this.host.remove( this.target );
-	}
-});
-
-//--------------------------------
-var Draggable = clazz.derive(function(){
-return {
-
-	items : {}, 
-
-	axis : null,
-
-	// the container where draggable item is limited
-	// can be an array of boundingbox or HTMLDomElement or jquery selector
-	container : null,
-
-	helper : null,
-
-	//private properties
-	// boundingbox of container compatible with getBoundingClientRect method
-	_boundingBox : null,
-
-	_mouseStart : {},
-	_$helper : null
-
-}}, {
-
-add : function( elem, handle ){
-	
-	var id = genGUID(),
-		$elem = $(elem);
-	if( handle ){
-		var $handle = $(handle);
-	}
-
-	$elem.attr( "data-wse-draggable", id )
-		.addClass("wse-draggable");
-	
-	(handle ? $(handle) : $elem)
-		.bind("mousedown", {context:this}, this._mouseDown);
-
-	var newItem = new DraggableItem({
-		id : id,
-		target : elem,
-		host : this,
-		handle : handle
-	})
-	this.items[id] = newItem;
-
-	return newItem;
-},
-
-remove : function( elem ){
-
-	if( elem instanceof DraggableItem){
-		var item = elem,
-			$elem = $(item.elem),
-			id = item.id;
-	}else{
-		var $elem = $(elem),
-			id = $elem.attr("data-wse-draggable");
-		
-		if( id  ){
-			var item = this.items[id];
-		}
-	}	
-	delete this.items[ id ];
-
-	
-	$elem.removeAttr("data-wse-draggable")
-		.removeClass("wse-draggable");
-	// remove the events binded to it
-	(item.handle ? $(item.handle) : $elem)
-		.unbind("mousedown", this._mouseDown);
-},
-
-clear : function(){
-
-	_.each(this.items, function(item){
-		this.remove( item.target );
-	}, this);
-},
-
-_save : function(){
-
-	_.each(this.items, function(item){
-
-		var $elem = $(item.target),
-			$offsetParent = $elem.offsetParent(),
-			position = $elem.position(),
-			offsetParentOffset = $offsetParent.offset(),
-			margin = {
-				left : parseInt($elem.css("marginLeft")) || 0,
-				top : parseInt($elem.css("marginTop")) || 0
-			};
-
-		item.margin = margin;
-		// fix the position with margin
-		item.originPosition = {
-			left : position.left - margin.left,
-			top : position.top - margin.top
-		},
-		item.offsetParentOffset = offsetParentOffset;
-		// cache the size of the dom element
-		item.width = $elem.width(),
-		item.height = $elem.height(),
-		// save the position info for restoring after drop
-		item.positionType = $elem.css("position");
-
-	}, this);
-
-},
-
-_restore : function( restorePosition ){
-
-	_.each( this.items, function(item){
-
-		var $elem = $(item.target),
-			position = $elem.offset();
-
-		$elem.css("position", item.positionType);
-
-		if( restorePosition ){
-			$elem.offset({
-				left : item.originPosition.left + item.margin.left,
-				top : item.originPosition.top + item.margin.top
-			})
-		}else{
-			$elem.offset(position);
-		}
-	}, this);
-},
-
-_mouseDown : function(e){
-	
-	if( e.which !== 1){
-		return;
-	}
-
-	var self = e.data.context;
-	//disable selection
-	e.preventDefault();
-
-	self._save();
-
-	self._triggerProxy("dragstart", e);
-
-	if( ! self.helper ){
-
-		_.each( self.items, function(item){
-			
-			var $elem = $(item.target);
-
-			$elem.addClass("wse-draggable-dragging");
-
-			$elem.css({
-				"position" : "absolute",
-				"left" : (item.originPosition.left)+"px",
-				"top" : (item.originPosition.top)+"px"
-			});
-
-		}, self);
-
-		if( self.container ){
-			self._boundingBox = self._computeBoundingBox( self.container );
-		}else{
-			self._boundingBox = null;
-		}
-
-	}else{
-
-		self._$helper = $(self.helper);
-		document.body.appendChild(self._$helper[0]);
-		self._$helper.css({
-			left : e.pageX,
-			top : e.pageY
-		})
-	}
-
-	$(document.body).bind("mousemove", {context:self}, self._mouseMove )
-		.bind("mouseout", {context:self}, self._mouseOut )
-		.bind("mouseup", {context:self}, self._mouseUp );
-
-	self._mouseStart = {
-		x : e.pageX,
-		y : e.pageY
-	};
-
-},
-
-_computeBoundingBox : function(container){
-
-	if( _.isArray(container) ){
-
-		return {
-			left : container[0][0],
-			top : container[0][1],
-			right : container[1][0],
-			bottom : container[1][1]
-		}
-
-	}else if( container.left && 
-				container.right &&
-				container.top &&
-				container.bottom ) {
-
-		return container;
-	}else{
-		// using getBoundingClientRect to get the bounding box
-		// of HTMLDomElement
-		try{
-			var $container = $(container),
-				offset = $container.offset();
-			var bb = {
-				left : offset.left + parseInt($container.css("padding-left")) || 0,
-				top : offset.top + parseInt($container.css("padding-top")) || 0,
-				right : offset.left + $container.width() - parseInt($container.css("padding-right")) || 0,
-				bottom : offset.top + $container.height() - parseInt($container.css("padding-bottom")) || 0
-			};
-			
-			return bb;
-		}catch(e){
-			console.error("Invalid container type");
-		}
-	}
-
-},
-
-_mouseMove : function(e){
-
-	var self = e.data.context;
-
-	self._triggerProxy("drag", e);
-
-	var offset = {
-		x : e.pageX - self._mouseStart.x,
-		y : e.pageY - self._mouseStart.y
-	}
-
-	if( ! self._$helper){
-
-		_.each( self.items, function(item){
-			// calculate the offset position to the document
-			var left = item.originPosition.left + item.offsetParentOffset.left + offset.x,
-				top = item.originPosition.top + item.offsetParentOffset.top + offset.y;
-			// constrained in the area of container
-			if( self._boundingBox ){
-				var bb = self._boundingBox;
-				left = left > bb.left ? 
-								(left+item.width < bb.right ? left : bb.right-item.width)
-								 : bb.left;
-				top = top > bb.top ? 
-							(top+item.height < bb.bottom ? top : bb.bottom-item.height)
-							: bb.top;
-			}
-
-			var axis = ko.utils.unwrapObservable(self.axis);
-			if( !axis || axis.toLowerCase() !== "y"){
-				$(item.target).css("left", left - item.offsetParentOffset.left + "px");
-			}
-			if( !axis || axis.toLowerCase() !== "x"){
-				$(item.target).css("top", top - item.offsetParentOffset.top + "px");
-			}
-
-		}, self );
-
-
-	}else{
-
-		self._$helper.css({
-			"left" : e.pageX,
-			"top" : e.pageY
-		})
-	}	
-},
-
-_mouseUp : function(e){
-
-	var self = e.data.context;
-
-	$(document.body).unbind("mousemove", self._mouseMove)
-		.unbind("mouseout", self._mouseOut)
-		.unbind("mouseup", self._mouseUp)
-
-	if( self._$helper ){
-
-		self._$helper.remove();
-	}else{
-
-		_.each(self.items, function(item){
-
-			var $elem = $(item.target);
-
-			$elem.removeClass("wse-draggable-dragging");
-
-		}, self)
-	}
-	self._restore();
-
-	self._triggerProxy("dragend", e);
-},
-
-_mouseOut : function(e){
-	// PENDING
-	// this._mouseUp.call(this, e);
-},
-
-_triggerProxy : function(){
-	var args = arguments;
-	_.each(this.items, function(item){
-		item.trigger.apply(item, args);
-	});
-}
-
-});
-
-
-var genGUID = (function(){
-	var id = 1;
-	return function(){
-		return id++;
-	}
-}) ();
-
-return {
-	applyTo : function(target, options){
-
-		// define a namespace for draggable mixin
-		target.draggable = target.draggable || {};
-
-		_.extend( target.draggable, new Draggable(options) );
-		
-	}
-}
-
-});
-//===================================
-// Range component
-// 
-// @VMProp value
-// @VMProp step
-// @VMProp min
-// @VMProp max
-// @VMProp orientation
-// @VMProp format
-//
-// @method computePercentage
-// @method updatePosition	update the slider position manually
-// @event change newValue prevValue self[Range]
-//===================================
-define('components/meta/range',['./meta',
-		'../mixin/draggable',
-		'knockout'], function(Meta, Draggable, ko){
-
-var Range = Meta.derive(function(){
-
-return {
-
-	$el : $('<div data-bind="css:orientation"></div>'),
-
-	viewModel : {
-
-		value : ko.observable(0),
-
-		step : ko.observable(1),
-
-		min : ko.observable(-100),
-
-		max : ko.observable(100),
-
-		orientation : ko.observable("horizontal"),// horizontal | vertical
-
-		precision : ko.observable(0),
-
-		format : "{{value}}",
-
-		_format : function(number){
-			return this.format.replace("{{value}}", number);
-		}
-	},
-
-	// compute size dynamically when dragging
-	autoResize : true,
-
-}}, {
-
-	type : "RANGE",
-
-	css : 'range',
-
-	template : '<div class="wse-range-groove">\
-					<div class="wse-range-percentage"></div>\
-				</div>\
-				<div class="wse-range-min" data-bind="text:_format(min())"></div>\
-				<div class="wse-range-max" data-bind="text:_format(max())"></div>\
-				<div class="wse-range-slider">\
-					<div class="wse-range-slider-inner"></div>\
-					<div class="wse-range-value" data-bind="text:_format(value())"></div>\
-				</div>',
-
-	eventsProvided : ["change"],
-	
-	initialize : function(){
-
-		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
-
-		// add draggable mixin
-		Draggable.applyTo( this, {
-			axis : ko.computed(function(){
-				return this.viewModel.orientation() == "horizontal" ? "x" : "y"
-			}, this)
-		});
-
-		var prevValue = this.viewModel.value();
-		this.viewModel.value.subscribe(function(newValue){
-			if( this._$groove){
-				this.updatePosition();
-			}
-			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
-			
-			prevValue = newValue;
-		}, this);
-	},
-
-	afterRender : function(){
-
-		// cache the element;
-		this._$groove = this.$el.find(".wse-range-groove");
-		this._$percentage = this.$el.find(".wse-range-percentage");
-		this._$slider = this.$el.find(".wse-range-slider");
-
-		this.draggable.container = this._$groove;
-		var item = this.draggable.add( this._$slider );
-		
-		item.on("drag", this._dragHandler, this);
-
-		this.updatePosition();
-
-		// disable text selection
-		this.$el.mousedown(function(e){
-			e.preventDefault();
-		});
-	},
-
-	_dragHandler : function(){
-
-		var percentage = this.computePercentage(),
-			min = parseFloat( this.viewModel.min() ),
-			max = parseFloat( this.viewModel.max() ),
-			value = (max-min)*percentage+min;
-
-		this.viewModel.value( value );
-	},
-
-	_cacheSize : function(){
-
-		// cache the size of the groove and slider
-		var isHorizontal =this._isHorizontal(); 
-		this._grooveSize =  isHorizontal ?
-							this._$groove.width() :
-							this._$groove.height();
-		this._sliderSize = isHorizontal ?
-							this._$slider.width() :
-							this._$slider.height();
-	},
-
-	computePercentage : function(){
-
-		if( this.autoResize ){
-			this._cacheSize();
-		}
-
-		var offset = this._computeOffset();
-		return offset / ( this._grooveSize - this._sliderSize );
-	},
-
-	_computeOffset : function(){
-
-		var isHorizontal = this._isHorizontal(),
-			grooveOffset = isHorizontal ?
-							this._$groove.offset().left :
-							this._$groove.offset().top;
-			sliderOffset = isHorizontal ? 
-							this._$slider.offset().left :
-							this._$slider.offset().top;
-
-		return sliderOffset - grooveOffset;
-	},
-
-	_setOffset : function(offsetSize){
-		var isHorizontal = this._isHorizontal(),
-			grooveOffset = isHorizontal ?
-							this._$groove.offset().left :
-							this._$groove.offset().top,
-			offset = isHorizontal ? 
-					{left : grooveOffset+offsetSize} :
-					{top : grooveOffset+offsetSize};
-
-		this._$slider.offset( offset );
-	},
-
-	updatePosition : function(){
-
-		if( this.autoResize ){
-			this._cacheSize();
-		}
-
-		var min = this.viewModel.min(),
-			max = this.viewModel.max(),
-			value = this.viewModel.value(),
-			percentage = ( value - min ) / ( max - min ),
-
-			size = (this._grooveSize-this._sliderSize)*percentage;
-		
-		if( this._grooveSize > 0 ){
-			this._setOffset(size);
-		}else{	//incase the element is still not in the document
-			this._$slider.css( this._isHorizontal() ?
-								"left" : "top", percentage*100+"%");
-		}
-		this._$percentage.css( this._isHorizontal() ?
-								'width' : 'height', percentage*100+"%");
-	},
-
-	_isHorizontal : function(){
-		return ko.utils.unwrapObservable( this.viewModel.orientation ) == "horizontal";
-	}
-})
-
-Meta.provideBinding("range", Range);
-
-return Range;
-
-});
-//===================================
-// Spinner component
-//
-// @VMProp step
-// @VMProp value
-// @VMProp precision
-//
-// @event change newValue prevValue self[Range]
-//===================================
-define('components/meta/spinner',['./meta',
-		'knockout'], function(Meta, ko){
-
-function increase(){
-	this.value( parseFloat(this.value()) + parseFloat(this.step()) );
-}
-
-function decrease(){
-	this.value( parseFloat(this.value()) - parseFloat(this.step()) );
-}
-
-var Spinner = Meta.derive(function(){
-return {
-	viewModel : {
-
-		step : ko.observable(1),
-		
-		value : ko.observable(1),
-
-		valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
-
-		precision : ko.observable(2),
-
-		increase : increase,
-
-		decrease : decrease
-		
-	}
-}}, {
-	type : 'SPINNER',
-
-	css : 'spinner',
-
-	initialize : function(){
-		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
-
-		var prevValue = this.viewModel.value() || 0;
-		this.viewModel.value.subscribe(function(newValue){
-
-			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
-			prevValue = newValue;
-		}, this)
-	},
-
-	eventsProvided : ["change"],
-
-	template : '<div class="wse-left">\
-					<input type="text" class="wse-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
-				</div>\
-				<div class="wse-right">\
-					<div class="wse-common-button wse-increase" data-bind="click:increase">\
-					+</div>\
-					<div class="wse-common-button wse-decrease" data-bind="click:decrease">\
-					-</div>\
-				</div>',
-
-	afterRender : function(){
-		var self = this;
-		// disable selection
-		this.$el.find('.wse-increase,.wse-decrease').mousedown(function(e){
-			e.preventDefault();
-		})
-		this._$value = this.$el.find(".wse-spinner-value")
-		// numeric input only
-		this._$value.keydown(function(event){
-			
-			// Allow: backspace, delete, tab, escape and dot
-			if ( event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9 || event.keyCode == 27 || event.keyCode == 190 ||
-				 // Allow: Ctrl+A
-				(event.keyCode == 65 && event.ctrlKey === true) || 
-				// Allow: home, end, left, right
-				(event.keyCode >= 35 && event.keyCode <= 39)) {
-				// let it happen, don't do anything
-				return;
-			}
-			else {
-				// Ensure that it is a number and stop the keypress
-				if ( event.shiftKey || (event.keyCode < 48 || event.keyCode > 57) && (event.keyCode < 96 || event.keyCode > 105 ) ) 
-				{
-					event.preventDefault(); 
-				}
-	        }
-		})
-
-		this._$value.change(function(){
-			// sync the value in the input
-			if( this.value !== self.viewModel.value().toString() ){
-				this.value = self.viewModel.value();
-			}
-		})
-	}
-})
-
-Meta.provideBinding('spinner', Spinner);
-
-return Spinner;
-});
-//===================================
-// Textfiled component
-//
-// @VMProp text
-// @VMProp placeholder
-//
-//===================================
-define('components/meta/textfield',['./meta',
-		'knockout'], function(Meta, ko){
-
-var TextField = Meta.derive(
-{
-	
-	tag : "div",
-
-	viewModel : {
-
-		text : ko.observable(""),
-		
-		placeholder : ko.observable("")
-	}
-
-}, {
-	
-	type : "TEXTFIELD",
-
-	css : 'textfield',
-
-	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
-})
-
-Meta.provideBinding("textfield", TextField);
 
 });
 /**
@@ -8302,6 +7403,10 @@ return {
 		}, this);
 	},
 
+	doRender : function(){
+		this.stage.render();
+	},
+
 	resize : function(){
 		this.stage.resize( this.viewModel.width(), this.viewModel.height());
 	}
@@ -8310,6 +7415,933 @@ return {
 Meta.provideBinding("canvas", Canvas);
 
 return Canvas;
+
+});
+//======================================
+// Checkbox component
+//======================================
+define('components/meta/checkbox',['./meta',
+		'knockout'], function(Meta, ko){
+
+var Checkbox = Meta.derive(function(){
+return {
+	
+	viewModel : {
+		// value of the button
+		checked : ko.observable(false),
+		label : ko.observable("")
+	}
+}}, {
+
+	template : '<input type="checkbox" data-bind="checked:checked" />\
+				<span data-bind="css:{checked:checked}"></span>\
+				<label data-bind="text:label"></label>',
+
+	type : 'CHECKBOX',
+	css : 'checkbox',
+
+	// binding events
+	afterRender : function(){
+		var vm = this.viewModel;
+		this.$el.click(function(){
+			vm.checked( ! vm.checked() );
+		})
+	}
+});
+
+Meta.provideBinding("checkbox", Checkbox);
+
+return Checkbox;
+
+})	;
+//===================================
+// Combobox component
+// 
+// @VMProp	value
+// @VMProp	items
+//			@property	value
+//			@property	text
+//===================================
+
+define('components/meta/combobox',['./meta',
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
+
+var Combobox = Meta.derive(function(){
+return {
+
+	$el : $('<div data-bind="css:{active:active}" tabindex="0"></div>'),
+
+	viewModel : {
+
+		value : ko.observable(),
+
+		items : ko.observableArray(),	//{value, text}
+
+		defaultText : ko.observable("select"),
+
+		active : ko.observable(false),
+
+		//events
+		_focus : function(){
+			this.active(true);
+		},
+		_blur : function(){
+			this.active(false);
+		},
+		_toggle : function(){
+			this.active( ! this.active() );
+		},
+		_select : function(value){
+			value = ko.utils.unwrapObservable(value);
+			this.value(value);
+			this._blur();
+		},
+		_isSelected : function(value){
+			return this.value() === ko.utils.unwrapObservable(value);
+		}
+	}
+}}, {
+	
+	type : 'COMBOBOX',
+
+	css : 'combobox',
+
+	initialize : function(){
+
+		this.viewModel.selectedText = ko.computed(function(){
+			var val = this.value();
+			var result =  _.filter(this.items(), function(item){
+				return ko.utils.unwrapObservable(item.value) == val;
+			})[0];
+			if( typeof(result) == "undefined"){
+				return this.defaultText();
+			}
+			return ko.utils.unwrapObservable(result.text);
+		}, this.viewModel);
+
+	},
+
+	template : '<div class="wse-combobox-selected wse-common-button" data-bind="html:selectedText,click:_toggle"></div>\
+				<ul class="wse-combobox-items" data-bind="foreach:items">\
+					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
+				</ul>',
+
+	afterRender : function(){
+
+		var self = this;
+		this._$selected = this.$el.find(".wse-combobox-selected");
+		this._$items = this.$el.find(".wse-combobox-items");
+
+		this.$el.blur(function(){
+			self.viewModel._blur();
+		})
+
+	},
+
+	//-------method provided for the developers
+	select : function(value){
+		this.viewModel.select(value);
+	}
+})
+
+Meta.provideBinding("combobox", Combobox);
+
+XMLParser.provideParser('combobox', function(xmlNode){
+	var items = [];
+	var nodes = XMLParser.util.getChildrenByTagName(xmlNode, "item");
+	_.each(nodes, function(child){
+		// Data source can from item tags of the children
+		var value = child.getAttribute("value");
+		var text = child.getAttribute("text") ||
+					XMLParser.util.getTextContent(child);
+
+		if( value !== null){
+			items.push({
+				value : value,
+				text : text
+			})
+		}
+	})
+	if( items.length){
+		return {
+			items : items
+		}
+	}
+})
+
+
+return Combobox;
+
+});
+//======================================
+// Label component
+//======================================
+define('components/meta/label',['./meta',
+		'core/xmlparser',
+		'knockout'], function(Meta, XMLParser, ko){
+
+var Label = Meta.derive(function(){
+return {
+	viewModel : {
+		// value of the Label
+		text : ko.observable('Label')
+	}
+} }, {
+
+	template : '<Label data-bind="html:text"></Label>',
+
+	type : 'LABEL',
+
+	css : 'label'
+});
+
+Meta.provideBinding("label", Label);
+
+// provide parser when do xmlparsing
+XMLParser.provideParser("label", function(xmlNode){
+
+	var text = XMLParser.util.getTextContent(xmlNode);
+	if(text){
+		return {
+			text : text
+		}
+	}
+})
+
+return Label;
+
+});
+//=================================
+// mixin to provide draggable interaction
+// support multiple selection
+//
+// @property	helper
+// @property	axis "x" | "y"
+// @property	container
+// @method		add( target[, handle] )
+// @method		remove( target )
+//=================================
+
+define('components/mixin/draggable',["core/mixin/derive",
+		"core/mixin/event",
+		"knockout"], function(Derive, Event, ko){
+
+var clazz = new Function();
+_.extend(clazz, Derive);
+_.extend(clazz.prototype, Event);
+
+//---------------------------------
+var DraggableItem = clazz.derive(function(){
+return {
+
+	id : 0,
+
+	target : null,
+
+	handle : null,
+
+	margins : {},
+
+	// original position of the target relative to 
+	// its offsetParent, here we get it with jQuery.position method
+	originPosition : {},
+
+	// offset of the offsetParent, which is get with jQuery.offset
+	// method
+	offsetParentOffset : {},
+	// cache the size of the draggable target
+	width : 0,
+	height : 0,
+	// save the original css position of dragging target
+	// to be restored when stop the drag
+	positionType : "",
+	//
+	// data to be transferred
+	data : {},
+
+	// instance of [Draggable]
+	host : null
+}}, {
+	
+	setData : function( data ){
+
+	},
+
+	remove : function(){
+		this.host.remove( this.target );
+	}
+});
+
+//--------------------------------
+var Draggable = clazz.derive(function(){
+return {
+
+	items : {}, 
+
+	axis : null,
+
+	// the container where draggable item is limited
+	// can be an array of boundingbox or HTMLDomElement or jquery selector
+	container : null,
+
+	helper : null,
+
+	//private properties
+	// boundingbox of container compatible with getBoundingClientRect method
+	_boundingBox : null,
+
+	_mouseStart : {},
+	_$helper : null
+
+}}, {
+
+add : function( elem, handle ){
+	
+	var id = genGUID(),
+		$elem = $(elem);
+	if( handle ){
+		var $handle = $(handle);
+	}
+
+	$elem.attr( "data-wse-draggable", id )
+		.addClass("wse-draggable");
+	
+	(handle ? $(handle) : $elem)
+		.bind("mousedown", {context:this}, this._mouseDown);
+
+	var newItem = new DraggableItem({
+		id : id,
+		target : elem,
+		host : this,
+		handle : handle
+	})
+	this.items[id] = newItem;
+
+	return newItem;
+},
+
+remove : function( elem ){
+
+	if( elem instanceof DraggableItem){
+		var item = elem,
+			$elem = $(item.elem),
+			id = item.id;
+	}else{
+		var $elem = $(elem),
+			id = $elem.attr("data-wse-draggable");
+		
+		if( id  ){
+			var item = this.items[id];
+		}
+	}	
+	delete this.items[ id ];
+
+	
+	$elem.removeAttr("data-wse-draggable")
+		.removeClass("wse-draggable");
+	// remove the events binded to it
+	(item.handle ? $(item.handle) : $elem)
+		.unbind("mousedown", this._mouseDown);
+},
+
+clear : function(){
+
+	_.each(this.items, function(item){
+		this.remove( item.target );
+	}, this);
+},
+
+_save : function(){
+
+	_.each(this.items, function(item){
+
+		var $elem = $(item.target),
+			$offsetParent = $elem.offsetParent(),
+			position = $elem.position(),
+			offsetParentOffset = $offsetParent.offset(),
+			margin = {
+				left : parseInt($elem.css("marginLeft")) || 0,
+				top : parseInt($elem.css("marginTop")) || 0
+			};
+
+		item.margin = margin;
+		// fix the position with margin
+		item.originPosition = {
+			left : position.left - margin.left,
+			top : position.top - margin.top
+		},
+		item.offsetParentOffset = offsetParentOffset;
+		// cache the size of the dom element
+		item.width = $elem.width(),
+		item.height = $elem.height(),
+		// save the position info for restoring after drop
+		item.positionType = $elem.css("position");
+
+	}, this);
+
+},
+
+_restore : function( restorePosition ){
+
+	_.each( this.items, function(item){
+
+		var $elem = $(item.target),
+			position = $elem.offset();
+
+		$elem.css("position", item.positionType);
+
+		if( restorePosition ){
+			$elem.offset({
+				left : item.originPosition.left + item.margin.left,
+				top : item.originPosition.top + item.margin.top
+			})
+		}else{
+			$elem.offset(position);
+		}
+	}, this);
+},
+
+_mouseDown : function(e){
+	
+	if( e.which !== 1){
+		return;
+	}
+
+	var self = e.data.context;
+	//disable selection
+	e.preventDefault();
+
+	self._save();
+
+	self._triggerProxy("dragstart", e);
+
+	if( ! self.helper ){
+
+		_.each( self.items, function(item){
+			
+			var $elem = $(item.target);
+
+			$elem.addClass("wse-draggable-dragging");
+
+			$elem.css({
+				"position" : "absolute",
+				"left" : (item.originPosition.left)+"px",
+				"top" : (item.originPosition.top)+"px"
+			});
+
+		}, self);
+
+		if( self.container ){
+			self._boundingBox = self._computeBoundingBox( self.container );
+		}else{
+			self._boundingBox = null;
+		}
+
+	}else{
+
+		self._$helper = $(self.helper);
+		document.body.appendChild(self._$helper[0]);
+		self._$helper.css({
+			left : e.pageX,
+			top : e.pageY
+		})
+	}
+
+	$(document.body).bind("mousemove", {context:self}, self._mouseMove )
+		.bind("mouseout", {context:self}, self._mouseOut )
+		.bind("mouseup", {context:self}, self._mouseUp );
+
+	self._mouseStart = {
+		x : e.pageX,
+		y : e.pageY
+	};
+
+},
+
+_computeBoundingBox : function(container){
+
+	if( _.isArray(container) ){
+
+		return {
+			left : container[0][0],
+			top : container[0][1],
+			right : container[1][0],
+			bottom : container[1][1]
+		}
+
+	}else if( container.left && 
+				container.right &&
+				container.top &&
+				container.bottom ) {
+
+		return container;
+	}else{
+		// using getBoundingClientRect to get the bounding box
+		// of HTMLDomElement
+		try{
+			var $container = $(container),
+				offset = $container.offset();
+			var bb = {
+				left : offset.left + parseInt($container.css("padding-left")) || 0,
+				top : offset.top + parseInt($container.css("padding-top")) || 0,
+				right : offset.left + $container.width() - parseInt($container.css("padding-right")) || 0,
+				bottom : offset.top + $container.height() - parseInt($container.css("padding-bottom")) || 0
+			};
+			
+			return bb;
+		}catch(e){
+			console.error("Invalid container type");
+		}
+	}
+
+},
+
+_mouseMove : function(e){
+
+	var self = e.data.context;
+
+	self._triggerProxy("drag", e);
+
+	var offset = {
+		x : e.pageX - self._mouseStart.x,
+		y : e.pageY - self._mouseStart.y
+	}
+
+	if( ! self._$helper){
+
+		_.each( self.items, function(item){
+			// calculate the offset position to the document
+			var left = item.originPosition.left + item.offsetParentOffset.left + offset.x,
+				top = item.originPosition.top + item.offsetParentOffset.top + offset.y;
+			// constrained in the area of container
+			if( self._boundingBox ){
+				var bb = self._boundingBox;
+				left = left > bb.left ? 
+								(left+item.width < bb.right ? left : bb.right-item.width)
+								 : bb.left;
+				top = top > bb.top ? 
+							(top+item.height < bb.bottom ? top : bb.bottom-item.height)
+							: bb.top;
+			}
+
+			var axis = ko.utils.unwrapObservable(self.axis);
+			if( !axis || axis.toLowerCase() !== "y"){
+				$(item.target).css("left", left - item.offsetParentOffset.left + "px");
+			}
+			if( !axis || axis.toLowerCase() !== "x"){
+				$(item.target).css("top", top - item.offsetParentOffset.top + "px");
+			}
+
+		}, self );
+
+
+	}else{
+
+		self._$helper.css({
+			"left" : e.pageX,
+			"top" : e.pageY
+		})
+	}	
+},
+
+_mouseUp : function(e){
+
+	var self = e.data.context;
+
+	$(document.body).unbind("mousemove", self._mouseMove)
+		.unbind("mouseout", self._mouseOut)
+		.unbind("mouseup", self._mouseUp)
+
+	if( self._$helper ){
+
+		self._$helper.remove();
+	}else{
+
+		_.each(self.items, function(item){
+
+			var $elem = $(item.target);
+
+			$elem.removeClass("wse-draggable-dragging");
+
+		}, self)
+	}
+	self._restore();
+
+	self._triggerProxy("dragend", e);
+},
+
+_mouseOut : function(e){
+	// PENDING
+	// this._mouseUp.call(this, e);
+},
+
+_triggerProxy : function(){
+	var args = arguments;
+	_.each(this.items, function(item){
+		item.trigger.apply(item, args);
+	});
+}
+
+});
+
+
+var genGUID = (function(){
+	var id = 1;
+	return function(){
+		return id++;
+	}
+}) ();
+
+return {
+	applyTo : function(target, options){
+
+		// define a namespace for draggable mixin
+		target.draggable = target.draggable || {};
+
+		_.extend( target.draggable, new Draggable(options) );
+		
+	}
+}
+
+});
+//===================================
+// Range component
+// 
+// @VMProp value
+// @VMProp step
+// @VMProp min
+// @VMProp max
+// @VMProp orientation
+// @VMProp format
+//
+// @method computePercentage
+// @method updatePosition	update the slider position manually
+// @event change newValue prevValue self[Range]
+//===================================
+define('components/meta/range',['./meta',
+		'../mixin/draggable',
+		'knockout'], function(Meta, Draggable, ko){
+
+var Range = Meta.derive(function(){
+
+return {
+
+	$el : $('<div data-bind="css:orientation"></div>'),
+
+	viewModel : {
+
+		value : ko.observable(0),
+
+		step : ko.observable(1),
+
+		min : ko.observable(-100),
+
+		max : ko.observable(100),
+
+		orientation : ko.observable("horizontal"),// horizontal | vertical
+
+		precision : ko.observable(0),
+
+		format : "{{value}}",
+
+		_format : function(number){
+			return this.format.replace("{{value}}", number);
+		}
+	},
+
+	// compute size dynamically when dragging
+	autoResize : true,
+
+}}, {
+
+	type : "RANGE",
+
+	css : 'range',
+
+	template : '<div class="wse-range-groove">\
+					<div class="wse-range-percentage"></div>\
+				</div>\
+				<div class="wse-range-min" data-bind="text:_format(min())"></div>\
+				<div class="wse-range-max" data-bind="text:_format(max())"></div>\
+				<div class="wse-range-slider">\
+					<div class="wse-range-slider-inner"></div>\
+					<div class="wse-range-value" data-bind="text:_format(value())"></div>\
+				</div>',
+
+	eventsProvided : ["change"],
+	
+	initialize : function(){
+
+		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
+
+		// add draggable mixin
+		Draggable.applyTo( this, {
+			axis : ko.computed(function(){
+				return this.viewModel.orientation() == "horizontal" ? "x" : "y"
+			}, this)
+		});
+
+		var prevValue = this.viewModel.value();
+		this.viewModel.value.subscribe(function(newValue){
+			if( this._$groove){
+				this.updatePosition();
+			}
+			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
+			
+			prevValue = newValue;
+		}, this);
+	},
+
+	afterRender : function(){
+
+		// cache the element;
+		this._$groove = this.$el.find(".wse-range-groove");
+		this._$percentage = this.$el.find(".wse-range-percentage");
+		this._$slider = this.$el.find(".wse-range-slider");
+
+		this.draggable.container = this._$groove;
+		var item = this.draggable.add( this._$slider );
+		
+		item.on("drag", this._dragHandler, this);
+
+		setTimeout(function(){
+			this.updatePosition();
+		})
+
+		// disable text selection
+		this.$el.mousedown(function(e){
+			e.preventDefault();
+		});
+	},
+
+	_dragHandler : function(){
+
+		var percentage = this.computePercentage(),
+			min = parseFloat( this.viewModel.min() ),
+			max = parseFloat( this.viewModel.max() ),
+			value = (max-min)*percentage+min;
+
+		this.viewModel.value( value );
+	},
+
+	_cacheSize : function(){
+
+		// cache the size of the groove and slider
+		var isHorizontal =this._isHorizontal(); 
+		this._grooveSize =  isHorizontal ?
+							this._$groove.width() :
+							this._$groove.height();
+		this._sliderSize = isHorizontal ?
+							this._$slider.width() :
+							this._$slider.height();
+	},
+
+	computePercentage : function(){
+
+		if( this.autoResize ){
+			this._cacheSize();
+		}
+
+		var offset = this._computeOffset();
+		return offset / ( this._grooveSize - this._sliderSize );
+	},
+
+	_computeOffset : function(){
+
+		var isHorizontal = this._isHorizontal(),
+			grooveOffset = isHorizontal ?
+							this._$groove.offset().left :
+							this._$groove.offset().top;
+			sliderOffset = isHorizontal ? 
+							this._$slider.offset().left :
+							this._$slider.offset().top;
+
+		return sliderOffset - grooveOffset;
+	},
+
+	_setOffset : function(offsetSize){
+		var isHorizontal = this._isHorizontal(),
+			grooveOffset = isHorizontal ?
+							this._$groove.offset().left :
+							this._$groove.offset().top,
+			offset = isHorizontal ? 
+					{left : grooveOffset+offsetSize} :
+					{top : grooveOffset+offsetSize};
+
+		this._$slider.offset( offset );
+	},
+
+	updatePosition : function(){
+
+		if( this.autoResize ){
+			this._cacheSize();
+		}
+
+		var min = this.viewModel.min(),
+			max = this.viewModel.max(),
+			value = this.viewModel.value(),
+			percentage = ( value - min ) / ( max - min ),
+
+			size = (this._grooveSize-this._sliderSize)*percentage;
+		
+		if( this._grooveSize > 0 ){
+			this._setOffset(size);
+		}else{	//incase the element is still not in the document
+			this._$slider.css( this._isHorizontal() ?
+								"left" : "top", percentage*100+"%");
+		}
+		this._$percentage.css( this._isHorizontal() ?
+								'width' : 'height', percentage*100+"%");
+	},
+
+	_isHorizontal : function(){
+		return ko.utils.unwrapObservable( this.viewModel.orientation ) == "horizontal";
+	}
+})
+
+Meta.provideBinding("range", Range);
+
+return Range;
+
+});
+//===================================
+// Spinner component
+//
+// @VMProp step
+// @VMProp value
+// @VMProp precision
+//
+// @event change newValue prevValue self[Range]
+//===================================
+define('components/meta/spinner',['./meta',
+		'knockout'], function(Meta, ko){
+
+function increase(){
+	this.value( parseFloat(this.value()) + parseFloat(this.step()) );
+}
+
+function decrease(){
+	this.value( parseFloat(this.value()) - parseFloat(this.step()) );
+}
+
+var Spinner = Meta.derive(function(){
+return {
+	viewModel : {
+
+		step : ko.observable(1),
+		
+		value : ko.observable(1),
+
+		valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
+
+		precision : ko.observable(2),
+
+		increase : increase,
+
+		decrease : decrease
+		
+	}
+}}, {
+	type : 'SPINNER',
+
+	css : 'spinner',
+
+	initialize : function(){
+		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
+
+		var prevValue = this.viewModel.value() || 0;
+		this.viewModel.value.subscribe(function(newValue){
+
+			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
+			prevValue = newValue;
+		}, this)
+	},
+
+	eventsProvided : ["change"],
+
+	template : '<div class="wse-left">\
+					<input type="text" class="wse-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
+				</div>\
+				<div class="wse-right">\
+					<div class="wse-common-button wse-increase" data-bind="click:increase">\
+					+</div>\
+					<div class="wse-common-button wse-decrease" data-bind="click:decrease">\
+					-</div>\
+				</div>',
+
+	afterRender : function(){
+		var self = this;
+		// disable selection
+		this.$el.find('.wse-increase,.wse-decrease').mousedown(function(e){
+			e.preventDefault();
+		})
+		this._$value = this.$el.find(".wse-spinner-value")
+		// numeric input only
+		this._$value.keydown(function(event){
+			// Allow: backspace, delete, tab, escape and dot
+			if ( event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9 || event.keyCode == 27 || event.keyCode == 190 ||
+				 // Allow: Ctrl+A
+				(event.keyCode == 65 && event.ctrlKey === true) || 
+				// Allow: home, end, left, right
+				(event.keyCode >= 35 && event.keyCode <= 39)) {
+				// let it happen, don't do anything
+				return;
+			}
+			else {
+				// Ensure that it is a number and stop the keypress
+				if ( event.shiftKey || (event.keyCode < 48 || event.keyCode > 57) && (event.keyCode < 96 || event.keyCode > 105 ) ) 
+				{
+					event.preventDefault(); 
+				}
+	        }
+		})
+
+		this._$value.change(function(){
+			// sync the value in the input
+			if( this.value !== self.viewModel.value().toString() ){
+				this.value = self.viewModel.value();
+			}
+		})
+	}
+})
+
+Meta.provideBinding('spinner', Spinner);
+
+return Spinner;
+});
+//===================================
+// Textfiled component
+//
+// @VMProp text
+// @VMProp placeholder
+//
+//===================================
+define('components/meta/textfield',['./meta',
+		'knockout'], function(Meta, ko){
+
+var TextField = Meta.derive(
+{
+	
+	tag : "div",
+
+	viewModel : {
+
+		text : ko.observable(""),
+		
+		placeholder : ko.observable("")
+	}
+
+}, {
+	
+	type : "TEXTFIELD",
+
+	css : 'textfield',
+
+	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
+})
+
+Meta.provideBinding("textfield", TextField);
 
 });
 //============================================
@@ -8877,42 +8909,68 @@ XMLParser.provideParser("vector", function(xmlNode){
 return Vector;
 
 });
-var wse_ui = {
-	core : {
-		xmlparser : require('core/xmlparser'),
-		mixin : {
-			derive : require('core/mixin/derive'),
-			event : require('core/mixin/event')
-		}
-	},
-	components : {
-		base : require('components/base'),
-		mixin : {
-			draggable : require('components/mixin/draggable')
+// portal for all the components
+define('src/main',["core/xmlparser",
+		"core/mixin/derive",
+		"core/mixin/event",
+		"components/base",
+		"components/util",
+		"components/meta/button",
+		"components/meta/canvas",
+		"components/meta/checkbox",
+		"components/meta/combobox",
+		"components/meta/label",
+		"components/meta/meta",
+		"components/meta/range",
+		"components/meta/spinner",
+		"components/meta/textfield",
+		"components/container/container",
+		"components/container/panel",
+		"components/container/window",
+		"components/container/tab",
+		"components/widget/vector",
+		"components/widget/widget"], function(){
+
+	console.log("wse ui is loaded");
+
+	return {
+		core : {
+			xmlparser : require('core/xmlparser'),
+			mixin : {
+				derive : require('core/mixin/derive'),
+				event : require('core/mixin/event')
+			}
 		},
-		meta : {
-			meta : require('components/meta/meta'),
-			button : require('components/meta/button'),
-			checkbox : require('components/meta/checkbox'),
-			combobox : require('components/meta/combobox'),
-			label : require('components/meta/label'),
-			range : require('components/meta/range'),
-			spinner : require('components/meta/spinner'),
-			textfield : require('components/meta/textfield'),
-			canvas : require("components/meta/canvas")
-		},
-		container : {
-			container : require('components/container/container'),
-			panel : require('components/container/panel'),
-			window : require('components/container/window'),
-			tab : require("components/container/tab")
-		},
-		widget : {
-			widget : require("components/widget/widget"),
-			vector : require("components/widget/vector")
+		components : {
+			base : require('components/base'),
+			mixin : {
+				draggable : require('components/mixin/draggable')
+			},
+			meta : {
+				meta : require('components/meta/meta'),
+				button : require('components/meta/button'),
+				checkbox : require('components/meta/checkbox'),
+				combobox : require('components/meta/combobox'),
+				label : require('components/meta/label'),
+				range : require('components/meta/range'),
+				spinner : require('components/meta/spinner'),
+				textfield : require('components/meta/textfield'),
+				canvas : require("components/meta/canvas")
+			},
+			container : {
+				container : require('components/container/container'),
+				panel : require('components/container/panel'),
+				window : require('components/container/window'),
+				tab : require("components/container/tab")
+			},
+			widget : {
+				widget : require("components/widget/widget"),
+				vector : require("components/widget/vector")
+			}
 		}
 	}
-}
+});
+var wse_ui = require("src/main");
 
 for(var name in wse_ui){
 	_exports[name] = wse_ui[name];

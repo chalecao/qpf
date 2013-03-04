@@ -52,8 +52,12 @@ return {
 
 	css : 'range',
 
-	template : '<div class="wse-range-groove">\
-					<div class="wse-range-percentage"></div>\
+	template : '<div class="wse-range-groove-box">\
+					<div class="wse-range-groove-outer">\
+						<div class="wse-range-groove">\
+							<div class="wse-range-percentage"></div>\
+						</div>\
+					</div>\
 				</div>\
 				<div class="wse-range-min" data-bind="text:_format(min())"></div>\
 				<div class="wse-range-max" data-bind="text:_format(max())"></div>\
@@ -77,7 +81,7 @@ return {
 
 		var prevValue = this.viewModel.value();
 		this.viewModel.value.subscribe(function(newValue){
-			if( this._$groove){
+			if( this._$box){
 				this.updatePosition();
 			}
 			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
@@ -89,11 +93,11 @@ return {
 	afterRender : function(){
 
 		// cache the element;
-		this._$groove = this.$el.find(".wse-range-groove");
+		this._$box = this.$el.find(".wse-range-groove-box");
 		this._$percentage = this.$el.find(".wse-range-percentage");
 		this._$slider = this.$el.find(".wse-range-slider");
 
-		this.draggable.container = this._$groove;
+		this.draggable.container = this.$el.find(".wse-range-groove-box");
 		var item = this.draggable.add( this._$slider );
 		
 		item.on("drag", this._dragHandler, this);
@@ -120,9 +124,9 @@ return {
 
 		// cache the size of the groove and slider
 		var isHorizontal =this._isHorizontal(); 
-		this._grooveSize =  isHorizontal ?
-							this._$groove.width() :
-							this._$groove.height();
+		this._boxSize =  isHorizontal ?
+							this._$box.width() :
+							this._$box.height();
 		this._sliderSize = isHorizontal ?
 							this._$slider.width() :
 							this._$slider.height();
@@ -135,15 +139,15 @@ return {
 		}
 
 		var offset = this._computeOffset();
-		return offset / ( this._grooveSize - this._sliderSize );
+		return offset / ( this._boxSize - this._sliderSize );
 	},
 
 	_computeOffset : function(){
 
 		var isHorizontal = this._isHorizontal(),
 			grooveOffset = isHorizontal ?
-							this._$groove.offset().left :
-							this._$groove.offset().top;
+							this._$box.offset().left :
+							this._$box.offset().top;
 			sliderOffset = isHorizontal ? 
 							this._$slider.offset().left :
 							this._$slider.offset().top;
@@ -154,8 +158,8 @@ return {
 	_setOffset : function(offsetSize){
 		var isHorizontal = this._isHorizontal(),
 			grooveOffset = isHorizontal ?
-							this._$groove.offset().left :
-							this._$groove.offset().top,
+							this._$box.offset().left :
+							this._$box.offset().top,
 			offset = isHorizontal ? 
 					{left : grooveOffset+offsetSize} :
 					{top : grooveOffset+offsetSize};
@@ -174,14 +178,14 @@ return {
 			value = this.viewModel.value(),
 			percentage = ( value - min ) / ( max - min ),
 
-			size = (this._grooveSize-this._sliderSize)*percentage;
+			size = (this._boxSize-this._sliderSize)*percentage;
 		
-		if( this._grooveSize > 0 ){
-			this._setOffset(size);
-		}else{	//incase the element is still not in the document
+		// if( this._boxSize > 0 ){
+			// this._setOffset(size);
+		// }else{	//incase the element is still not in the document
 			this._$slider.css( this._isHorizontal() ?
-								"left" : "top", percentage*100+"%");
-		}
+								"right" : "bottom", (1-percentage)*100+"%");
+		// }
 		this._$percentage.css( this._isHorizontal() ?
 								'width' : 'height', percentage*100+"%");
 	},

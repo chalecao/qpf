@@ -1,10 +1,18 @@
-<window title="Curl Noise" 
-		left="@binding[left]" 
-		top="@binding[top]"
-		width="200">
-	<label>Spawn number</label>
-	<spinner precision="0" value="@binding[spawnNumber]"></spinner>
-	<label>Particle number</label>
-	<spinner precision="0" value="@binding[particleNumber]"></spinner>
-	<button>Run</button>
-</window>
+<tab id= "CurlNoise" width="300">
+	<panel title="Main">
+		<label>Spawn number</label>
+		<spinner precision="0" value="@binding[spawnNumber]"></spinner>
+		<label>Particle number</label>
+		<spinner precision="0" value="@binding[particleNumber]"></spinner>
+		<button text="@binding[status]" onclick="@binding[togglePlay]"></button>
+	</panel>
+	<panel title="Noise">
+		<label>Turbulence</label>
+		<vector>
+			<range min="0" max="0.1" precision="3" value="@binding[turbulence.x]"></range>
+			<range min="0" max="0.1" precision="3" value="@binding[turbulence.y]"></range>
+		</vector>
+		<label>Persistence</label>
+		<range min="0.01" max="1" precision="3" value="@binding[persistence]"></range>
+	</panel>
+</tab>

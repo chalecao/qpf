@@ -26,7 +26,9 @@ var CurlNoise = (function(){
 			fragmentShader : shaderStrings['noisePPFragShader'],
 			outputPin : null,
 			parameters : {
-				'elapsedTime' : {type : 'f', value : 0}
+				'elapsedTime' : {type : 'f', value : 0},
+				'turbulence' : {type : 'v2', value: new THREE.Vector2(0.103, 0.079)},
+				'persistence' : {type : 'f', value : 0.707}
 			}
 		});
 

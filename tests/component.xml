@@ -25,14 +25,14 @@
 				Spinner
 			</label>
 			<vector>
-				<spinner value="10"></spinner>
-				<spinner value="10"></spinner>
+				<spinner value="@binding[vector.x]"></spinner>
+				<spinner value="@binding[vector.y]"></spinner>
 			</vector>
 			<label>
 				Range
 			</label>
 			<vector>
-				<range value="10"></range>
+				<range value="100"></range>
 				<range value="10"></range>
 			</vector>
 		</panel>

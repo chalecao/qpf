@@ -2065,7 +2065,7 @@ ko.exportSymbol('bindingProvider', ko.bindingProvider);
                 // Use evaluatedBindings if given, otherwise fall back on asking the bindings provider to give us some bindings
                 var evaluatedBindings = (typeof bindings == "function") ? bindings(bindingContextInstance, node) : bindings;
                 parsedBindings = evaluatedBindings || ko.bindingProvider['instance']['getBindings'](node, bindingContextInstance);
-
+                
                 if (parsedBindings) {
                     // First run all the inits, so bindings can register for notification on changes
                     if (initPhase === 0) {

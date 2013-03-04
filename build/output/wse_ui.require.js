@@ -1,4 +1,188 @@
 
+//===================================================
+// Xml Parser
+// parse wml and convert it to dom with knockout data-binding
+// TODO	xml valid checking, 
+//		provide xml childNodes Handler in the Components
+//===================================================
+define('core/xmlparser',['require','exports','module'],function(require, exports, module){
+	
+	// return document fragment converted from the xml
+	var parse = function( xmlString ){
+		
+		if( typeof(xmlString) == "string"){
+			var xml = parseXML( xmlString );
+		}else{
+			var xml = xmlString;
+		}
+		if( xml ){
+
+			var rootDomNode = document.createElement("div");
+
+			convert( xml, rootDomNode);
+
+			return rootDomNode;
+		}
+	}
+
+	function parseXML( xmlString ){
+		var xml, parser;
+		try{
+			if( window.DOMParser ){
+				xml = (new DOMParser()).parseFromString( xmlString, "text/xml");
+			}else{
+				xml = new ActiveXObject("Microsoft.XMLDOM");
+				xml.async = "false";
+				xml.loadXML( xmlString );
+			}
+			return xml;
+		}catch(e){
+			console.error("Invalid XML:" + xmlString);
+		}
+	}
+
+	var customParsers = {};
+	// provided custom parser from Compositor
+	// parser need to return a plain object which key is attributeName
+	// and value is attributeValue
+	function provideParser(componentType /*tagName*/, parser){
+		customParsers[componentType] = parser;
+	}
+
+	function parseXMLNode(xmlNode){
+		if( xmlNode.nodeType !== 1){
+			return;
+		}
+		var bindingResults = {
+			type : xmlNode.tagName.toLowerCase()
+		} 
+
+		var convertedAttr = convertAttributes( xmlNode.attributes );
+		var customParser = customParsers[bindingResults.type];
+		if( customParser ){
+			var result = customParser(xmlNode);
+			if( result &&
+				typeof(result) !="object"){
+				console.error("Parser must return an object converted from attributes")
+			}else{
+				// data in the attributes has higher priority than
+				// the data from the children
+				_.extend(convertedAttr, result);
+			}
+		}
+
+		var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
+
+		var domNode = document.createElement('div');
+		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
+
+		return domNode;
+	}
+
+	function convertAttributes(attributes){
+		var ret = {};
+		for(var i = 0; i < attributes.length; i++){
+			var attr = attributes[i];
+			ret[attr.nodeName] = attr.nodeValue;
+		}
+		return ret;
+	}
+
+	function objectToDataBindingFormat(attributes, bindingResults){
+
+		bindingResults = bindingResults || {};
+
+		var preProcess = function(attributes, bindingResults){
+
+			_.each(attributes, function(value, name){
+				// recursive
+				if( value.constructor == Array){
+					bindingResults[name] = [];
+					preProcess(value, bindingResults[name]);
+				}else if( value.constructor == Object){
+					bindingResults[name] = {};
+					preProcess(value, bindingResults[name]);
+				}else if( value ){
+					// this value is an expression or observable
+					// in the viewModel if it has @binding[] flag
+					var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
+					if( isBinding ){
+						// add a tag to remove quotation the afterwards
+						// conveniently, or knockout will treat it as a 
+						// normal string, not expression
+						value = "{{BINDINGSTART" + isBinding[1] + "BINDINGEND}}";
+
+					}
+					bindingResults[name] = value
+				}
+			});
+		}
+		preProcess( attributes, bindingResults );
+
+		var bindingString = JSON.stringify(bindingResults);
+		
+		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/g, "$1");
+
+		return bindingString;
+	}
+
+	function convert(root, parent){
+
+		var children = getChildren(root);
+
+		for(var i = 0; i < children.length; i++){
+			var node = parseXMLNode( children[i] );
+			if( node ){
+				parent.appendChild(node);
+				convert( children[i], node);
+			}
+		}
+	}
+
+	function getChildren(parent){
+		
+		var children = [];
+		var node = parent.firstChild;
+		while(node){
+			children.push(node);
+			node = node.nextSibling;
+		}
+		return children;
+	}
+
+	function getChildrenByTagName(parent, tagName){
+		var children = getChildren(parent);
+		
+		return _.filter(children, function(child){
+			return child.tagName && child.tagName.toLowerCase() === tagName;
+		})
+	}
+
+
+	exports.parse = parse;
+	//---------------------------------
+	// some util functions provided for the components
+	exports.provideParser = provideParser;
+
+	function getTextContent(xmlNode){
+		var children = getChildren(xmlNode);
+		var text = '';
+		_.each(children, function(child){
+			if(child.nodeType==3){
+				text += child.textContent.replace(/(^\s*)|(\s*$)/g, "");
+			}
+		})
+		return text;
+	}
+
+	exports.util = {
+		convertAttributes : convertAttributes,
+		objectToDataBindingFormat : objectToDataBindingFormat,
+		getChildren : getChildren,
+		getChildrenByTagName : getChildrenByTagName,
+		getTextContent : getTextContent
+	}
+});
 define('core/mixin/derive',[],function(){
 
 /**
@@ -227,10 +411,20 @@ define('components/util',['knockout',
 	// at first time
 	exports.bridge = function(target, source){
 		target.subscribe(function(newValue){
-			source(newValue);
+			try{
+				source(newValue);
+			}catch(e){
+				// Normally when source is computed value
+				// and it don't have a write function  
+				console.error(e.toString());
+			}
 		})
 		source.subscribe(function(newValue){
-			target(newValue);
+			try{
+				target(newValue);
+			}catch(e){
+				console.error(e.toString());
+			}
 		})
 	}
 })
@@ -291,6 +485,7 @@ return {	// Public properties
 	if( ! this.$el){
 		this.$el = $(document.createElement(this.tag));
 	}
+
 	this.$el.attr(this.attr);
 	if( this.skin ){
 		this.$el.addClass( this.withPrefix(this.skin, this.skinPrefix) );
@@ -306,19 +501,23 @@ return {	// Public properties
 	
 	// extend default properties to view Models
 	_.extend(this.viewModel, {
+		id : ko.observable(""),
 		width : ko.observable(),
 		height : ko.observable(),
 		disable : ko.observable(false)
 	});
 	this.viewModel.width.subscribe(function(newValue){
 		this.$el.width(newValue);
-	}, this)
+	}, this);
 	this.viewModel.height.subscribe(function(newValue){
 		this.$el.height(newValue);
-	}, this)
+	}, this);
 	this.viewModel.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
-	}, this)
+	}, this);
+	this.viewModel.id.subscribe(function(newValue){
+		this.$el.attr("id", newValue);
+	}, this);
 
 	// apply attribute to the view model
 	this._mappingAttributesToViewModel( this.attribute );
@@ -351,7 +550,7 @@ return {	// Public properties
 		}else{
 			source = key;
 		};
-		this._mappingAttributesToViewModel( source );
+		this._mappingAttributesToViewModel( source, true );
 	},
 	// Call to refresh the component
 	// Will trigger beforeRender and afterRender hooks
@@ -391,7 +590,7 @@ return {	// Public properties
 		}
 	},
 	// mapping the attributes to viewModel 
-	_mappingAttributesToViewModel : function(attributes){
+	_mappingAttributesToViewModel : function(attributes, onlyUpdate){
 		for(var name in attributes){
 			var attr = attributes[name];
 			var propInVM = this.viewModel[name];
@@ -401,12 +600,13 @@ return {	// Public properties
 			}
 			if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
-
+			}else{
+				this.viewModel[name] = ko.utils.unwrapObservable(attr);
+			}
+			if( ! onlyUpdate){
 				if( ko.isObservable(attr) ){
 					Util.bridge(propInVM, attr);
 				}
-			}else{
-				propInVM = ko.utils.unwrapObservable(attr);
 			}
 		}	
 	}
@@ -588,179 +788,6 @@ Meta.provideBinding = Base.provideBinding;
 return Meta;
 
 });
-//===================================================
-// Xml Parser
-// parse wml and convert it to dom with knockout data-binding
-// TODO	xml valid checking, 
-//		provide xml childNodes Handler in the Components
-//===================================================
-define('core/xmlparser',['require','exports','module'],function(require, exports, module){
-
-	// return document fragment converted from the xml
-	var parse = function( xmlString ){
-		
-		if( typeof(xmlString) == "string"){
-			var xml = parseXML( xmlString );
-		}else{
-			var xml = xmlString;
-		}
-		if( xml ){
-
-			var rootDomNode = document.createElement("div");
-
-			convert( xml, rootDomNode);
-
-			return rootDomNode;
-		}
-	}
-
-	function parseXML( xmlString ){
-		var xml, parser;
-		try{
-			if( window.DOMParser ){
-				xml = (new DOMParser()).parseFromString( xmlString, "text/xml");
-			}else{
-				xml = new ActiveXObject("Microsoft.XMLDOM");
-				xml.async = "false";
-				xml.loadXML( xmlString );
-			}
-			return xml;
-		}catch(e){
-			console.error("Invalid XML:" + xmlString);
-		}
-	}
-
-	var customParsers = {};
-	// provided custom parser from Compositor
-	// parser need to return a plain object which key is attributeName
-	// and value is attributeValue
-	function provideParser(componentType /*tagName*/, parser){
-		customParsers[componentType] = parser;
-	}
-
-	function parseXMLNode(xmlNode){
-		if( xmlNode.nodeType !== 1){
-			return;
-		}
-		var bindingResults = {
-			type : xmlNode.tagName.toLowerCase()
-		} 
-
-		var convertedAttr = convertAttributes( xmlNode.attributes );
-		var customParser = customParsers[bindingResults.type];
-		if( customParser ){
-			var result = customParser(xmlNode);
-			if( result &&
-				typeof(result) !="object"){
-				console.error("Parser must return an object converted from attributes")
-			}else{
-				// data in the attributes has higher priority than
-				// the data from the children
-				_.extend(convertedAttr, result);
-			}
-		}
-
-		var bindingString = attributesToDataBindingFormat( convertedAttr, bindingResults );
-
-		var domNode = document.createElement('div');
-		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
-
-		return domNode;
-	}
-
-	function convertAttributes(attributes){
-		var ret = {};
-		for(var i = 0; i < attributes.length; i++){
-			var attr = attributes[i];
-			ret[attr.nodeName] = attr.nodeValue;
-		}
-		return ret;
-	}
-
-	function attributesToDataBindingFormat(attributes, bindingResults){
-
-		bindingResults = bindingResults || {}
-		for(var name in attributes){
-			var value = attributes[name];
-			if( value ){
-				// this value is an expression or observable
-				// in the viewModel if it has @binding[] flag
-				var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
-				if( isBinding ){
-					// add a tag to remove quotation the afterwards
-					// conveniently, or knockout will treat it as a 
-					// normal string, not expression
-					value = "{{BINDINGSTART" + isBinding[1] + "BINDINGEND}}";
-
-				}
-				bindingResults[name] = value
-			}
-		}
-
-		var bindingString = JSON.stringify(bindingResults);
-		
-		bindingString = bindingString.replace(/\"\{\{BINDINGSTART(.*?)BINDINGEND\}\}\"/g, "$1");
-
-		return bindingString;
-	}
-
-	function convert(root, parent){
-
-		var children = getChildren(root);
-
-		for(var i = 0; i < children.length; i++){
-			var node = parseXMLNode( children[i] );
-			if( node ){
-				parent.appendChild(node);
-				convert( children[i], node);
-			}
-		}
-	}
-
-	function getChildren(parent){
-		
-		var children = [];
-		var node = parent.firstChild;
-		while(node){
-			children.push(node);
-			node = node.nextSibling;
-		}
-		return children;
-	}
-
-	function getChildrenByTagName(parent, tagName){
-		var children = getChildren(parent);
-		
-		return _.filter(children, function(child){
-			return child.tagName && child.tagName.toLowerCase() === tagName;
-		})
-	}
-
-
-	exports.parse = parse;
-	//---------------------------------
-	// some util functions provided for the components
-	exports.provideParser = provideParser;
-
-	function getTextContent(xmlNode){
-		var children = getChildren(xmlNode);
-		var text = '';
-		_.each(children, function(child){
-			if(child.nodeType==3){
-				text += child.textContent.replace(/(^\s*)|(\s*$)/g, "");
-			}
-		})
-		return text;
-	}
-
-	exports.util = {
-		convertAttributes : convertAttributes,
-		attributesToDataBindingFormat : attributesToDataBindingFormat,
-		getChildren : getChildren,
-		getChildrenByTagName : getChildrenByTagName,
-		getTextContent : getTextContent
-	}
-});
 //======================================
 // Button component
 //======================================
@@ -806,6 +833,56 @@ XMLParser.provideParser("button", function(xmlNode){
 })
 
 return Button;
+
+});
+//==============================
+// Canvas, 
+// Use Goo.js as drawing library 
+//==============================
+define('components/meta/canvas',["goo",
+		"./meta"], function(Goo, Meta){
+
+var Canvas = Meta.derive(function(){
+
+return {
+
+	tag : "canvas",
+
+	viewModel : {
+		width : ko.observable(256),
+		height : ko.observable(256)
+	},
+
+	stage : null
+}}, {
+
+	type : 'CANVAS',
+	css : 'canvas',
+
+	initialize : function(){
+
+		this.stage = Goo.create(this.$el[0]);
+
+		this.viewModel.width.subscribe(function(newValue){
+			this.resize();
+		}, this);
+		this.viewModel.height.subscribe(function(newValue){
+			this.resize();
+		}, this);
+	},
+
+	doRender : function(){
+		this.stage.render();
+	},
+
+	resize : function(){
+		this.stage.resize( this.viewModel.width(), this.viewModel.height());
+	}
+});
+
+Meta.provideBinding("canvas", Canvas);
+
+return Canvas;
 
 });
 //======================================
@@ -1450,8 +1527,12 @@ return {
 
 	css : 'range',
 
-	template : '<div class="wse-range-groove">\
-					<div class="wse-range-percentage"></div>\
+	template : '<div class="wse-range-groove-box">\
+					<div class="wse-range-groove-outer">\
+						<div class="wse-range-groove">\
+							<div class="wse-range-percentage"></div>\
+						</div>\
+					</div>\
 				</div>\
 				<div class="wse-range-min" data-bind="text:_format(min())"></div>\
 				<div class="wse-range-max" data-bind="text:_format(max())"></div>\
@@ -1475,7 +1556,7 @@ return {
 
 		var prevValue = this.viewModel.value();
 		this.viewModel.value.subscribe(function(newValue){
-			if( this._$groove){
+			if( this._$box){
 				this.updatePosition();
 			}
 			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
@@ -1487,11 +1568,11 @@ return {
 	afterRender : function(){
 
 		// cache the element;
-		this._$groove = this.$el.find(".wse-range-groove");
+		this._$box = this.$el.find(".wse-range-groove-box");
 		this._$percentage = this.$el.find(".wse-range-percentage");
 		this._$slider = this.$el.find(".wse-range-slider");
 
-		this.draggable.container = this._$groove;
+		this.draggable.container = this.$el.find(".wse-range-groove-box");
 		var item = this.draggable.add( this._$slider );
 		
 		item.on("drag", this._dragHandler, this);
@@ -1518,9 +1599,9 @@ return {
 
 		// cache the size of the groove and slider
 		var isHorizontal =this._isHorizontal(); 
-		this._grooveSize =  isHorizontal ?
-							this._$groove.width() :
-							this._$groove.height();
+		this._boxSize =  isHorizontal ?
+							this._$box.width() :
+							this._$box.height();
 		this._sliderSize = isHorizontal ?
 							this._$slider.width() :
 							this._$slider.height();
@@ -1533,15 +1614,15 @@ return {
 		}
 
 		var offset = this._computeOffset();
-		return offset / ( this._grooveSize - this._sliderSize );
+		return offset / ( this._boxSize - this._sliderSize );
 	},
 
 	_computeOffset : function(){
 
 		var isHorizontal = this._isHorizontal(),
 			grooveOffset = isHorizontal ?
-							this._$groove.offset().left :
-							this._$groove.offset().top;
+							this._$box.offset().left :
+							this._$box.offset().top;
 			sliderOffset = isHorizontal ? 
 							this._$slider.offset().left :
 							this._$slider.offset().top;
@@ -1552,8 +1633,8 @@ return {
 	_setOffset : function(offsetSize){
 		var isHorizontal = this._isHorizontal(),
 			grooveOffset = isHorizontal ?
-							this._$groove.offset().left :
-							this._$groove.offset().top,
+							this._$box.offset().left :
+							this._$box.offset().top,
 			offset = isHorizontal ? 
 					{left : grooveOffset+offsetSize} :
 					{top : grooveOffset+offsetSize};
@@ -1572,14 +1653,14 @@ return {
 			value = this.viewModel.value(),
 			percentage = ( value - min ) / ( max - min ),
 
-			size = (this._grooveSize-this._sliderSize)*percentage;
+			size = (this._boxSize-this._sliderSize)*percentage;
 		
-		if( this._grooveSize > 0 ){
-			this._setOffset(size);
-		}else{	//incase the element is still not in the document
+		// if( this._boxSize > 0 ){
+			// this._setOffset(size);
+		// }else{	//incase the element is still not in the document
 			this._$slider.css( this._isHorizontal() ?
-								"left" : "top", percentage*100+"%");
-		}
+								"right" : "bottom", (1-percentage)*100+"%");
+		// }
 		this._$percentage.css( this._isHorizontal() ?
 								'width' : 'height', percentage*100+"%");
 	},
@@ -1668,7 +1749,6 @@ return {
 		this._$value = this.$el.find(".wse-spinner-value")
 		// numeric input only
 		this._$value.keydown(function(event){
-			
 			// Allow: backspace, delete, tab, escape and dot
 			if ( event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9 || event.keyCode == 27 || event.keyCode == 190 ||
 				 // Allow: Ctrl+A
@@ -1732,52 +1812,6 @@ var TextField = Meta.derive(
 })
 
 Meta.provideBinding("textfield", TextField);
-
-});
-//==============================
-// Canvas, 
-// Use Goo.js as drawing library 
-//==============================
-define('components/meta/canvas',["goo",
-		"./meta"], function(Goo, Meta){
-
-var Canvas = Meta.derive(function(){
-
-return {
-
-	tag : "canvas",
-
-	viewModel : {
-		width : ko.observable(256),
-		height : ko.observable(256)
-	},
-
-	stage : null
-}}, {
-
-	type : 'CANVAS',
-	css : 'canvas',
-
-	initialize : function(){
-
-		this.stage = Goo.create(this.$el[0]);
-
-		this.viewModel.width.subscribe(function(newValue){
-			this.resize();
-		}, this);
-		this.viewModel.height.subscribe(function(newValue){
-			this.resize();
-		}, this);
-	},
-
-	resize : function(){
-		this.stage.resize( this.viewModel.width(), this.viewModel.height());
-	}
-});
-
-Meta.provideBinding("canvas", Canvas);
-
-return Canvas;
 
 });
 //============================================
@@ -2345,3 +2379,65 @@ XMLParser.provideParser("vector", function(xmlNode){
 return Vector;
 
 });
+// portal for all the components
+define('src/main',["core/xmlparser",
+		"core/mixin/derive",
+		"core/mixin/event",
+		"components/base",
+		"components/util",
+		"components/meta/button",
+		"components/meta/canvas",
+		"components/meta/checkbox",
+		"components/meta/combobox",
+		"components/meta/label",
+		"components/meta/meta",
+		"components/meta/range",
+		"components/meta/spinner",
+		"components/meta/textfield",
+		"components/container/container",
+		"components/container/panel",
+		"components/container/window",
+		"components/container/tab",
+		"components/widget/vector",
+		"components/widget/widget"], function(){
+
+	console.log("wse ui is loaded");
+
+	return {
+		core : {
+			xmlparser : require('core/xmlparser'),
+			mixin : {
+				derive : require('core/mixin/derive'),
+				event : require('core/mixin/event')
+			}
+		},
+		components : {
+			base : require('components/base'),
+			mixin : {
+				draggable : require('components/mixin/draggable')
+			},
+			meta : {
+				meta : require('components/meta/meta'),
+				button : require('components/meta/button'),
+				checkbox : require('components/meta/checkbox'),
+				combobox : require('components/meta/combobox'),
+				label : require('components/meta/label'),
+				range : require('components/meta/range'),
+				spinner : require('components/meta/spinner'),
+				textfield : require('components/meta/textfield'),
+				canvas : require("components/meta/canvas")
+			},
+			container : {
+				container : require('components/container/container'),
+				panel : require('components/container/panel'),
+				window : require('components/container/window'),
+				tab : require("components/container/tab")
+			},
+			widget : {
+				widget : require("components/widget/widget"),
+				vector : require("components/widget/vector")
+			}
+		}
+	}
+});// preload all the components
+require(['src/main'], function(){});

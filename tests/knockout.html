@@ -11,11 +11,10 @@
 		var viewModel = {
 			foo : ko.observable("test")
 		}
-		var $el = $('<div><div data-bind="text:foo"></div></div>');
+		var $el = $('<div><div data-bind="text:foo()+10"></div></div>');
 
 		ko.applyBindings(viewModel, $el[0]);
 
-		viewModel.foo("hahah");
 		$(document.body).append($el);
 		viewModel.foo("hahahahah");
 

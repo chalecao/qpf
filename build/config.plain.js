@@ -1,6 +1,7 @@
 ({
 	baseUrl : "../",
 	paths : {
+		"wse_ui" : "src/wse_ui",
 		"core" : "src/core",
 		"components" : "src/components",
 		// libraries
@@ -10,17 +11,7 @@
 	},
 	// excludeShallow : ['knockout', 'ko.mapping', 'goo'],
 	name : "build/almond",
-	include : [ "components/meta/button",
-				"components/meta/checkbox",
-				"components/meta/combobox",
-				"components/meta/label",
-				"components/meta/range",
-				"components/meta/spinner",
-				"components/meta/textfield",
-				"components/meta/canvas",
-				"components/container/window",
-				"components/container/tab",
-				"components/widget/vector"],
+	include : [ "src/main"],
 				
 	out:"./output/wse_ui.js",
 	wrap : {

@@ -1,15 +1,5 @@
 define(["knockout",
-		"components/mixin/draggable",
-		"components/meta/button",
-		"components/meta/label",
-		"components/meta/checkbox",
-		"components/meta/spinner",
-		"components/meta/range",
-		"components/meta/textfield",
-		"components/meta/combobox",
-		'components/widget/vector',
-		"components/container/window",
-		"components/container/tab"], function(ko){
+		"../src/main"], function(ko){
 
 	var Base = require("components/base");
 	var Draggable = require("components/mixin/draggable");

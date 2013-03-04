@@ -5,7 +5,7 @@
 //		provide xml childNodes Handler in the Components
 //===================================================
 define(function(require, exports, module){
-
+	
 	// return document fragment converted from the xml
 	var parse = function( xmlString ){
 		
@@ -70,7 +70,7 @@ define(function(require, exports, module){
 			}
 		}
 
-		var bindingString = attributesToDataBindingFormat( convertedAttr, bindingResults );
+		var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
 
 		var domNode = document.createElement('div');
 		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
@@ -87,25 +87,36 @@ define(function(require, exports, module){
 		return ret;
 	}
 
-	function attributesToDataBindingFormat(attributes, bindingResults){
+	function objectToDataBindingFormat(attributes, bindingResults){
 
-		bindingResults = bindingResults || {}
-		for(var name in attributes){
-			var value = attributes[name];
-			if( value ){
-				// this value is an expression or observable
-				// in the viewModel if it has @binding[] flag
-				var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
-				if( isBinding ){
-					// add a tag to remove quotation the afterwards
-					// conveniently, or knockout will treat it as a 
-					// normal string, not expression
-					value = "{{BINDINGSTART" + isBinding[1] + "BINDINGEND}}";
+		bindingResults = bindingResults || {};
 
+		var preProcess = function(attributes, bindingResults){
+
+			_.each(attributes, function(value, name){
+				// recursive
+				if( value.constructor == Array){
+					bindingResults[name] = [];
+					preProcess(value, bindingResults[name]);
+				}else if( value.constructor == Object){
+					bindingResults[name] = {};
+					preProcess(value, bindingResults[name]);
+				}else if( value ){
+					// this value is an expression or observable
+					// in the viewModel if it has @binding[] flag
+					var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
+					if( isBinding ){
+						// add a tag to remove quotation the afterwards
+						// conveniently, or knockout will treat it as a 
+						// normal string, not expression
+						value = "{{BINDINGSTART" + isBinding[1] + "BINDINGEND}}";
+
+					}
+					bindingResults[name] = value
 				}
-				bindingResults[name] = value
-			}
+			});
 		}
+		preProcess( attributes, bindingResults );
 
 		var bindingString = JSON.stringify(bindingResults);
 		
@@ -165,7 +176,7 @@ define(function(require, exports, module){
 
 	exports.util = {
 		convertAttributes : convertAttributes,
-		attributesToDataBindingFormat : attributesToDataBindingFormat,
+		objectToDataBindingFormat : objectToDataBindingFormat,
 		getChildren : getChildren,
 		getChildrenByTagName : getChildrenByTagName,
 		getTextContent : getTextContent

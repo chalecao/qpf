@@ -54,6 +54,7 @@ return {	// Public properties
 	if( ! this.$el){
 		this.$el = $(document.createElement(this.tag));
 	}
+
 	this.$el.attr(this.attr);
 	if( this.skin ){
 		this.$el.addClass( this.withPrefix(this.skin, this.skinPrefix) );
@@ -69,19 +70,23 @@ return {	// Public properties
 	
 	// extend default properties to view Models
 	_.extend(this.viewModel, {
+		id : ko.observable(""),
 		width : ko.observable(),
 		height : ko.observable(),
 		disable : ko.observable(false)
 	});
 	this.viewModel.width.subscribe(function(newValue){
 		this.$el.width(newValue);
-	}, this)
+	}, this);
 	this.viewModel.height.subscribe(function(newValue){
 		this.$el.height(newValue);
-	}, this)
+	}, this);
 	this.viewModel.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
-	}, this)
+	}, this);
+	this.viewModel.id.subscribe(function(newValue){
+		this.$el.attr("id", newValue);
+	}, this);
 
 	// apply attribute to the view model
 	this._mappingAttributesToViewModel( this.attribute );
@@ -114,7 +119,7 @@ return {	// Public properties
 		}else{
 			source = key;
 		};
-		this._mappingAttributesToViewModel( source );
+		this._mappingAttributesToViewModel( source, true );
 	},
 	// Call to refresh the component
 	// Will trigger beforeRender and afterRender hooks
@@ -154,7 +159,7 @@ return {	// Public properties
 		}
 	},
 	// mapping the attributes to viewModel 
-	_mappingAttributesToViewModel : function(attributes){
+	_mappingAttributesToViewModel : function(attributes, onlyUpdate){
 		for(var name in attributes){
 			var attr = attributes[name];
 			var propInVM = this.viewModel[name];
@@ -164,12 +169,13 @@ return {	// Public properties
 			}
 			if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
-
+			}else{
+				this.viewModel[name] = ko.utils.unwrapObservable(attr);
+			}
+			if( ! onlyUpdate){
 				if( ko.isObservable(attr) ){
 					Util.bridge(propInVM, attr);
 				}
-			}else{
-				propInVM = ko.utils.unwrapObservable(attr);
 			}
 		}	
 	}

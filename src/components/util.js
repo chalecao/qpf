@@ -72,10 +72,20 @@ define(['knockout',
 	// at first time
 	exports.bridge = function(target, source){
 		target.subscribe(function(newValue){
-			source(newValue);
+			try{
+				source(newValue);
+			}catch(e){
+				// Normally when source is computed value
+				// and it don't have a write function  
+				console.error(e.toString());
+			}
 		})
 		source.subscribe(function(newValue){
-			target(newValue);
+			try{
+				target(newValue);
+			}catch(e){
+				console.error(e.toString());
+			}
 		})
 	}
 })
