@@ -37,7 +37,7 @@ return {
 		this.viewModel.children.subscribe(this._updateTabSize, this)
 	},
 
-	eventsProvided : ['change'],
+	eventsProvided : _.union('change', Container.prototype.eventsProvided),
 
 	initialize : function(){
 		this.viewModel.active.subscribe(function(idx){
@@ -81,13 +81,10 @@ ko.bindingHandlers["wse_tab_view"] = {
 
 	_afterRender : function(){
 		var element = this.element,
-			subView = this.view,
-			$body = subView._$body,
-			$bodyPlaceHolder = $('<div class="wse-panel-body-placeholder"></div>')[0];
+			subView = this.view;
 
 		// put a placeholder in the body for replace back
-		$body.replaceWith($bodyPlaceHolder);
-		element.appendChild($body[0]);
+		element.appendChild(subView.$el[0]);
 
 		subView.off("render", ko.bindingHandlers["wse_tab_view"]._afterRender );
 	},
@@ -99,7 +96,7 @@ ko.bindingHandlers["wse_tab_view"] = {
 			subView.$el.detach();
 			Base.disposeDom(element);
 			element.innerHTML = "";
-			if( subView._$body ){
+			if( subView._$header ){
 				ko.bindingHandlers["wse_tab_view"]._afterRender.call({element:element, view:subView});
 			}else{
 				// append the view after render
@@ -112,7 +109,6 @@ ko.bindingHandlers["wse_tab_view"] = {
 
 		//handle disposal (if KO removes by the template binding)
         ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
-        	subView.$el.children(".wse-panel-body-placeholder").replaceWith(subView._$body);
         });
 
 		return { 'controlsDescendantBindings': true };

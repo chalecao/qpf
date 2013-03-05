@@ -36,5 +36,19 @@
 				<range value="10"></range>
 			</vector>
 		</panel>
+		<panel title="VBox">
+			<vbox height="200">
+				<panel title="first" flex="2"></panel>
+				<panel title="second" flex="2"></panel>
+				<panel title="third" flex="2"></panel>
+			</vbox>
+		</panel>
+		<panel title="HBox">
+			<hbox height="200">
+				<panel title="first" flex="2"></panel>
+				<panel title="second" prefer="50"></panel>
+				<panel title="third" flex="2"></panel>
+			</hbox>
+		</panel>
 	</tab>
 </window>

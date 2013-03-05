@@ -17,6 +17,8 @@ define(["core/xmlparser",
 		"components/container/panel",
 		"components/container/window",
 		"components/container/tab",
+		"components/container/vbox",
+		"components/container/hbox",
 		"components/widget/vector",
 		"components/widget/widget"], function(){
 
@@ -50,7 +52,9 @@ define(["core/xmlparser",
 				container : require('components/container/container'),
 				panel : require('components/container/panel'),
 				window : require('components/container/window'),
-				tab : require("components/container/tab")
+				tab : require("components/container/tab"),
+				vbox : require("components/container/vbox"),
+				hbox : require("components/container/hbox")
 			},
 			widget : {
 				widget : require("components/widget/widget"),

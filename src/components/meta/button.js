@@ -15,17 +15,12 @@ return {
 	}
 }}, {
 
-	eventsProvided : ['click'],
-
 	type : 'BUTTON',
 
 	css : 'button',
 
 	afterRender : function(){
 		var me = this;
-		this.$el.click(function(){
-			me.trigger("click");
-		})
 	}
 });
 

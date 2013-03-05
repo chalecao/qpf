@@ -7,12 +7,12 @@
 define(["core/mixin/derive",
 		"core/mixin/event",
 		"./util",
-		"knockout"], function(Derive, Events, Util, ko){
+		"knockout"], function(Derive, Event, Util, ko){
 
 var clazz = new Function();
 
 _.extend(clazz, Derive);
-_.extend(clazz.prototype, Events);
+_.extend(clazz.prototype, Event);
 
 var repository = {};	//repository to store all the component instance
 
@@ -77,9 +77,11 @@ return {	// Public properties
 	});
 	this.viewModel.width.subscribe(function(newValue){
 		this.$el.width(newValue);
+		this.trigger("resize");
 	}, this);
 	this.viewModel.height.subscribe(function(newValue){
 		this.$el.height(newValue);
+		this.trigger("resize");
 	}, this);
 	this.viewModel.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
@@ -87,6 +89,8 @@ return {	// Public properties
 	this.viewModel.id.subscribe(function(newValue){
 		this.$el.attr("id", newValue);
 	}, this);
+
+	var self = this;
 
 	// apply attribute to the view model
 	this._mappingAttributesToViewModel( this.attribute );
@@ -107,7 +111,7 @@ return {	// Public properties
 	// Developers can use on method to subscribe these events
 	// It is used in the binding handlers to judge which parameter
 	// passed in is events
-	eventsProvided : [],
+	eventsProvided : ["click", "mousedown", "mouseup", "mousemove", "resize"],
 
 	// Will be called after the component first created
 	initialize : function(){},
@@ -163,9 +167,16 @@ return {	// Public properties
 		for(var name in attributes){
 			var attr = attributes[name];
 			var propInVM = this.viewModel[name];
+			// create new attribute when it is not existed
+			// in the viewModel, even if it will not be used
 			if( ! propInVM ){
-				// console.error("Attribute "+name+" is not a valid viewModel property");
-				continue;
+				// is observableArray or plain array
+				if( (ko.isObservable(attr) && attr.push) ||
+					attr.constructor == Array){
+					this.viewModel[name] = ko.observableArray();
+				}else{
+					this.viewModel[name] = ko.observable();
+				}
 			}
 			if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
@@ -180,6 +191,24 @@ return {	// Public properties
 		}	
 	}
 })
+
+// register proxy events of dom
+var proxyEvents = ["click", "mousedown", "mouseup", "mousemove"];
+Base.prototype.on = function(eventName){
+	// lazy register events
+	if( proxyEvents.indexOf(eventName) >= 0 ){
+		this.$el.bind(eventName, {
+			context : this
+		}, proxyHandler);
+	}
+	Event.on.apply(this, arguments);
+}
+function proxyHandler(e){
+	var context = e.data.context;
+	var eventType = e.type;
+
+	context.trigger(eventType);
+}
 
 
 // get a unique component by guid

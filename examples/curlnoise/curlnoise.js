@@ -18,6 +18,7 @@ var CurlNoise = (function(){
 			outputPin : null,
 			parameters : {
 				'spawnPosition' : {type : 'v3', value : (options.position || new THREE.Vector3(0, 0, 0))},
+				'spawnSize' : {type:'f', value:0.02},
 				'elapsedTime' : {type : 'f', value : 0}
 			}
 		})
@@ -86,8 +87,6 @@ var CurlNoise = (function(){
 				attributes['aUv'].value.push(new THREE.Vector2(i/size, j/size));
 			}
 		}
-
-		this.particleSystem.verticesNeedUpdate = true;
 	}
 
 	CurlNoise.prototype.createParticleSystem = function(){

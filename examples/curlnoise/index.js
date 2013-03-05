@@ -10,21 +10,24 @@ define(function(require){
 	//----------------------------------------
 	// create viewmodels
 	var viewModel = {
-		spawnNumber : ko.observable(2),
-		particleNumber : ko.observable(128),
+		particleNumber : ko.observable(1024),
 
 		_isPlay : ko.observable(true),
 		// events
 		togglePlay : function(){
 			viewModel._isPlay( ! viewModel._isPlay() );
 		},
-		// turbulence parameters
+
+		// noisePP parameters
 		turbulence : {
 			x : ko.observable(0.100),
-			y : ko.observable(0.079)
+			y : ko.observable(0.12)
 		},
 
-		persistence : ko.observable(0.707)
+		persistence : ko.observable(0.707),
+
+		// spawnPP parameters
+		spawnSize : ko.observable(0.576)
 	};
 
 	viewModel.status = ko.computed({
@@ -58,13 +61,15 @@ define(function(require){
 
 	var turbulence = createBindableVector2(viewModel.turbulence);
 
-	for(var i = 0; i < viewModel.spawnNumber(); i++){
+	for(var i = 0; i < 1; i++){
 		var spawn = CurlNoise.spawn({
 			size : viewModel.particleNumber(),
-			position : new THREE.Vector3(Math.random()*4-2, Math.random()*4-2, 0),
+			position : new THREE.Vector3(Math.random()*3-2, Math.random()*3-2, 0),
 		});
 		spawn.noisePP.updateParameter("turbulence", turbulence);
 		bindingParameter(spawn.noisePP, "persistence", viewModel.persistence);
+		bindingParameter(spawn.spawnPP, "spawnSize", viewModel.spawnSize);
+
 		spawns.push(spawn);
 	}
 
@@ -74,6 +79,9 @@ define(function(require){
 
 	viewModel.particleNumber.subscribe(function(newValue){
 		spawns.forEach(function(spawn){
+			scene.remove(spawn.particleSystem);
+			spawn.createParticleSystem();
+			scene.add(spawn.particleSystem);
 			spawn.updateParticleNumber(newValue);
 		})
 	})

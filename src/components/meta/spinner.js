@@ -51,7 +51,7 @@ return {
 		}, this)
 	},
 
-	eventsProvided : ["change"],
+	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
 
 	template : '<div class="wse-left">\
 					<input type="text" class="wse-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\

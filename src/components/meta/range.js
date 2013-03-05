@@ -66,7 +66,7 @@ return {
 					<div class="wse-range-value" data-bind="text:_format(value())"></div>\
 				</div>',
 
-	eventsProvided : ["change"],
+	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
 	
 	initialize : function(){
 

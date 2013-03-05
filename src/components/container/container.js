@@ -19,9 +19,10 @@ return {
 
 	css : 'container',
 	
-	template : '<div data-bind="foreach:children">\
+	template : '<div data-bind="foreach:children" style="height:100%;width:100%">\
 					<div data-bind="wse_view:$data"></div>\
 				</div>',
+
 	// add child component
 	add : function( sub ){
 		sub.parent = this;

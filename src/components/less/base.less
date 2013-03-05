@@ -179,10 +179,9 @@ body{
 
 	.wse-range-groove-box{
 		float: left;
-		width:100%;
 	}
 	.wse-range-groove-outer{
-		padding: 0px 7px;
+		box-sizing: border-box;
 	}
 	.wse-range-groove{
 
@@ -254,6 +253,12 @@ body{
 
 	// the slider is horizontal
 	&.horizontal{
+		.wse-range-groove-box{
+			width:100%;
+		}
+		.wse-range-groove-outer{
+			padding: 0px 7px;
+		}
 		.wse-range-groove{
 			width:100%;
 			height:3px;
@@ -282,6 +287,13 @@ body{
 	// the slider is vertical
 	&.vertical{
 		height: 100%;
+		.wse-range-groove-box{
+			height:100%;
+		}
+		.wse-range-groove-outer{
+			padding: 7px 0px;
+			height:100%;
+		}
 		.wse-range-groove{
 			width:3px;
 			height:100%;
@@ -543,10 +555,19 @@ body{
 	}
 
 	&>.wse-tab-body{
-		padding: 10px;
 		background-color: #323234;
 		border-radius: 0px 0px 5px 5px;
 		border:1px solid #1B1B1B;
 		border-top: none;
+
+		&>.wse-tab-views>div>.wse-ui-panel{
+			box-shadow: none;
+			&>.wse-panel-header{
+				display: none;
+			}
+			&>.wse-panel-footer{
+				display: none;
+			}
+		}
 	}
 }

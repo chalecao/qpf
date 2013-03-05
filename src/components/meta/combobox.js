@@ -51,6 +51,8 @@ return {
 
 	css : 'combobox',
 
+	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
+
 	initialize : function(){
 
 		this.viewModel.selectedText = ko.computed(function(){
