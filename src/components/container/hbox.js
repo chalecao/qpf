@@ -8,10 +8,10 @@
 //===============================================
 
 define(['./container',
-		'knockout',
-		'core/jquery.resize'], function(Container, ko){
+		'./box',
+		'knockout'], function(Container, Box, ko){
 
-var hBox = Container.derive(function(){
+var hBox = Box.derive(function(){
 
 return {
 
@@ -21,32 +21,21 @@ return {
 
 	css : 'hbox',
 
-	initialize : function(){
-
-		this.on("resize", this.resize);
-
-		this.viewModel.children.subscribe(function(){
-			this.resize();
-		}, this);
-
-		this.$el.css("position", "relative");
-
-		var self = this;
-		this.$el.resize(function(){
-			self.resize();
-		})
-	},
-
 	resize : function(){
 
 		var flexSum = 0,
 			remainderWidth = this.$el.width(),
-			childrenWithFlex = [];
+			childrenWithFlex = [],
 
-		_.each(this.viewModel.children(), function(child){
+			marginCache = [],
+			marginCacheWithFlex = [];
+
+		_.each(this.viewModel.children(), function(child, idx){
+			var margin = this._getMargin(child.$el);
+			marginCache.push(margin);
 			// stretch the height
 			// (when align is stretch)
-			child.viewModel.height( this.$el.height() );
+			child.viewModel.height( this.$el.height()-margin.top-margin.bottom );
 
 			var prefer = ko.utils.unwrapObservable( child.viewModel.prefer );
 
@@ -56,30 +45,34 @@ return {
 				prefer = Math.min(prefer, remainderWidth);
 				child.viewModel.width( prefer );
 
-				remainderWidth -= prefer;
+				remainderWidth -= prefer+margin.left+margin.right;
 			}else{
 				var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1);
 				// put it in the next step to compute
 				// the height based on the flex property
 				childrenWithFlex.push(child);
+				marginCacheWithFlex.push(margin);
+
 				flexSum += flex;
 			}
 		}, this);
 
-		_.each( childrenWithFlex, function(child){
+		_.each( childrenWithFlex, function(child, idx){
+			var margin = marginCacheWithFlex[idx];
 			var flex = ko.utils.unwrapObservable( child.viewModel.flex ),
 				ratio = flex / flexSum;
-			child.viewModel.width( remainderWidth * ratio );	
+			child.viewModel.width( remainderWidth*ratio-margin.left-margin.right );	
 		})
 
 		var prevWidth = 0;
-		_.each(this.viewModel.children(), function(child){
+		_.each(this.viewModel.children(), function(child, idx){
+			var margin = marginCache[idx];
 			child.$el.css({
 				"position" : "absolute",
 				"top" : '0px',
 				"left" : prevWidth + "px"
-			})
-			prevWidth += child.viewModel.width();
+			});
+			prevWidth += child.viewModel.width()+margin.left+margin.right;
 		})
 	}
 

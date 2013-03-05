@@ -11,10 +11,10 @@
 //===============================================
 
 define(['./container',
-		'knockout',
-		'core/jquery.resize'], function(Container, ko){
+		'./box',
+		'knockout'], function(Container, Box, ko){
 
-var vBox = Container.derive(function(){
+var vBox = Box.derive(function(){
 
 return {
 
@@ -24,32 +24,22 @@ return {
 
 	css : 'vbox',
 
-	initialize : function(){
-		this.on("resize", this.resize);
-
-		this.viewModel.children.subscribe(function(){
-			this.resize();
-		}, this);
-
-		this.$el.css("position", "relative");
-
-		var self = this;
-		this.$el.resize(function(){
-			self.resize();
-		})
-	},
-
 	resize : function(){
 
 		var flexSum = 0,
 			remainderHeight = this.$el.height(),
 			childrenWithFlex = [];
 
+			marginCache = [],
+			marginCacheWithFlex = [];
+
 		_.each(this.viewModel.children(), function(child){
+			var margin = this._getMargin(child.$el);
+			marginCache.push(margin);
 			// stretch the width
 			// (when align is stretch)
-			child.viewModel.width( this.$el.width() );
-			
+			child.viewModel.width( this.$el.width()-margin.left-margin.right );
+
 			var prefer = ko.utils.unwrapObservable( child.viewModel.prefer );
 
 			// item has a prefer size;
@@ -58,30 +48,34 @@ return {
 				prefer = Math.min(prefer, remainderHeight);
 				child.viewModel.height( prefer );
 
-				remainderHeight -= prefer;
+				remainderHeight -= prefer+margin.top+margin.bottom;
 			}else{
 				var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1);
 				// put it in the next step to compute
 				// the height based on the flex property
 				childrenWithFlex.push(child);
+				marginCacheWithFlex.push(margin);
+
 				flexSum += flex;
 			}
 		}, this);
 
-		_.each( childrenWithFlex, function(child){
+		_.each( childrenWithFlex, function(child, idx){
+			var margin = marginCacheWithFlex[idx];
 			var flex = ko.utils.unwrapObservable( child.viewModel.flex ),
 				ratio = flex / flexSum;
-			child.viewModel.height( remainderHeight * ratio );	
+			child.viewModel.height( remainderHeight*ratio-margin.top-margin.bottom );	
 		})
 
 		var prevHeight = 0;
-		_.each(this.viewModel.children(), function(child){
+		_.each(this.viewModel.children(), function(child, idx){
+			var margin = marginCache[idx];
 			child.$el.css({
 				"position" : "absolute",
-				"left" : '0px',
+				"left" : '0px',	// still set left to zero, use margin to fix the layout
 				"top" : prevHeight + "px"
 			})
-			prevHeight += child.viewModel.height();
+			prevHeight += child.viewModel.height()+margin.top+margin.bottom;
 		})
 	}
 

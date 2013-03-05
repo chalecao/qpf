@@ -238,7 +238,9 @@ define(function(){
         
         // If element size has changed since the last time, update the element
         // data store and trigger the 'resize' event.
-        if ( width !== data.w || height !== data.h ) {
+        // don't trigger the resize event when width or height is zero, in case
+        // it is a hidden object
+        if ( (width && width !== data.w) || (height && height !== data.h) ) {
           elem.trigger( str_resize, [ data.w = width, data.h = height ] );
         }
         

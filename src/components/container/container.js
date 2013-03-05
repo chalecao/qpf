@@ -20,7 +20,7 @@ return {
 	css : 'container',
 	
 	template : '<div data-bind="foreach:children" style="height:100%;width:100%">\
-					<div data-bind="wse_view:$data"></div>\
+					<div data-bind="wse_view:$data" class="wse-container-item"></div>\
 				</div>',
 
 	// add child component

@@ -69,11 +69,14 @@ return {	// Public properties
 	// this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
 	
 	// extend default properties to view Models
+	// like normal dom element, node of wse will have height, width, id
+	// style attribute, and all this will map to the attribute in dom
 	_.extend(this.viewModel, {
 		id : ko.observable(""),
 		width : ko.observable(),
 		height : ko.observable(),
-		disable : ko.observable(false)
+		disable : ko.observable(false),
+		style : ko.observable("")
 	});
 	this.viewModel.width.subscribe(function(newValue){
 		this.$el.width(newValue);
@@ -89,8 +92,24 @@ return {	// Public properties
 	this.viewModel.id.subscribe(function(newValue){
 		this.$el.attr("id", newValue);
 	}, this);
+	this.viewModel.style.subscribe(function(newValue){
+		var valueSv = newValue;
+		var styleRegex = /\s*(\S*?)\s*:\s*(\S*)\s*/g;
+		// preprocess the style string
+		newValue = "{" + _.chain(newValue.split(";"))
+						.map(function(item){
+							return item.replace(styleRegex, '"$1":"$2"');
+						})
+						.filter(function(item){return item;})
+						.value().join(",") + "}";
+		try{
+			var obj = JSON.parse(newValue);
+			this.$el.css(obj);
+		}catch(e){
+			console.error("Syntax Error of style: "+ valueSv);
+		}
+	}, this)
 
-	var self = this;
 
 	// apply attribute to the view model
 	this._mappingAttributesToViewModel( this.attribute );
