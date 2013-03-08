@@ -23,6 +23,8 @@ define(['knockout',
 				if( component ){
 					element.innerHTML = "";
 					element.appendChild( component.$el[0] );
+					
+					$(element).addClass("wse-ui-wrapper");
 				}
 				// save the guid in the element data attribute
 				element.setAttribute("data-wse-guid", component.__GUID__);

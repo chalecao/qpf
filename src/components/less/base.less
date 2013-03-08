@@ -472,6 +472,8 @@ body{
 
 	border-radius: 5px;
 	box-shadow: 0px 1px 2px black;
+	background-color: #323234;
+	position: relative;
 
 	&>.wse-panel-header{
 		.linear-gradient-top(#3f3f3f, rgba(255,255,255,0.1), 0%, rgba(255,255,255,0.0), 99%);
@@ -491,13 +493,11 @@ body{
 
 	&>.wse-panel-body{
 		padding: 10px;
-		background-color: #323234;
 	}
 
 	&>.wse-panel-footer{
 		min-height: 5px;
 		border-radius: 0px 0px 5px 5px;
-		background-color: #323234;
 	}
 }
 //-------------------------------------
@@ -538,7 +538,7 @@ body{
 
 				overflow: hidden;
 
-				&.active{
+				&.actived{
 					background-color: #323234;
 					border: 1px solid #1B1B1B;
 					border-bottom: none;
@@ -560,7 +560,7 @@ body{
 		border:1px solid #1B1B1B;
 		border-top: none;
 
-		&>.wse-tab-views>div>.wse-ui-panel{
+		&>.wse-tab-views>.wse-ui-panel{
 			box-shadow: none;
 			&>.wse-panel-header{
 				display: none;

@@ -1,5 +1,5 @@
-<window width="400" left="100" top="100" title="Components">
-	<tab width="300">
+<window width="600" left="100" top="100" title="Components">
+	<tab width="500">
 		<panel title="Meta">
 			<label>Button</label>
 			<button name="button" onclick="@binding[clickHandler]"> click me!</button>
@@ -37,15 +37,15 @@
 			</vector>
 		</panel>
 		<panel title="VBox">
-			<vbox height="200">
-				<panel title="first" flex="2" style="margin:5px;"></panel>
+			<vbox height="400">
+				<panel title="first" flex="1" style="margin:5px;"></panel>
 				<panel title="second" flex="2" style="margin:5px;"></panel>
 				<panel title="third" flex="2" style="margin:5px;"></panel>
 			</vbox>
 		</panel>
 		<panel title="HBox">
-			<hbox height="200" id="Hbox">
-				<panel title="first" flex="2" style="margin:5px;"></panel>
+			<hbox height="400" id="Hbox">
+				<panel title="first" style="margin:5px;"></panel>
 				<panel title="second" prefer="50" style="margin:5px;"></panel>
 				<panel title="third" flex="2" style="margin:5px;"></panel>
 			</hbox>

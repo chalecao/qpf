@@ -1,11 +1,9 @@
 
 var wse_ui = require("src/main");
 
-for(var name in wse_ui){
-	_exports[name] = wse_ui[name];
+// only export the use method 
+_exports.use = function(path){
+	return require(path);
 }
-
-_exports["knockout"] = require("knockout");
-_exports["goo"] = require("goo");
 
 })

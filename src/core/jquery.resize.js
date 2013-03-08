@@ -241,6 +241,7 @@ define(function(){
         // don't trigger the resize event when width or height is zero, in case
         // it is a hidden object
         if ( (width && width !== data.w) || (height && height !== data.h) ) {
+          console.log("okkk")
           elem.trigger( str_resize, [ data.w = width, data.h = height ] );
         }
         

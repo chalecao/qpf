@@ -59,9 +59,9 @@ return {
 
 		_.each( childrenWithFlex, function(child, idx){
 			var margin = marginCacheWithFlex[idx];
-			var flex = ko.utils.unwrapObservable( child.viewModel.flex ),
+			var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1),
 				ratio = flex / flexSum;
-			child.viewModel.width( remainderWidth*ratio-margin.left-margin.right );	
+			child.viewModel.width( Math.floor(remainderWidth*ratio)-margin.left-margin.right );	
 		})
 
 		var prevWidth = 0;

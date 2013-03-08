@@ -14,7 +14,7 @@ return {
 		
 		children : ko.observableArray(),
 
-		active : ko.observable(0),
+		actived : ko.observable(0),
 
 		maxTabWidth : 100,
 
@@ -33,22 +33,29 @@ return {
 		}else{
 			console.error("Children of tab container must be instance of panel");
 		}
-		// compute the tab value;
-		this.viewModel.children.subscribe(this._updateTabSize, this)
+		this.active( this.viewModel.actived() );
 	},
 
 	eventsProvided : _.union('change', Container.prototype.eventsProvided),
 
 	initialize : function(){
-		this.viewModel.active.subscribe(function(idx){
-			this.trigger('change', idx, this.viewModel.children()[idx]);
+		this.viewModel.actived.subscribe(function(idx){
+			this.active(idx);
 		}, this)
+		this.active( this.viewModel.actived() );
+
+		this.$el.bind("resize", {
+			context : this
+		}, this.resizeBody);
+
+		// compute the tab value;
+		this.viewModel.children.subscribe(this._updateTabSize, this)
 	},
 
 	template : '<div class="wse-tab-header">\
 					<ul class="wse-tab-tabs" data-bind="foreach:children">\
-						<li data-bind="css:{active:$index()===$parent.active()},\
-										click:$parent.active.bind($data, $index())">\
+						<li data-bind="css:{actived:$index()===$parent.actived()},\
+										click:$parent.actived.bind($data, $index())">\
 							<a data-bind="html:viewModel.title"></a>\
 						</li>\
 					</ul>\
@@ -56,14 +63,29 @@ return {
 				</div>\
 				<div class="wse-tab-body">\
 					<div class="wse-tab-views" data-bind="foreach:children">\
-						<div data-bind="wse_tab_view:$data,\
-										visible:$index()===$parent.active()"></div>\
+						<div data-bind="wse_view:$data"></div>\
 					</div>\
 				</div>\
 				<div class="wse-tab-footer"></div>',
 
 	afterRender : function(){
 		this._updateTabSize();
+		// cache the $element will be used
+		var $el = this.$el;
+		this._$header = $el.children(".wse-tab-header");
+		this._$tools = this._$header.children(".wse-tab-tools");
+		this._$body = $el.children(".wse-tab-body");
+		this._$footer = $el.children('.wse-tab-footer');
+
+		this._$body.bind("resize", {context : this}, this.resizeContainer);
+
+		this.active( this.viewModel.actived() );
+	},
+
+	_unActiveAll : function(){
+		_.each(this.viewModel.children(), function(child){
+			child.$el.css("display", "none");
+		});
 	},
 
 	_updateTabSize : function(){
@@ -73,47 +95,39 @@ return {
 		tabSize = Math.min(this.viewModel.maxTabWidth, Math.max(this.viewModel.minTabWidth, tabSize) );
 
 		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
-	}
-
-})
-
-ko.bindingHandlers["wse_tab_view"] = {
-
-	_afterRender : function(){
-		var element = this.element,
-			subView = this.view;
-
-		// put a placeholder in the body for replace back
-		element.appendChild(subView.$el[0]);
-
-		subView.off("render", ko.bindingHandlers["wse_tab_view"]._afterRender );
 	},
 
-	init : function(element, valueAccessor){
+	active : function(idx){
+		this._unActiveAll();
+		var child = this.viewModel.children()[idx];
+		if( child ){
+			child.$el.css("display", "block");
+			this.trigger('change', idx, child);
+		}
+	},
 
-		var subView = ko.utils.unwrapObservable( valueAccessor() );
-		if( subView && subView.$el){
-			subView.$el.detach();
-			Base.disposeDom(element);
-			element.innerHTML = "";
-			if( subView._$header ){
-				ko.bindingHandlers["wse_tab_view"]._afterRender.call({element:element, view:subView});
-			}else{
-				// append the view after render
-				subView.on("render", ko.bindingHandlers["wse_tab_view"]._afterRender, {
-					element : element,
-					view : subView
+	resizeBody : function(e){
+		var self = e.data.context;
+		if( self.viewModel.height() &&
+			self.viewModel.height() !== "auto"){
+			if( self._$body){
+				var headerHeight = self._$header.height(),
+					footerHeight = self._$footer.height();
+				var height = self.$el.height() - headerHeight - footerHeight;
+				// use Jquery's innerHeight method here, because we need to consider 
+				// the padding of body;
+				self._$body.innerHeight(height);
+				// stretch the panel size;
+				_.each(self.viewModel.children(), function(child){
+					child.viewModel.height(height);
 				});
 			}
 		}
 
-		//handle disposal (if KO removes by the template binding)
-        ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
-        });
-
-		return { 'controlsDescendantBindings': true };
+		self._updateTabSize();
 	}
-}
+
+})
 
 Container.provideBinding("tab", Tab);
 

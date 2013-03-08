@@ -74,6 +74,7 @@ return {	// Public properties
 	_.extend(this.viewModel, {
 		id : ko.observable(""),
 		width : ko.observable(),
+		class : ko.observable(),
 		height : ko.observable(),
 		disable : ko.observable(false),
 		style : ko.observable("")
@@ -92,6 +93,9 @@ return {	// Public properties
 	this.viewModel.id.subscribe(function(newValue){
 		this.$el.attr("id", newValue);
 	}, this);
+	this.viewModel.class.subscribe(function(newValue){
+		this.$el.addClass( newValue );
+	}, this);
 	this.viewModel.style.subscribe(function(newValue){
 		var valueSv = newValue;
 		var styleRegex = /\s*(\S*?)\s*:\s*(\S*)\s*/g;
@@ -103,7 +107,7 @@ return {	// Public properties
 						.filter(function(item){return item;})
 						.value().join(",") + "}";
 		try{
-			var obj = JSON.parse(newValue);
+			var obj = ko.utils.parseJson(newValue);
 			this.$el.css(obj);
 		}catch(e){
 			console.error("Syntax Error of style: "+ valueSv);
@@ -189,15 +193,16 @@ return {	// Public properties
 			// create new attribute when it is not existed
 			// in the viewModel, even if it will not be used
 			if( ! propInVM ){
+				var value = ko.utils.unwrapObservable(attr);
 				// is observableArray or plain array
 				if( (ko.isObservable(attr) && attr.push) ||
 					attr.constructor == Array){
-					this.viewModel[name] = ko.observableArray();
+					this.viewModel[name] = ko.observableArray(value);
 				}else{
-					this.viewModel[name] = ko.observable();
+					this.viewModel[name] = ko.observable(value);
 				}
 			}
-			if( ko.isObservable(propInVM) ){
+			else if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
 			}else{
 				this.viewModel[name] = ko.utils.unwrapObservable(attr);
@@ -365,8 +370,7 @@ ko.bindingHandlers["wse_view"] = {
 		var subView = ko.utils.unwrapObservable(value);
 		if( subView && subView.$el ){
 			Base.disposeDom(element);
-			element.innerHTML = "";
-			element.appendChild( subView.$el[0] );
+			element.parentNode.replaceChild(subView.$el[0], element);
 		}
 		// PENDING
 		// handle disposal (if KO removes by the template binding)
