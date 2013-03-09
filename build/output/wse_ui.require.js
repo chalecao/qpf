@@ -362,6 +362,8 @@ define('components/util',['knockout',
 				if( component ){
 					element.innerHTML = "";
 					element.appendChild( component.$el[0] );
+					
+					$(element).addClass("wse-ui-wrapper");
 				}
 				// save the guid in the element data attribute
 				element.setAttribute("data-wse-guid", component.__GUID__);
@@ -505,6 +507,7 @@ return {	// Public properties
 	_.extend(this.viewModel, {
 		id : ko.observable(""),
 		width : ko.observable(),
+		class : ko.observable(),
 		height : ko.observable(),
 		disable : ko.observable(false),
 		style : ko.observable("")
@@ -523,6 +526,9 @@ return {	// Public properties
 	this.viewModel.id.subscribe(function(newValue){
 		this.$el.attr("id", newValue);
 	}, this);
+	this.viewModel.class.subscribe(function(newValue){
+		this.$el.addClass( newValue );
+	}, this);
 	this.viewModel.style.subscribe(function(newValue){
 		var valueSv = newValue;
 		var styleRegex = /\s*(\S*?)\s*:\s*(\S*)\s*/g;
@@ -534,7 +540,7 @@ return {	// Public properties
 						.filter(function(item){return item;})
 						.value().join(",") + "}";
 		try{
-			var obj = JSON.parse(newValue);
+			var obj = ko.utils.parseJson(newValue);
 			this.$el.css(obj);
 		}catch(e){
 			console.error("Syntax Error of style: "+ valueSv);
@@ -620,15 +626,16 @@ return {	// Public properties
 			// create new attribute when it is not existed
 			// in the viewModel, even if it will not be used
 			if( ! propInVM ){
+				var value = ko.utils.unwrapObservable(attr);
 				// is observableArray or plain array
 				if( (ko.isObservable(attr) && attr.push) ||
 					attr.constructor == Array){
-					this.viewModel[name] = ko.observableArray();
+					this.viewModel[name] = ko.observableArray(value);
 				}else{
-					this.viewModel[name] = ko.observable();
+					this.viewModel[name] = ko.observable(value);
 				}
 			}
-			if( ko.isObservable(propInVM) ){
+			else if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
 			}else{
 				this.viewModel[name] = ko.utils.unwrapObservable(attr);
@@ -796,8 +803,7 @@ ko.bindingHandlers["wse_view"] = {
 		var subView = ko.utils.unwrapObservable(value);
 		if( subView && subView.$el ){
 			Base.disposeDom(element);
-			element.innerHTML = "";
-			element.appendChild( subView.$el[0] );
+			element.parentNode.replaceChild(subView.$el[0], element);
 		}
 		// PENDING
 		// handle disposal (if KO removes by the template binding)
@@ -1978,235 +1984,6 @@ Container.provideBinding("container", Container);
 return Container;
 
 });
-//===================================
-// Panel
-// Container has title and content
-//===================================
-define('components/container/panel',["./container",
-		"knockout"], function(Container, ko){
-
-var Panel = Container.derive(function(){
-
-return {
-
-	viewModel : {
-
-		title : ko.observable(""),
-
-		children : ko.observableArray([])
-	}
-}}, {
-
-	type : 'PANEL',
-
-	css : 'panel',
-
-	template : '<div class="wse-panel-header">\
-					<div class="wse-panel-title" data-bind="html:title"></div>\
-					<div class="wse-panel-tools"></div>\
-				</div>\
-				<div class="wse-panel-body" data-bind="foreach:children">\
-					<div data-bind="wse_view:$data"></div>\
-				</div>\
-				<div class="wse-panel-footer"></div>',
-
-	afterRender : function(){
-		var $el = this.$el;
-		this._$header = $el.children(".wse-panel-header");
-		this._$tools = this._$header.children(".wse-panel-tools");
-		this._$body = $el.children(".wse-panel-body");
-		this._$footer = $el.children(".wse-panel-footer");
-
-	}
-})
-
-Container.provideBinding("panel", Panel);
-
-return Panel;
-
-})
-
-;
-//===================================
-// Window componennt
-// Window is a panel wich can be drag
-// and close
-//===================================
-define('components/container/window',["./container",
-		"./panel",
-		'../mixin/draggable',
-		"knockout"], function(Container, Panel, Draggable, ko){
-
-var Window = Panel.derive(function(){
-
-return {
-
-	$el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
-
-	viewModel : {
-
-		children : ko.observableArray(),
-		title : ko.observable("Window"),
-
-		left : ko.observable(0),
-		top : ko.observable(0),
-
-		_leftPx : ko.computed(function(){
-			return this.viewModel.left()+"px";
-		}, this, {
-			deferEvaluation : true
-		}),
-		_topPx : ko.computed(function(){
-			return this.viewModel.top()+"px";
-		}, this, {
-			deferEvaluation : true
-		})
-	}
-}}, {
-
-	type : 'WINDOW',
-
-	css : _.union('window', Panel.prototype.css),
-
-	initialize : function(){
-		Draggable.applyTo( this );
-	},
-
-	afterRender : function(){
-		
-		Panel.prototype.afterRender.call( this );
-
-		this.draggable.add( this.$el, this._$header);
-	}
-})
-
-Container.provideBinding("window", Window);
-
-return Window;
-
-});
-//============================================
-// Tab Container
-// Children of tab container must be a panel
-//============================================
-define('components/container/tab',["./panel",
-		"./container",
-		"../base",
-		"knockout"], function(Panel, Container, Base, ko){
-
-var Tab = Panel.derive(function(){
-
-return {
-	viewModel : {
-		
-		children : ko.observableArray(),
-
-		active : ko.observable(0),
-
-		maxTabWidth : 100,
-
-		minTabWidth : 30
-
-	}
-}}, {
-
-	type : "TAB",
-
-	css : 'tab',
-
-	add : function(item){
-		if( item.instanceof(Panel) ){
-			Panel.prototype.add.call(this, item);
-		}else{
-			console.error("Children of tab container must be instance of panel");
-		}
-		// compute the tab value;
-		this.viewModel.children.subscribe(this._updateTabSize, this)
-	},
-
-	eventsProvided : _.union('change', Container.prototype.eventsProvided),
-
-	initialize : function(){
-		this.viewModel.active.subscribe(function(idx){
-			this.trigger('change', idx, this.viewModel.children()[idx]);
-		}, this)
-	},
-
-	template : '<div class="wse-tab-header">\
-					<ul class="wse-tab-tabs" data-bind="foreach:children">\
-						<li data-bind="css:{active:$index()===$parent.active()},\
-										click:$parent.active.bind($data, $index())">\
-							<a data-bind="html:viewModel.title"></a>\
-						</li>\
-					</ul>\
-					<div class="wse-tab-tools"></div>\
-				</div>\
-				<div class="wse-tab-body">\
-					<div class="wse-tab-views" data-bind="foreach:children">\
-						<div data-bind="wse_tab_view:$data,\
-										visible:$index()===$parent.active()"></div>\
-					</div>\
-				</div>\
-				<div class="wse-tab-footer"></div>',
-
-	afterRender : function(){
-		this._updateTabSize();
-	},
-
-	_updateTabSize : function(){
-		var length = this.viewModel.children().length,
-			tabSize = Math.floor((this.$el.width()-20)/length);
-		// clamp
-		tabSize = Math.min(this.viewModel.maxTabWidth, Math.max(this.viewModel.minTabWidth, tabSize) );
-
-		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
-	}
-
-})
-
-ko.bindingHandlers["wse_tab_view"] = {
-
-	_afterRender : function(){
-		var element = this.element,
-			subView = this.view;
-
-		// put a placeholder in the body for replace back
-		element.appendChild(subView.$el[0]);
-
-		subView.off("render", ko.bindingHandlers["wse_tab_view"]._afterRender );
-	},
-
-	init : function(element, valueAccessor){
-
-		var subView = ko.utils.unwrapObservable( valueAccessor() );
-		if( subView && subView.$el){
-			subView.$el.detach();
-			Base.disposeDom(element);
-			element.innerHTML = "";
-			if( subView._$header ){
-				ko.bindingHandlers["wse_tab_view"]._afterRender.call({element:element, view:subView});
-			}else{
-				// append the view after render
-				subView.on("render", ko.bindingHandlers["wse_tab_view"]._afterRender, {
-					element : element,
-					view : subView
-				});
-			}
-		}
-
-		//handle disposal (if KO removes by the template binding)
-        ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
-        });
-
-		return { 'controlsDescendantBindings': true };
-	}
-}
-
-Container.provideBinding("tab", Tab);
-
-return Tab;
-
-});
 //==============================
 // jquery.resize.js
 // provide resize event to dom
@@ -2450,6 +2227,7 @@ define('core/jquery.resize',[],function(){
         // don't trigger the resize event when width or height is zero, in case
         // it is a hidden object
         if ( (width && width !== data.w) || (height && height !== data.h) ) {
+          console.log("okkk")
           elem.trigger( str_resize, [ data.w = width, data.h = height ] );
         }
         
@@ -2464,6 +2242,298 @@ define('core/jquery.resize',[],function(){
   
 })(jQuery,this);
 
+
+});
+//===================================
+// Panel
+// Container has title and content
+//===================================
+define('components/container/panel',["./container",
+		"knockout",
+		"core/jquery.resize"], function(Container, ko){
+
+var Panel = Container.derive(function(){
+
+return {
+
+	viewModel : {
+
+		title : ko.observable(""),
+
+		children : ko.observableArray([])
+	}
+}}, {
+
+	type : 'PANEL',
+
+	css : 'panel',
+
+	initialize : function(){
+		this.$el.bind("resize", {
+			context : this
+		}, this.resizeBody);
+	},
+
+	template : '<div class="wse-panel-header">\
+					<div class="wse-panel-title" data-bind="html:title"></div>\
+					<div class="wse-panel-tools"></div>\
+				</div>\
+				<div class="wse-panel-body" data-bind="foreach:children">\
+					<div data-bind="wse_view:$data" class="wse-container-item"></div>\
+				</div>\
+				<div class="wse-panel-footer"></div>',
+	
+	afterRender : function(){
+		var $el = this.$el;
+		this._$header = $el.children(".wse-panel-header");
+		this._$tools = this._$header.children(".wse-panel-tools");
+		this._$body = $el.children(".wse-panel-body");
+		this._$footer = $el.children(".wse-panel-footer");
+
+		this._$body.bind("resize", {context : this}, this.resizeContainer);
+	},
+
+	resizeBody : function(e){
+		var self = e.data.context;
+		if( self.viewModel.height() &&
+			self.viewModel.height() !== "auto"){
+			if( self._$body){
+				var headerHeight = self._$header.height(),
+					footerHeight = self._$footer.height();
+				// use Jquery's innerHeight method here, because we need to consider 
+				// the padding of body;
+				self._$body.innerHeight(self.$el.height() - headerHeight - footerHeight);
+			}
+		}
+	},
+
+	resizeContainer : function(e){
+		var self = e.data.context;
+		// fit the container height to body height when 
+		// the height is auto;
+		if( self.viewModel.height() === "auto" ||
+			! self.viewModel.height() ){	
+			if( self._$body ){
+				var headerHeight = self._$header.height(),
+					footerHeight = self._$footer.height(),
+					bodyInnerHeight = self._$body.innerHeight();
+				self.$el.height(headerHeight + footerHeight + bodyInnerHeight);
+			}
+		}
+	},
+
+	dispose : function(){
+		this._$body.unbind("resize", this.resizeContainer);
+		this.$el.unbind("resize", this.resizeBody);
+		Container.prototype.dispose.call(this);
+	}
+})
+
+Container.provideBinding("panel", Panel);
+
+return Panel;
+
+})
+
+;
+//===================================
+// Window componennt
+// Window is a panel wich can be drag
+// and close
+//===================================
+define('components/container/window',["./container",
+		"./panel",
+		'../mixin/draggable',
+		"knockout"], function(Container, Panel, Draggable, ko){
+
+var Window = Panel.derive(function(){
+
+return {
+
+	$el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
+
+	viewModel : {
+
+		children : ko.observableArray(),
+		title : ko.observable("Window"),
+
+		left : ko.observable(0),
+		top : ko.observable(0),
+
+		_leftPx : ko.computed(function(){
+			return this.viewModel.left()+"px";
+		}, this, {
+			deferEvaluation : true
+		}),
+		_topPx : ko.computed(function(){
+			return this.viewModel.top()+"px";
+		}, this, {
+			deferEvaluation : true
+		})
+	}
+}}, {
+
+	type : 'WINDOW',
+
+	css : _.union('window', Panel.prototype.css),
+
+	initialize : function(){
+		Draggable.applyTo( this );
+
+		this.$el.bind("resize", {
+			context : this
+		}, this.resizeBody);
+	},
+
+	afterRender : function(){
+		
+		Panel.prototype.afterRender.call( this );
+
+		this.draggable.add( this.$el, this._$header);
+		
+		this._$body.bind("resize", {context : this}, this.resizeContainer);
+	}
+})
+
+Container.provideBinding("window", Window);
+
+return Window;
+
+});
+//============================================
+// Tab Container
+// Children of tab container must be a panel
+//============================================
+define('components/container/tab',["./panel",
+		"./container",
+		"../base",
+		"knockout"], function(Panel, Container, Base, ko){
+
+var Tab = Panel.derive(function(){
+
+return {
+	viewModel : {
+		
+		children : ko.observableArray(),
+
+		actived : ko.observable(0),
+
+		maxTabWidth : 100,
+
+		minTabWidth : 30
+
+	}
+}}, {
+
+	type : "TAB",
+
+	css : 'tab',
+
+	add : function(item){
+		if( item.instanceof(Panel) ){
+			Panel.prototype.add.call(this, item);
+		}else{
+			console.error("Children of tab container must be instance of panel");
+		}
+		this.active( this.viewModel.actived() );
+	},
+
+	eventsProvided : _.union('change', Container.prototype.eventsProvided),
+
+	initialize : function(){
+		this.viewModel.actived.subscribe(function(idx){
+			this.active(idx);
+		}, this)
+		this.active( this.viewModel.actived() );
+
+		this.$el.bind("resize", {
+			context : this
+		}, this.resizeBody);
+
+		// compute the tab value;
+		this.viewModel.children.subscribe(this._updateTabSize, this)
+	},
+
+	template : '<div class="wse-tab-header">\
+					<ul class="wse-tab-tabs" data-bind="foreach:children">\
+						<li data-bind="css:{actived:$index()===$parent.actived()},\
+										click:$parent.actived.bind($data, $index())">\
+							<a data-bind="html:viewModel.title"></a>\
+						</li>\
+					</ul>\
+					<div class="wse-tab-tools"></div>\
+				</div>\
+				<div class="wse-tab-body">\
+					<div class="wse-tab-views" data-bind="foreach:children">\
+						<div data-bind="wse_view:$data"></div>\
+					</div>\
+				</div>\
+				<div class="wse-tab-footer"></div>',
+
+	afterRender : function(){
+		this._updateTabSize();
+		// cache the $element will be used
+		var $el = this.$el;
+		this._$header = $el.children(".wse-tab-header");
+		this._$tools = this._$header.children(".wse-tab-tools");
+		this._$body = $el.children(".wse-tab-body");
+		this._$footer = $el.children('.wse-tab-footer');
+
+		this._$body.bind("resize", {context : this}, this.resizeContainer);
+
+		this.active( this.viewModel.actived() );
+	},
+
+	_unActiveAll : function(){
+		_.each(this.viewModel.children(), function(child){
+			child.$el.css("display", "none");
+		});
+	},
+
+	_updateTabSize : function(){
+		var length = this.viewModel.children().length,
+			tabSize = Math.floor((this.$el.width()-20)/length);
+		// clamp
+		tabSize = Math.min(this.viewModel.maxTabWidth, Math.max(this.viewModel.minTabWidth, tabSize) );
+
+		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
+	},
+
+	active : function(idx){
+		this._unActiveAll();
+		var child = this.viewModel.children()[idx];
+		if( child ){
+			child.$el.css("display", "block");
+			this.trigger('change', idx, child);
+		}
+	},
+
+	resizeBody : function(e){
+		var self = e.data.context;
+		if( self.viewModel.height() &&
+			self.viewModel.height() !== "auto"){
+			if( self._$body){
+				var headerHeight = self._$header.height(),
+					footerHeight = self._$footer.height();
+				var height = self.$el.height() - headerHeight - footerHeight;
+				// use Jquery's innerHeight method here, because we need to consider 
+				// the padding of body;
+				self._$body.innerHeight(height);
+				// stretch the panel size;
+				_.each(self.viewModel.children(), function(child){
+					child.viewModel.height(height);
+				});
+			}
+		}
+
+		self._updateTabSize();
+	}
+
+})
+
+Container.provideBinding("tab", Tab);
+
+return Tab;
 
 });
 //===============================================
@@ -2485,7 +2555,7 @@ return {
 	css : 'box',
 
 	initialize : function(){
-		this.on("resize", this.resize);
+		this.on("resize", this._deferResize, this);
 
 		this.viewModel.children.subscribe(function(children){
 			this.resize();
@@ -2498,7 +2568,7 @@ return {
 
 		var self = this;
 		this.$el.resize(function(){
-			self.resize();
+			self._deferResize();
 		})
 	},
 
@@ -2601,7 +2671,7 @@ return {
 
 		_.each( childrenWithFlex, function(child, idx){
 			var margin = marginCacheWithFlex[idx];
-			var flex = ko.utils.unwrapObservable( child.viewModel.flex ),
+			var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1),
 				ratio = flex / flexSum;
 			child.viewModel.height( Math.floor(remainderHeight*ratio)-margin.top-margin.bottom );	
 		})
@@ -2687,7 +2757,7 @@ return {
 
 		_.each( childrenWithFlex, function(child, idx){
 			var margin = marginCacheWithFlex[idx];
-			var flex = ko.utils.unwrapObservable( child.viewModel.flex ),
+			var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1),
 				ratio = flex / flexSum;
 			child.viewModel.width( Math.floor(remainderWidth*ratio)-margin.left-margin.right );	
 		})

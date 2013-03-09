@@ -3,8 +3,7 @@
 // Container has title and content
 //===================================
 define(["./container",
-		"knockout",
-		"core/jquery.resize"], function(Container, ko){
+		"knockout"], function(Container, ko){
 
 var Panel = Container.derive(function(){
 
@@ -22,12 +21,6 @@ return {
 
 	css : 'panel',
 
-	initialize : function(){
-		this.$el.bind("resize", {
-			context : this
-		}, this.resizeBody);
-	},
-
 	template : '<div class="wse-panel-header">\
 					<div class="wse-panel-title" data-bind="html:title"></div>\
 					<div class="wse-panel-tools"></div>\
@@ -43,43 +36,20 @@ return {
 		this._$tools = this._$header.children(".wse-panel-tools");
 		this._$body = $el.children(".wse-panel-body");
 		this._$footer = $el.children(".wse-panel-footer");
-
-		this._$body.bind("resize", {context : this}, this.resizeContainer);
 	},
 
-	resizeBody : function(e){
-		var self = e.data.context;
-		if( self.viewModel.height() &&
-			self.viewModel.height() !== "auto"){
-			if( self._$body){
-				var headerHeight = self._$header.height(),
-					footerHeight = self._$footer.height();
-				// use Jquery's innerHeight method here, because we need to consider 
-				// the padding of body;
-				self._$body.innerHeight(self.$el.height() - headerHeight - footerHeight);
-			}
+	afterResize : function(){
+		// stretch the body
+		if( this._$body){		
+			var headerHeight = this._$header.height();
+			var footerHeight = this._$footer.height();
+
+			// PENDING : here use jquery innerHeight method ?because we still 
+			// need to consider the padding of body
+			this._$body.height( this.$el.height() - headerHeight - footerHeight );
+	
 		}
-	},
-
-	resizeContainer : function(e){
-		var self = e.data.context;
-		// fit the container height to body height when 
-		// the height is auto;
-		if( self.viewModel.height() === "auto" ||
-			! self.viewModel.height() ){	
-			if( self._$body ){
-				var headerHeight = self._$header.height(),
-					footerHeight = self._$footer.height(),
-					bodyInnerHeight = self._$body.innerHeight();
-				self.$el.height(headerHeight + footerHeight + bodyInnerHeight);
-			}
-		}
-	},
-
-	dispose : function(){
-		this._$body.unbind("resize", this.resizeContainer);
-		this.$el.unbind("resize", this.resizeBody);
-		Container.prototype.dispose.call(this);
+		Container.prototype.afterResize.call(this);
 	}
 })
 

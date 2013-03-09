@@ -1,8 +1,6 @@
 //=====================================
 // Base class of all components
 // it also provides some util methods like
-// Base.get()
-// Base.getByDom()
 //=====================================
 define(["core/mixin/derive",
 		"core/mixin/event",
@@ -81,11 +79,15 @@ return {	// Public properties
 	});
 	this.viewModel.width.subscribe(function(newValue){
 		this.$el.width(newValue);
-		this.trigger("resize");
+		if( ! this.__resizing__ ){
+			this.afterResize();
+		}
 	}, this);
 	this.viewModel.height.subscribe(function(newValue){
 		this.$el.height(newValue);
-		this.trigger("resize");
+		if( ! this.__resizing__){
+			this.afterResize();
+		}
 	}, this);
 	this.viewModel.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
@@ -174,6 +176,19 @@ return {	// Public properties
 		repository[this.__GUID__] = null;
 
 		this.trigger("dispose");
+	},
+	resize : function(width, height){
+		this.__resizing__ = true;
+		if( width || width === 0){
+			this.viewModel.width( width );
+		}
+		if( height || height === 0){
+			this.viewModel.height( height );
+		}
+		this.__resizing__ = false;
+	},
+	afterResize : function(){
+		this.trigger('resize');
 	},
 	withPrefix : function(className, prefix){
 		if( className.indexOf(prefix) != 0 ){

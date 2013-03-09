@@ -41,10 +41,6 @@ return {
 
 	initialize : function(){
 		Draggable.applyTo( this );
-
-		this.$el.bind("resize", {
-			context : this
-		}, this.resizeBody);
 	},
 
 	afterRender : function(){
@@ -53,7 +49,6 @@ return {
 
 		this.draggable.add( this.$el, this._$header);
 		
-		this._$body.bind("resize", {context : this}, this.resizeContainer);
 	}
 })
 

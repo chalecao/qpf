@@ -110,6 +110,12 @@ return {
 		});
 	},
 
+	afterResize : function(){
+
+		this.updatePosition();
+		Meta.prototype.afterResize.call(this);
+	},
+
 	_dragHandler : function(){
 
 		var percentage = this.computePercentage(),
@@ -118,6 +124,8 @@ return {
 			value = (max-min)*percentage+min;
 
 		this.viewModel.value( value );
+
+		
 	},
 
 	_cacheSize : function(){
@@ -180,12 +188,12 @@ return {
 
 			size = (this._boxSize-this._sliderSize)*percentage;
 		
-		// if( this._boxSize > 0 ){
-			// this._setOffset(size);
-		// }else{	//incase the element is still not in the document
+		if( this._boxSize > 0 ){
+			this._setOffset(size);
+		}else{	//incase the element is still not in the document
 			this._$slider.css( this._isHorizontal() ?
 								"right" : "bottom", (1-percentage)*100+"%");
-		// }
+		}
 		this._$percentage.css( this._isHorizontal() ?
 								'width' : 'height', percentage*100+"%");
 	},

@@ -36,6 +36,13 @@ return {
 	children : function(){
 		return this.viewModel.children()
 	},
+	afterResize : function(){
+		// trigger the after resize event in post-order
+		_.each(this.children(), function(child){
+			child.afterResize();
+		}, this);
+		Base.prototype.afterResize.call(this);
+	},
 	dispose : function(){
 		
 		_.each(this.viewModel.children(), function(child){

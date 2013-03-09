@@ -3,8 +3,7 @@
 //===============================================
 
 define(['./container',
-		'knockout',
-		'core/jquery.resize'], function(Container, ko){
+		'knockout'], function(Container, ko){
 
 var Box = Container.derive(function(){
 
@@ -17,25 +16,18 @@ return {
 	css : 'box',
 
 	initialize : function(){
-		this.on("resize", this._deferResize, this);
 
 		this.viewModel.children.subscribe(function(children){
 			this.resize();
 			_.each(children, function(child){
-				child.on('resize', this._deferResize, this);
+				child.on('resize', this.afterResize, this);
 			}, this)
 		}, this);
 
 		this.$el.css("position", "relative");
 
 		var self = this;
-		this.$el.resize(function(){
-			self._deferResize();
-		})
 	},
-
-	// method will be rewritted
-	resize : function(){},
 
 	_getMargin : function($el){
 		return {
@@ -48,10 +40,10 @@ return {
 
 	_resizeTimeout : 0,
 
-	_deferResize : function(){
+	afterResize : function(){
 		var self = this;
 		// put resize in next tick,
-		// if multiple child hav triggered the resize event
+		// if multiple child have triggered the resize event
 		// it will do only once;
 		if( this._resizeTimeout ){
 			clearTimeout( this._resizeTimeout );
@@ -59,6 +51,8 @@ return {
 		this._resizeTimeout = setTimeout(function(){
 			self.resize()
 		});
+
+		Container.prototype.resize.call(this);
 	}
 
 })

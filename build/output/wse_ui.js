@@ -4435,8 +4435,6 @@ define('components/util',['knockout',
 //=====================================
 // Base class of all components
 // it also provides some util methods like
-// Base.get()
-// Base.getByDom()
 //=====================================
 define('components/base',["core/mixin/derive",
 		"core/mixin/event",
@@ -4515,11 +4513,15 @@ return {	// Public properties
 	});
 	this.viewModel.width.subscribe(function(newValue){
 		this.$el.width(newValue);
-		this.trigger("resize");
+		if( ! this.__resizing__ ){
+			this.afterResize();
+		}
 	}, this);
 	this.viewModel.height.subscribe(function(newValue){
 		this.$el.height(newValue);
-		this.trigger("resize");
+		if( ! this.__resizing__){
+			this.afterResize();
+		}
 	}, this);
 	this.viewModel.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
@@ -4608,6 +4610,19 @@ return {	// Public properties
 		repository[this.__GUID__] = null;
 
 		this.trigger("dispose");
+	},
+	resize : function(width, height){
+		this.__resizing__ = true;
+		if( width || width === 0){
+			this.viewModel.width( width );
+		}
+		if( height || height === 0){
+			this.viewModel.height( height );
+		}
+		this.__resizing__ = false;
+	},
+	afterResize : function(){
+		this.trigger('resize');
 	},
 	withPrefix : function(className, prefix){
 		if( className.indexOf(prefix) != 0 ){
@@ -8435,6 +8450,13 @@ return {
 	children : function(){
 		return this.viewModel.children()
 	},
+	afterResize : function(){
+		// trigger the after resize event in post-order
+		_.each(this.children(), function(child){
+			child.afterResize();
+		}, this);
+		Base.prototype.afterResize.call(this);
+	},
 	dispose : function(){
 		
 		_.each(this.viewModel.children(), function(child){
@@ -8516,273 +8538,12 @@ Container.provideBinding("container", Container);
 return Container;
 
 });
-//==============================
-// jquery.resize.js
-// provide resize event to dom
-//
-// The code is from https://github.com/cowboy/jquery-resize
-//==============================
-define('core/jquery.resize',[],function(){
-
-/*!
- * jQuery resize event - v1.1 - 3/14/2010
- * http://benalman.com/projects/jquery-resize-plugin/
- * 
- * Copyright (c) 2010 "Cowboy" Ben Alman
- * Dual licensed under the MIT and GPL licenses.
- * http://benalman.com/about/license/
- */
-
-// Script: jQuery resize event
-//
-// *Version: 1.1, Last updated: 3/14/2010*
-// 
-// Project Home - http://benalman.com/projects/jquery-resize-plugin/
-// GitHub       - http://github.com/cowboy/jquery-resize/
-// Source       - http://github.com/cowboy/jquery-resize/raw/master/jquery.ba-resize.js
-// (Minified)   - http://github.com/cowboy/jquery-resize/raw/master/jquery.ba-resize.min.js (1.0kb)
-// 
-// About: License
-// 
-// Copyright (c) 2010 "Cowboy" Ben Alman,
-// Dual licensed under the MIT and GPL licenses.
-// http://benalman.com/about/license/
-// 
-// About: Examples
-// 
-// This working example, complete with fully commented code, illustrates a few
-// ways in which this plugin can be used.
-// 
-// resize event - http://benalman.com/code/projects/jquery-resize/examples/resize/
-// 
-// About: Support and Testing
-// 
-// Information about what version or versions of jQuery this plugin has been
-// tested with, what browsers it has been tested in, and where the unit tests
-// reside (so you can test it yourself).
-// 
-// jQuery Versions - 1.3.2, 1.4.1, 1.4.2
-// Browsers Tested - Internet Explorer 6-8, Firefox 2-3.6, Safari 3-4, Chrome, Opera 9.6-10.1.
-// Unit Tests      - http://benalman.com/code/projects/jquery-resize/unit/
-// 
-// About: Release History
-// 
-// 1.1 - (3/14/2010) Fixed a minor bug that was causing the event to trigger
-//       immediately after bind in some circumstances. Also changed $.fn.data
-//       to $.data to improve performance.
-// 1.0 - (2/10/2010) Initial release
-
-(function($,window,undefined){
-  '$:nomunge'; // Used by YUI compressor.
-  
-  // A jQuery object containing all non-window elements to which the resize
-  // event is bound.
-  var elems = $([]),
-    
-    // Extend $.resize if it already exists, otherwise create it.
-    jq_resize = $.resize = $.extend( $.resize, {} ),
-    
-    timeout_id,
-    
-    // Reused strings.
-    str_setTimeout = 'setTimeout',
-    str_resize = 'resize',
-    str_data = str_resize + '-special-event',
-    str_delay = 'delay',
-    str_throttle = 'throttleWindow';
-  
-  // Property: jQuery.resize.delay
-  // 
-  // The numeric interval (in milliseconds) at which the resize event polling
-  // loop executes. Defaults to 250.
-  
-  jq_resize[ str_delay ] = 250;
-  
-  // Property: jQuery.resize.throttleWindow
-  // 
-  // Throttle the native window object resize event to fire no more than once
-  // every <jQuery.resize.delay> milliseconds. Defaults to true.
-  // 
-  // Because the window object has its own resize event, it doesn't need to be
-  // provided by this plugin, and its execution can be left entirely up to the
-  // browser. However, since certain browsers fire the resize event continuously
-  // while others do not, enabling this will throttle the window resize event,
-  // making event behavior consistent across all elements in all browsers.
-  // 
-  // While setting this property to false will disable window object resize
-  // event throttling, please note that this property must be changed before any
-  // window object resize event callbacks are bound.
-  
-  jq_resize[ str_throttle ] = true;
-  
-  // Event: resize event
-  // 
-  // Fired when an element's width or height changes. Because browsers only
-  // provide this event for the window element, for other elements a polling
-  // loop is initialized, running every <jQuery.resize.delay> milliseconds
-  // to see if elements' dimensions have changed. You may bind with either
-  // .resize( fn ) or .bind( "resize", fn ), and unbind with .unbind( "resize" ).
-  // 
-  // Usage:
-  // 
-  // > jQuery('selector').bind( 'resize', function(e) {
-  // >   // element's width or height has changed!
-  // >   ...
-  // > });
-  // 
-  // Additional Notes:
-  // 
-  // * The polling loop is not created until at least one callback is actually
-  //   bound to the 'resize' event, and this single polling loop is shared
-  //   across all elements.
-  // 
-  // Double firing issue in jQuery 1.3.2:
-  // 
-  // While this plugin works in jQuery 1.3.2, if an element's event callbacks
-  // are manually triggered via .trigger( 'resize' ) or .resize() those
-  // callbacks may double-fire, due to limitations in the jQuery 1.3.2 special
-  // events system. This is not an issue when using jQuery 1.4+.
-  // 
-  // > // While this works in jQuery 1.4+
-  // > $(elem).css({ width: new_w, height: new_h }).resize();
-  // > 
-  // > // In jQuery 1.3.2, you need to do this:
-  // > var elem = $(elem);
-  // > elem.css({ width: new_w, height: new_h });
-  // > elem.data( 'resize-special-event', { width: elem.width(), height: elem.height() } );
-  // > elem.resize();
-      
-  $.event.special[ str_resize ] = {
-    
-    // Called only when the first 'resize' event callback is bound per element.
-    setup: function() {
-      // Since window has its own native 'resize' event, return false so that
-      // jQuery will bind the event using DOM methods. Since only 'window'
-      // objects have a .setTimeout method, this should be a sufficient test.
-      // Unless, of course, we're throttling the 'resize' event for window.
-      if ( !jq_resize[ str_throttle ] && this[ str_setTimeout ] ) { return false; }
-      
-      var elem = $(this);
-      
-      // Add this element to the list of internal elements to monitor.
-      elems = elems.add( elem );
-      
-      // Initialize data store on the element.
-      $.data( this, str_data, { w: elem.width(), h: elem.height() } );
-      
-      // If this is the first element added, start the polling loop.
-      if ( elems.length === 1 ) {
-        loopy();
-      }
-    },
-    
-    // Called only when the last 'resize' event callback is unbound per element.
-    teardown: function() {
-      // Since window has its own native 'resize' event, return false so that
-      // jQuery will unbind the event using DOM methods. Since only 'window'
-      // objects have a .setTimeout method, this should be a sufficient test.
-      // Unless, of course, we're throttling the 'resize' event for window.
-      if ( !jq_resize[ str_throttle ] && this[ str_setTimeout ] ) { return false; }
-      
-      var elem = $(this);
-      
-      // Remove this element from the list of internal elements to monitor.
-      elems = elems.not( elem );
-      
-      // Remove any data stored on the element.
-      elem.removeData( str_data );
-      
-      // If this is the last element removed, stop the polling loop.
-      if ( !elems.length ) {
-        clearTimeout( timeout_id );
-      }
-    },
-    
-    // Called every time a 'resize' event callback is bound per element (new in
-    // jQuery 1.4).
-    add: function( handleObj ) {
-      // Since window has its own native 'resize' event, return false so that
-      // jQuery doesn't modify the event object. Unless, of course, we're
-      // throttling the 'resize' event for window.
-      if ( !jq_resize[ str_throttle ] && this[ str_setTimeout ] ) { return false; }
-      
-      var old_handler;
-      
-      // The new_handler function is executed every time the event is triggered.
-      // This is used to update the internal element data store with the width
-      // and height when the event is triggered manually, to avoid double-firing
-      // of the event callback. See the "Double firing issue in jQuery 1.3.2"
-      // comments above for more information.
-      
-      function new_handler( e, w, h ) {
-        var elem = $(this),
-          data = $.data( this, str_data );
-        
-        // If called from the polling loop, w and h will be passed in as
-        // arguments. If called manually, via .trigger( 'resize' ) or .resize(),
-        // those values will need to be computed.
-        data.w = w !== undefined ? w : elem.width();
-        data.h = h !== undefined ? h : elem.height();
-        
-        old_handler.apply( this, arguments );
-      };
-      
-      // This may seem a little complicated, but it normalizes the special event
-      // .add method between jQuery 1.4/1.4.1 and 1.4.2+
-      if ( $.isFunction( handleObj ) ) {
-        // 1.4, 1.4.1
-        old_handler = handleObj;
-        return new_handler;
-      } else {
-        // 1.4.2+
-        old_handler = handleObj.handler;
-        handleObj.handler = new_handler;
-      }
-    }
-    
-  };
-  
-  function loopy() {
-    
-    // Start the polling loop, asynchronously.
-    timeout_id = window[ str_setTimeout ](function(){
-      
-      // Iterate over all elements to which the 'resize' event is bound.
-      elems.each(function(){
-        var elem = $(this),
-          width = elem.width(),
-          height = elem.height(),
-          data = $.data( this, str_data );
-        
-        // If element size has changed since the last time, update the element
-        // data store and trigger the 'resize' event.
-        // don't trigger the resize event when width or height is zero, in case
-        // it is a hidden object
-        if ( (width && width !== data.w) || (height && height !== data.h) ) {
-          console.log("okkk")
-          elem.trigger( str_resize, [ data.w = width, data.h = height ] );
-        }
-        
-      });
-      
-      // Loop.
-      loopy();
-      
-    }, jq_resize[ str_delay ] );
-    
-  };
-  
-})(jQuery,this);
-
-
-});
 //===================================
 // Panel
 // Container has title and content
 //===================================
 define('components/container/panel',["./container",
-		"knockout",
-		"core/jquery.resize"], function(Container, ko){
+		"knockout"], function(Container, ko){
 
 var Panel = Container.derive(function(){
 
@@ -8800,12 +8561,6 @@ return {
 
 	css : 'panel',
 
-	initialize : function(){
-		this.$el.bind("resize", {
-			context : this
-		}, this.resizeBody);
-	},
-
 	template : '<div class="wse-panel-header">\
 					<div class="wse-panel-title" data-bind="html:title"></div>\
 					<div class="wse-panel-tools"></div>\
@@ -8821,43 +8576,20 @@ return {
 		this._$tools = this._$header.children(".wse-panel-tools");
 		this._$body = $el.children(".wse-panel-body");
 		this._$footer = $el.children(".wse-panel-footer");
-
-		this._$body.bind("resize", {context : this}, this.resizeContainer);
 	},
 
-	resizeBody : function(e){
-		var self = e.data.context;
-		if( self.viewModel.height() &&
-			self.viewModel.height() !== "auto"){
-			if( self._$body){
-				var headerHeight = self._$header.height(),
-					footerHeight = self._$footer.height();
-				// use Jquery's innerHeight method here, because we need to consider 
-				// the padding of body;
-				self._$body.innerHeight(self.$el.height() - headerHeight - footerHeight);
-			}
+	afterResize : function(){
+		// stretch the body
+		if( this._$body){		
+			var headerHeight = this._$header.height();
+			var footerHeight = this._$footer.height();
+
+			// PENDING : here use jquery innerHeight method ?because we still 
+			// need to consider the padding of body
+			this._$body.height( this.$el.height() - headerHeight - footerHeight );
+	
 		}
-	},
-
-	resizeContainer : function(e){
-		var self = e.data.context;
-		// fit the container height to body height when 
-		// the height is auto;
-		if( self.viewModel.height() === "auto" ||
-			! self.viewModel.height() ){	
-			if( self._$body ){
-				var headerHeight = self._$header.height(),
-					footerHeight = self._$footer.height(),
-					bodyInnerHeight = self._$body.innerHeight();
-				self.$el.height(headerHeight + footerHeight + bodyInnerHeight);
-			}
-		}
-	},
-
-	dispose : function(){
-		this._$body.unbind("resize", this.resizeContainer);
-		this.$el.unbind("resize", this.resizeBody);
-		Container.prototype.dispose.call(this);
+		Container.prototype.afterResize.call(this);
 	}
 })
 
@@ -8911,10 +8643,6 @@ return {
 
 	initialize : function(){
 		Draggable.applyTo( this );
-
-		this.$el.bind("resize", {
-			context : this
-		}, this.resizeBody);
 	},
 
 	afterRender : function(){
@@ -8923,7 +8651,6 @@ return {
 
 		this.draggable.add( this.$el, this._$header);
 		
-		this._$body.bind("resize", {context : this}, this.resizeContainer);
 	}
 })
 
@@ -8978,12 +8705,9 @@ return {
 		}, this)
 		this.active( this.viewModel.actived() );
 
-		this.$el.bind("resize", {
-			context : this
-		}, this.resizeBody);
-
 		// compute the tab value;
-		this.viewModel.children.subscribe(this._updateTabSize, this)
+		this.viewModel.children.subscribe(this._updateTabSize, this);
+
 	},
 
 	template : '<div class="wse-tab-header">\
@@ -9011,9 +8735,13 @@ return {
 		this._$body = $el.children(".wse-tab-body");
 		this._$footer = $el.children('.wse-tab-footer');
 
-		this._$body.bind("resize", {context : this}, this.resizeContainer);
-
 		this.active( this.viewModel.actived() );
+	},
+
+	afterResize : function(){
+		this._updateTabSize();
+		this._adjustCurrentSize();
+		Container.prototype.afterResize.call(this);
 	},
 
 	_unActiveAll : function(){
@@ -9031,34 +8759,38 @@ return {
 		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
 	},
 
-	active : function(idx){
-		this._unActiveAll();
-		var child = this.viewModel.children()[idx];
-		if( child ){
-			child.$el.css("display", "block");
-			this.trigger('change', idx, child);
+	_adjustCurrentSize : function(){
+
+		var current = this.viewModel.children()[ this.viewModel.actived() ];
+		if( current && this._$body ){
+			var headerHeight = this._$header.height(),
+				footerHeight = this._$footer.height();
+
+			if( this.viewModel.height() &&
+				this.viewModel.height() !== "auto" ){
+				current.viewModel.height( this.$el.height() - headerHeight - footerHeight );
+			}
+			// PENDING : compute the width ???
+			if( this.viewModel.width() == "auto" ){
+			}
 		}
 	},
 
-	resizeBody : function(e){
-		var self = e.data.context;
-		if( self.viewModel.height() &&
-			self.viewModel.height() !== "auto"){
-			if( self._$body){
-				var headerHeight = self._$header.height(),
-					footerHeight = self._$footer.height();
-				var height = self.$el.height() - headerHeight - footerHeight;
-				// use Jquery's innerHeight method here, because we need to consider 
-				// the padding of body;
-				self._$body.innerHeight(height);
-				// stretch the panel size;
-				_.each(self.viewModel.children(), function(child){
-					child.viewModel.height(height);
-				});
-			}
-		}
+	active : function(idx){
+		this._unActiveAll();
+		var current = this.viewModel.children()[idx];
+		if( current ){
+			current.$el.css("display", "block");
 
-		self._updateTabSize();
+			this._adjustCurrentSize();
+			// Trigger the resize events manually
+			// Because the width and height is zero when the panel is hidden,
+			// so the children may not be properly layouted, We need to force the
+			// children do layout again when panel is visible;
+			current.afterResize();
+
+			this.trigger('change', idx, current);
+		}
 	}
 
 })
@@ -9073,8 +8805,7 @@ return Tab;
 //===============================================
 
 define('components/container/box',['./container',
-		'knockout',
-		'core/jquery.resize'], function(Container, ko){
+		'knockout'], function(Container, ko){
 
 var Box = Container.derive(function(){
 
@@ -9087,25 +8818,18 @@ return {
 	css : 'box',
 
 	initialize : function(){
-		this.on("resize", this._deferResize, this);
 
 		this.viewModel.children.subscribe(function(children){
 			this.resize();
 			_.each(children, function(child){
-				child.on('resize', this._deferResize, this);
+				child.on('resize', this.afterResize, this);
 			}, this)
 		}, this);
 
 		this.$el.css("position", "relative");
 
 		var self = this;
-		this.$el.resize(function(){
-			self._deferResize();
-		})
 	},
-
-	// method will be rewritted
-	resize : function(){},
 
 	_getMargin : function($el){
 		return {
@@ -9118,10 +8842,10 @@ return {
 
 	_resizeTimeout : 0,
 
-	_deferResize : function(){
+	afterResize : function(){
 		var self = this;
 		// put resize in next tick,
-		// if multiple child hav triggered the resize event
+		// if multiple child have triggered the resize event
 		// it will do only once;
 		if( this._resizeTimeout ){
 			clearTimeout( this._resizeTimeout );
@@ -9129,6 +8853,8 @@ return {
 		this._resizeTimeout = setTimeout(function(){
 			self.resize()
 		});
+
+		Container.prototype.resize.call(this);
 	}
 
 })

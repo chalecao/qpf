@@ -44,12 +44,9 @@ return {
 		}, this)
 		this.active( this.viewModel.actived() );
 
-		this.$el.bind("resize", {
-			context : this
-		}, this.resizeBody);
-
 		// compute the tab value;
-		this.viewModel.children.subscribe(this._updateTabSize, this)
+		this.viewModel.children.subscribe(this._updateTabSize, this);
+
 	},
 
 	template : '<div class="wse-tab-header">\
@@ -77,9 +74,13 @@ return {
 		this._$body = $el.children(".wse-tab-body");
 		this._$footer = $el.children('.wse-tab-footer');
 
-		this._$body.bind("resize", {context : this}, this.resizeContainer);
-
 		this.active( this.viewModel.actived() );
+	},
+
+	afterResize : function(){
+		this._updateTabSize();
+		this._adjustCurrentSize();
+		Container.prototype.afterResize.call(this);
 	},
 
 	_unActiveAll : function(){
@@ -97,34 +98,38 @@ return {
 		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
 	},
 
-	active : function(idx){
-		this._unActiveAll();
-		var child = this.viewModel.children()[idx];
-		if( child ){
-			child.$el.css("display", "block");
-			this.trigger('change', idx, child);
+	_adjustCurrentSize : function(){
+
+		var current = this.viewModel.children()[ this.viewModel.actived() ];
+		if( current && this._$body ){
+			var headerHeight = this._$header.height(),
+				footerHeight = this._$footer.height();
+
+			if( this.viewModel.height() &&
+				this.viewModel.height() !== "auto" ){
+				current.viewModel.height( this.$el.height() - headerHeight - footerHeight );
+			}
+			// PENDING : compute the width ???
+			if( this.viewModel.width() == "auto" ){
+			}
 		}
 	},
 
-	resizeBody : function(e){
-		var self = e.data.context;
-		if( self.viewModel.height() &&
-			self.viewModel.height() !== "auto"){
-			if( self._$body){
-				var headerHeight = self._$header.height(),
-					footerHeight = self._$footer.height();
-				var height = self.$el.height() - headerHeight - footerHeight;
-				// use Jquery's innerHeight method here, because we need to consider 
-				// the padding of body;
-				self._$body.innerHeight(height);
-				// stretch the panel size;
-				_.each(self.viewModel.children(), function(child){
-					child.viewModel.height(height);
-				});
-			}
-		}
+	active : function(idx){
+		this._unActiveAll();
+		var current = this.viewModel.children()[idx];
+		if( current ){
+			current.$el.css("display", "block");
 
-		self._updateTabSize();
+			this._adjustCurrentSize();
+			// Trigger the resize events manually
+			// Because the width and height is zero when the panel is hidden,
+			// so the children may not be properly layouted, We need to force the
+			// children do layout again when panel is visible;
+			current.afterResize();
+
+			this.trigger('change', idx, current);
+		}
 	}
 
 })

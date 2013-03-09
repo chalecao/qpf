@@ -79,6 +79,13 @@ return {
 		this._updateConstraint();
 	},
 
+	afterResize : function(){
+		_.each( this._sub, function(item){
+			item.afterResize();
+		} )
+		Widget.prototype.afterResize.call(this);
+	},
+
 	dispose : function(){
 		_.each(this._sub, function(item){
 			item.dispose();
