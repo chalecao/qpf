@@ -66,10 +66,7 @@ function intToRgb(value){
 	return [r, g, b];
 }
 
-function rgbToInt(rgb){
-	var r = rgb[0],
-		g = rgb[1],
-		b = rgb[2];
+function rgbToInt(r, g, b){
 	return r << 16 | g << 8 | b;
 }
 

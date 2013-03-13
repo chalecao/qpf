@@ -16,6 +16,27 @@ var Palette = Widget.derive(function(){
 	var ret = {
 		viewModel : new Color
 	}
+	var self = this;
+
+	_.extend(ret.viewModel, {
+		_recent : ko.observableArray(),
+		_recentMax : 5,
+		_apply : function(){
+			if( self.viewModel._recent().length > self.viewModel._recentMax){
+				self.viewModel._recent.shift();
+			}
+			self.viewModel._recent.push( {
+				rgbString : "rgb(" + self.viewModel.rgb().join(",") + ")",
+				hexString : self.viewModel.hexString(),
+				hex : self.viewModel.hex()
+			});
+			
+			self._apply();
+		},
+		_cancel : function(){
+			self._cancel();
+		}
+	})
 	return ret;
 }, {
 
@@ -36,6 +57,7 @@ var Palette = Widget.derive(function(){
 						<div class="wse-palette-pickh">\
 							<div class="wse-palette-picker"></div>\
 						</div>\
+						<div style="clear:both"></div>\
 						<div class="wse-palette-alpha">\
 							<div data-bind="wse_ui:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
 						</div>\
@@ -56,15 +78,21 @@ var Palette = Widget.derive(function(){
 					</div>\
 				</div>\
 				<div style="clear:both"></div>\
-				<div class="wse-palette-recent">\
-				</div>\
+				<ul class="wse-palette-recent" data-bind="foreach:_recent">\
+					<li data-bind="style:{backgroundColor:rgbString},\
+									attr:{title:hexString},\
+									click:$parent.hex.bind($parent, hex)"></li>\
+				</ul>\
 				<div class="wse-palette-buttons">\
-					<div data-bind="wse_ui:{type:\'button\', text:\'Cancel\', class:\'small\'}"></div>\
-					<div data-bind="wse_ui:{type:\'button\', text:\'Apply\', class:\'small\'}"></div>\
+					<div data-bind="wse_ui:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel}"></div>\
+					<div data-bind="wse_ui:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply}"></div>\
 				</div>',
 
 	initialize : function(){
-		this.viewModel.hex.subscribe(this._setPickerPosition, this);
+		this.viewModel.hex.subscribe(function(hex){
+			this._setPickerPosition();
+			this.trigger("change", hex);
+		}, this);
 		// incase the saturation and value is both zero or one, and
 		// the rgb value not change when hue is changed
 		this.viewModel._h.subscribe(this._setPickerPosition, this);
@@ -176,6 +204,14 @@ var Palette = Widget.derive(function(){
 				top : Math.round( hue/360 * this._hSize) + "px"
 			})
 		}
+	},
+
+	_apply : function(){
+		this.trigger("apply", this.viewModel.hex());
+	},
+
+	_cancel : function(){
+
 	}
 })
 

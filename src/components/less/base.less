@@ -561,14 +561,29 @@ body{
 	}
 
 	.wse-palette-alpha{
-		clear:both;
 		margin-top: 5px;
 	}
 
 	.wse-palette-recent{
-		height:30px;
-		background-color: white;
 		margin:10px 0px;
+		padding:0px;
+
+		li{
+			width:30px;
+			height:20px;
+			float: left;
+			border-radius: 3px;
+			list-style: none;
+			margin:1px;
+			cursor: pointer;
+
+			.transition(all 0.2s linear)
+		}
+		li:hover{
+			width:34px;
+			height:24px;
+			margin:-1px;
+		}
 	}
 	.wse-palette-buttons{
 		&>div{
