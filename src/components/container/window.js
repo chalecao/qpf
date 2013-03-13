@@ -14,25 +14,23 @@ return {
 
 	$el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
 
-	viewModel : {
+	children : ko.observableArray(),
+	title : ko.observable("Window"),
 
-		children : ko.observableArray(),
-		title : ko.observable("Window"),
+	left : ko.observable(0),
+	top : ko.observable(0),
 
-		left : ko.observable(0),
-		top : ko.observable(0),
-
-		_leftPx : ko.computed(function(){
-			return this.viewModel.left()+"px";
-		}, this, {
-			deferEvaluation : true
-		}),
-		_topPx : ko.computed(function(){
-			return this.viewModel.top()+"px";
-		}, this, {
-			deferEvaluation : true
-		})
-	}
+	_leftPx : ko.computed(function(){
+		return this.left()+"px";
+	}, this, {
+		deferEvaluation : true
+	}),
+	_topPx : ko.computed(function(){
+		return this.top()+"px";
+	}, this, {
+		deferEvaluation : true
+	})
+	
 }}, {
 
 	type : 'WINDOW',

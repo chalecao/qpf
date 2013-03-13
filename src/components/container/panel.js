@@ -9,12 +9,8 @@ var Panel = Container.derive(function(){
 
 return {
 
-	viewModel : {
-
-		title : ko.observable(""),
-
-		children : ko.observableArray([])
-	}
+	title : ko.observable("")
+	
 }}, {
 
 	type : 'PANEL',

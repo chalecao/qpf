@@ -13,29 +13,12 @@ require("components/meta/textfield");
 require("components/meta/range");
 
 var Palette = Widget.derive(function(){
-	var ret = {
-		viewModel : new Color
-	}
+	var ret = new Color;
 	var self = this;
 
-	_.extend(ret.viewModel, {
+	_.extend(ret, {
 		_recent : ko.observableArray(),
-		_recentMax : 5,
-		_apply : function(){
-			if( self.viewModel._recent().length > self.viewModel._recentMax){
-				self.viewModel._recent.shift();
-			}
-			self.viewModel._recent.push( {
-				rgbString : "rgb(" + self.viewModel.rgb().join(",") + ")",
-				hexString : self.viewModel.hexString(),
-				hex : self.viewModel.hex()
-			});
-			
-			self._apply();
-		},
-		_cancel : function(){
-			self._cancel();
-		}
+		_recentMax : 5	
 	})
 	return ret;
 }, {
@@ -89,13 +72,13 @@ var Palette = Widget.derive(function(){
 				</div>',
 
 	initialize : function(){
-		this.viewModel.hsv.subscribe(function(hsv){
+		this.hsv.subscribe(function(hsv){
 			this._setPickerPosition();
-			this.trigger("change", this.viewModel.hex());
+			this.trigger("change", this.hex());
 		}, this);
 		// incase the saturation and value is both zero or one, and
 		// the rgb value not change when hue is changed
-		this.viewModel._h.subscribe(this._setPickerPosition, this);
+		this._h.subscribe(this._setPickerPosition, this);
 	},
 	afterRender : function(){
 		this._$svSpace = $('.wse-palette-picksv');
@@ -179,18 +162,18 @@ var Palette = Widget.derive(function(){
 		var saturation = left / this._svSize,
 			value = (this._svSize-top)/this._svSize;
 
-		this.viewModel._s(saturation*100);
-		this.viewModel._v(value*100);
+		this._s(saturation*100);
+		this._v(value*100);
 	},
 
 	_computeH : function(top){
 
-		this.viewModel._h( top/this._hSize * 360 );
+		this._h( top/this._hSize * 360 );
 	},
 
 	_setPickerPosition : function(){
 		if( this._$svPicker){
-			var hsv = this.viewModel.hsv(),
+			var hsv = this.hsv(),
 				hue = hsv[0],
 				saturation = hsv[1],
 				value = hsv[2];
@@ -206,7 +189,16 @@ var Palette = Widget.derive(function(){
 	},
 
 	_apply : function(){
-		this.trigger("apply", this.viewModel.hex());
+		if( self._recent().length > self._recentMax){
+			self._recent.shift();
+		}
+		self._recent.push( {
+			rgbString : "rgb(" + self.rgb().join(",") + ")",
+			hexString : self.hexString(),
+			hex : self.hex()
+		});
+		
+		this.trigger("apply", this.hex());
 	},
 
 	_cancel : function(){

@@ -646,11 +646,6 @@ function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
 		_.extend( this, typeof makeDefaultOpt == "function" ?
 						makeDefaultOpt.call(this) : makeDefaultOpt );
 
-		for( var name in options ){
-			if( typeof this[name] == "undefined" ){
-				console.warn( name+" is not an option");
-			}
-		}
 		_.extend( this, options );
 
 		if( this.constructor == sub){
@@ -727,7 +722,7 @@ return{
 			handlers[target] = [];
 		}
 		if( handlers[target].indexOf(handler) == -1){
-			// struct in list
+			// structure in list
 			// [handler,context,handler,context,handler,context..]
 			handlers[target].push( handler );
 			handlers[target].push( context );
@@ -754,6 +749,15 @@ return{
 
 	}
 }
+});
+define('core/clazz',['./mixin/derive',
+		'./mixin/event'], function(Derive, Event){
+
+var Clazz = new Function();
+_.extend(Clazz, Derive);
+_.extend(Clazz.prototype, Event);
+
+return Clazz;
 });
 // Knockout JavaScript library v2.2.1
 // (c) Steven Sanderson - http://knockoutjs.com/
@@ -4398,12 +4402,9 @@ define('components/util',['knockout',
 
 		var component = new Constructor({
 			name : name || "",
-			attribute : attr
+			attributes : attr,
+			events : events
 		});
-		// binding events
-		_.each(events, function(handler, name){
-			component.on(name, handler);
-		})
 
 		return component;
 	
@@ -4436,19 +4437,14 @@ define('components/util',['knockout',
 // Base class of all components
 // it also provides some util methods like
 //=====================================
-define('components/base',["core/mixin/derive",
+define('components/base',["core/clazz",
 		"core/mixin/event",
 		"./util",
-		"knockout"], function(Derive, Event, Util, ko){
-
-var clazz = new Function();
-
-_.extend(clazz, Derive);
-_.extend(clazz.prototype, Event);
+		"knockout"], function(Clazz, Event, Util, ko){
 
 var repository = {};	//repository to store all the component instance
 
-var Base = clazz.derive(function(){
+var Base = Clazz.derive(function(){
 return {	// Public properties
 	// Name of component, will be used in the query of the component
 	name : "",
@@ -4459,16 +4455,12 @@ return {	// Public properties
 	// Jquery element as a wrapper
 	// It will be created in the constructor
 	$el : null,
-	// ViewModel for knockout binding
-	// !IMPORTANT the property in the view model can not be override
-	// set method is provided if you want to set the value in the viewModel
-	viewModel : {},
-	// Attribute will be applied to the viewModel
+	// Attribute will be applied to self
 	// WARNING: It will be only used in the constructor
 	// So there is no need to re-assign a new viewModel when created an instance
 	// if property in the attribute is a observable
 	// it will be binded to the property in viewModel
-	attribute : {},
+	attributes : {},
 	
 	parent : null,
 	// ui skin
@@ -4476,7 +4468,16 @@ return {	// Public properties
 	// Class prefix
 	classPrefix : "wse-ui-",
 	// Skin prefix
-	skinPrefix : "wse-skin-"
+	skinPrefix : "wse-skin-",
+
+	id : ko.observable(""),
+	width : ko.observable(),
+	class : ko.observable(),
+	height : ko.observable(),
+	disable : ko.observable(false),
+	style : ko.observable(""),
+	// events list inited at first time
+	events : {}
 }}, function(){	//constructor
 
 	this.__GUID__ = genGUID();
@@ -4499,40 +4500,29 @@ return {	// Public properties
 	}
 	// Class name of wrapper element is depend on the lowercase of component type
 	// this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
-	
-	// extend default properties to view Models
-	// like normal dom element, node of wse will have height, width, id
-	// style attribute, and all this will map to the attribute in dom
-	_.extend(this.viewModel, {
-		id : ko.observable(""),
-		width : ko.observable(),
-		class : ko.observable(),
-		height : ko.observable(),
-		disable : ko.observable(false),
-		style : ko.observable("")
-	});
-	this.viewModel.width.subscribe(function(newValue){
+
+	this.width.subscribe(function(newValue){
 		this.$el.width(newValue);
 		if( ! this.__resizing__ ){
 			this.afterResize();
 		}
 	}, this);
-	this.viewModel.height.subscribe(function(newValue){
+	this.height.subscribe(function(newValue){
 		this.$el.height(newValue);
 		if( ! this.__resizing__){
 			this.afterResize();
 		}
 	}, this);
-	this.viewModel.disable.subscribe(function(newValue){
+	this.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
 	}, this);
-	this.viewModel.id.subscribe(function(newValue){
+	this.id.subscribe(function(newValue){
 		this.$el.attr("id", newValue);
 	}, this);
-	this.viewModel.class.subscribe(function(newValue){
+	this.class.subscribe(function(newValue){
 		this.$el.addClass( newValue );
 	}, this);
-	this.viewModel.style.subscribe(function(newValue){
+	this.style.subscribe(function(newValue){
 		var valueSv = newValue;
 		var styleRegex = /\s*(\S*?)\s*:\s*(\S*)\s*/g;
 		// preprocess the style string
@@ -4550,11 +4540,20 @@ return {	// Public properties
 		}
 	}, this)
 
-
-	// apply attribute to the view model
-	this._mappingAttributesToViewModel( this.attribute );
+	// register the events before initialize
+	for( var name in this.events ){
+		var handler = this.events[name];
+		if( typeof(handler) == "function"){
+			this.on(name, handler);
+		}
+	}
 
 	this.initialize();
+	this.trigger("initialize");
+	
+	// apply attribute 
+	this._mappingAttributes( this.attributes );
+
 	// Here we removed auto rendering at constructor
 	// to support deferred rendering after the $el is attached
 	// to the document
@@ -4570,7 +4569,8 @@ return {	// Public properties
 	// Developers can use on method to subscribe these events
 	// It is used in the binding handlers to judge which parameter
 	// passed in is events
-	eventsProvided : ["click", "mousedown", "mouseup", "mousemove", "resize"],
+	eventsProvided : ["click", "mousedown", "mouseup", "mousemove", "resize",
+						"initialize", "beforerender", "render", "dispose"],
 
 	// Will be called after the component first created
 	initialize : function(){},
@@ -4590,6 +4590,8 @@ return {	// Public properties
 	// the subclasses
 	render : function(){
 		this.beforeRender && this.beforeRender();
+		this.trigger("beforerender");
+
 		this.doRender();
 		this.afterRender && this.afterRender();
 
@@ -4598,7 +4600,7 @@ return {	// Public properties
 	// Default render method
 	doRender : function(){
 		this.$el.html(this.template);
-		ko.applyBindings( this.viewModel, this.$el[0] );
+		ko.applyBindings( this, this.$el[0] );
 	},
 	// Dispose the component instance
 	dispose : function(){
@@ -4614,10 +4616,10 @@ return {	// Public properties
 	resize : function(width, height){
 		this.__resizing__ = true;
 		if( width || width === 0){
-			this.viewModel.width( width );
+			this.width( width );
 		}
 		if( height || height === 0){
-			this.viewModel.height( height );
+			this.height( height );
 		}
 		this.__resizing__ = false;
 	},
@@ -4634,27 +4636,25 @@ return {	// Public properties
 			return className.substr(prefix.length);
 		}
 	},
-	// mapping the attributes to viewModel 
-	_mappingAttributesToViewModel : function(attributes, onlyUpdate){
+	_mappingAttributes : function(attributes, onlyUpdate){
 		for(var name in attributes){
 			var attr = attributes[name];
-			var propInVM = this.viewModel[name];
-			// create new attribute when it is not existed
-			// in the viewModel, even if it will not be used
+			var propInVM = this[name];
+			// create new attribute when property is not existed, even if it will not be used
 			if( ! propInVM ){
 				var value = ko.utils.unwrapObservable(attr);
 				// is observableArray or plain array
 				if( (ko.isObservable(attr) && attr.push) ||
 					attr.constructor == Array){
-					this.viewModel[name] = ko.observableArray(value);
+					this[name] = ko.observableArray(value);
 				}else{
-					this.viewModel[name] = ko.observable(value);
+					this[name] = ko.observable(value);
 				}
 			}
 			else if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
 			}else{
-				this.viewModel[name] = ko.utils.unwrapObservable(attr);
+				this[name] = ko.utils.unwrapObservable(attr);
 			}
 			if( ! onlyUpdate){
 				if( ko.isObservable(attr) ){
@@ -4746,13 +4746,12 @@ ko.extenders.numeric = function(target, precision) {
 				var val = parseFloat(newValue);
 			}
 			val = isNaN( val ) ? 0 : val;
-			precision = ko.utils.unwrapObservable(precision);
-			var multiplier = Math.pow(10, precision);
-			val = Math.round(val * multiplier) / multiplier;
-			// dont update the value again when the value is still the same
-			if( target() !== val ){
-				target(val);
+			var precisionValue = ko.utils.unwrapObservable(precision);
+			if( typeof(precisionValue)=="number" ) {
+				var multiplier = Math.pow(10, precisionValue);
+				val = Math.round(val * multiplier) / multiplier;
 			}
+			target(val);
 		}
 	});
 
@@ -4760,6 +4759,30 @@ ko.extenders.numeric = function(target, precision) {
 
 	return fixer;
 };
+
+ko.extenders.clamp = function(target, options){
+	var min = options.min,
+		max = options.max;
+
+	var clamper = ko.computed({
+		read : target,
+		write : function(value){
+			var minValue = ko.utils.unwrapObservable(min),
+				maxValue = ko.utils.unwrapObservable(max);
+
+			if( typeof(minValue) == 'number' ){
+				value = Math.max(minValue, value);
+			}
+			if( typeof(maxValue) == 'number' ){
+				value = Math.min(maxValue, value);
+			}
+			target(value);
+		}
+	})
+
+	clamper( target() );
+	return clamper;
+}
 
 //-------------------------------------------
 // Handle bingings in the knockout template
@@ -4790,23 +4813,6 @@ ko.bindingHandlers["wse_ui"] = {
 	},
 
 	update : function( element, valueAccessor ){
-		// var value = valueAccessor();
-		// var options = unwrap(value) || {},
-		// 	type = unwrap(options.type),
-		// 	name  = unwrap(options.name),
-		// 	attr = unwrap(options.attribute);
-
-		// var component = Base.get( element.getAttribute("data-wse-guid") );
-
-		// if( component &&
-		// 	component.type.toLowerCase() == type.toLowerCase() ){	// do simple update
-		// 	component.name = name;
-		// 	if( attr ){
-		// 		koMapping.fromJS( attr, {}, component.viewModel );	
-		// 	}
-		// }else{
-		// 	ko.bindingHandlers["wse_meta"].init( element, valueAccessor );
-		// }
 
 	}
 }
@@ -5667,11 +5673,10 @@ define('components/meta/button',['./meta',
 var Button = Meta.derive(function(){
 return {
 	$el : $('<button data-bind="html:text"></button>'),
-
-	viewModel : {
-		// value of the button
-		text : ko.observable('Button')
-	}
+	
+	// value of the button
+	text : ko.observable('Button')
+	
 }}, {
 
 	type : 'BUTTON',
@@ -6738,8 +6743,8 @@ computeAABB : function(){
 },
 draw : function(ctx){
 	
-	var start = this.fixAA ? _Math.fixPos(start) : start,
-		end = this.fixAA ? _Math.fixPos(end) : end;
+	var start = this.fixAA ? _Math.fixPos(this.start) : this.start,
+		end = this.fixAA ? _Math.fixPos(this.end) : this.end;
 
 	ctx.beginPath();
 	ctx.moveTo(start[0], start[1]);
@@ -7436,43 +7441,62 @@ intersect : function(x, y){
 // Use Goo.js as drawing library 
 //==============================
 define('components/meta/canvas',["goo",
-		"./meta"], function(Goo, Meta){
+		"knockout",
+		"./meta"], function(Goo, ko, Meta){
 
 var Canvas = Meta.derive(function(){
 
 return {
 
 	tag : "canvas",
-
-	viewModel : {
-		width : ko.observable(256),
-		height : ko.observable(256)
-	},
+		
+	framerate : ko.observable(0),
 
 	stage : null
 }}, {
 
 	type : 'CANVAS',
+
 	css : 'canvas',
 
 	initialize : function(){
 
 		this.stage = Goo.create(this.$el[0]);
 
-		this.viewModel.width.subscribe(function(newValue){
-			this.resize();
-		}, this);
-		this.viewModel.height.subscribe(function(newValue){
-			this.resize();
-		}, this);
+		this.framerate.subscribe(function(newValue){
+			newValue ?
+				this.run( newValue ) :
+				this.stop();
+		});
+
+		this.afterResize();
+	},
+
+	_runInstance : 0,
+	run : function( fps ){
+		if( this._runInstance ){
+			clearTimeout( this._runInstance)
+		}
+		this._runInstance = setTimeout( this.render.bind(this), 1000 / fps)
+	},
+	stop : function(){
+		clearTimeout( this._runInstance );
+		this._runInstance = 0;
 	},
 
 	doRender : function(){
 		this.stage.render();
 	},
 
-	resize : function(){
-		this.stage.resize( this.viewModel.width(), this.viewModel.height());
+	afterResize : function(){
+		if( this.stage ){
+			var width = this.width(),
+				height = this.height();
+			if( width && height ){
+				this.stage.resize( width, height );
+			}
+			this.render();
+		}
 	}
 });
 
@@ -7490,11 +7514,10 @@ define('components/meta/checkbox',['./meta',
 var Checkbox = Meta.derive(function(){
 return {
 	
-	viewModel : {
-		// value of the button
-		checked : ko.observable(false),
-		label : ko.observable("")
-	}
+	// value of the button
+	checked : ko.observable(false),
+	label : ko.observable("")
+	
 }}, {
 
 	template : '<input type="checkbox" data-bind="checked:checked" />\
@@ -7506,9 +7529,9 @@ return {
 
 	// binding events
 	afterRender : function(){
-		var vm = this.viewModel;
+		var self = this;
 		this.$el.click(function(){
-			vm.checked( ! vm.checked() );
+			self.checked( ! self.checked() );
 		})
 	}
 });
@@ -7536,35 +7559,14 @@ return {
 
 	$el : $('<div data-bind="css:{active:active}" tabindex="0"></div>'),
 
-	viewModel : {
+	value : ko.observable(),
 
-		value : ko.observable(),
+	items : ko.observableArray(),	//{value, text}
 
-		items : ko.observableArray(),	//{value, text}
+	defaultText : ko.observable("select"),
 
-		defaultText : ko.observable("select"),
+	active : ko.observable(false),
 
-		active : ko.observable(false),
-
-		//events
-		_focus : function(){
-			this.active(true);
-		},
-		_blur : function(){
-			this.active(false);
-		},
-		_toggle : function(){
-			this.active( ! this.active() );
-		},
-		_select : function(value){
-			value = ko.utils.unwrapObservable(value);
-			this.value(value);
-			this._blur();
-		},
-		_isSelected : function(value){
-			return this.value() === ko.utils.unwrapObservable(value);
-		}
-	}
 }}, {
 	
 	type : 'COMBOBOX',
@@ -7575,7 +7577,7 @@ return {
 
 	initialize : function(){
 
-		this.viewModel.selectedText = ko.computed(function(){
+		this.selectedText = ko.computed(function(){
 			var val = this.value();
 			var result =  _.filter(this.items(), function(item){
 				return ko.utils.unwrapObservable(item.value) == val;
@@ -7584,7 +7586,7 @@ return {
 				return this.defaultText();
 			}
 			return ko.utils.unwrapObservable(result.text);
-		}, this.viewModel);
+		}, this);
 
 	},
 
@@ -7600,14 +7602,28 @@ return {
 		this._$items = this.$el.find(".wse-combobox-items");
 
 		this.$el.blur(function(){
-			self.viewModel._blur();
+			self._blur();
 		})
 
 	},
 
-	//-------method provided for the developers
-	select : function(value){
-		this.viewModel.select(value);
+	//events
+	_focus : function(){
+		this.active(true);
+	},
+	_blur : function(){
+		this.active(false);
+	},
+	_toggle : function(){
+		this.active( ! this.active() );
+	},
+	_select : function(value){
+		value = ko.utils.unwrapObservable(value);
+		this.value(value);
+		this._blur();
+	},
+	_isSelected : function(value){
+		return this.value() === ko.utils.unwrapObservable(value);
 	}
 })
 
@@ -7649,10 +7665,9 @@ define('components/meta/label',['./meta',
 
 var Label = Meta.derive(function(){
 return {
-	viewModel : {
-		// value of the Label
-		text : ko.observable('Label')
-	}
+	// value of the Label
+	text : ko.observable('Label')
+	
 } }, {
 
 	template : '<Label data-bind="html:text"></Label>',
@@ -8091,11 +8106,9 @@ define('components/meta/range',['./meta',
 
 var Range = Meta.derive(function(){
 
-return {
+	var ret =  {
 
-	$el : $('<div data-bind="css:orientation"></div>'),
-
-	viewModel : {
+		$el : $('<div data-bind="css:orientation"></div>'),
 
 		value : ko.observable(0),
 
@@ -8113,13 +8126,22 @@ return {
 
 		_format : function(number){
 			return this.format.replace("{{value}}", number);
-		}
-	},
+		},
 
-	// compute size dynamically when dragging
-	autoResize : true,
+		// compute size dynamically when dragging
+		autoResize : true
+	}
 
-}}, {
+	ret.value = ko.observable(1).extend({
+		numeric : ret.precision,
+		clamp : { 
+					max : ret.max,
+					min : ret.min
+				}
+	})
+	return ret;
+
+}, {
 
 	type : "RANGE",
 
@@ -8142,18 +8164,15 @@ return {
 	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
 	
 	initialize : function(){
-
-		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
-
 		// add draggable mixin
 		Draggable.applyTo( this, {
 			axis : ko.computed(function(){
-				return this.viewModel.orientation() == "horizontal" ? "x" : "y"
+				return this.orientation() == "horizontal" ? "x" : "y"
 			}, this)
 		});
 
-		var prevValue = this.viewModel.value();
-		this.viewModel.value.subscribe(function(newValue){
+		var prevValue = this.value();
+		this.value.subscribe(function(newValue){
 			if( this._$box){
 				this.updatePosition();
 			}
@@ -8192,11 +8211,11 @@ return {
 	_dragHandler : function(){
 
 		var percentage = this.computePercentage(),
-			min = parseFloat( this.viewModel.min() ),
-			max = parseFloat( this.viewModel.max() ),
+			min = parseFloat( this.min() ),
+			max = parseFloat( this.max() ),
 			value = (max-min)*percentage+min;
 
-		this.viewModel.value( value );
+		this.value( value );
 
 		
 	},
@@ -8257,9 +8276,9 @@ return {
 			this._cacheSize();
 		}
 
-		var min = this.viewModel.min(),
-			max = this.viewModel.max(),
-			value = this.viewModel.value(),
+		var min = this.min(),
+			max = this.max(),
+			value = this.value(),
 			percentage = ( value - min ) / ( max - min ),
 
 			size = (this._boxSize-this._sliderSize)*percentage;
@@ -8275,7 +8294,7 @@ return {
 	},
 
 	_isHorizontal : function(){
-		return ko.utils.unwrapObservable( this.viewModel.orientation ) == "horizontal";
+		return ko.utils.unwrapObservable( this.orientation ) == "horizontal";
 	}
 })
 
@@ -8305,32 +8324,31 @@ function decrease(){
 }
 
 var Spinner = Meta.derive(function(){
-return {
-	viewModel : {
-
+	var ret = {
 		step : ko.observable(1),
-		
-		value : ko.observable(1),
-
 		valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
-
 		precision : ko.observable(2),
-
+		min : ko.observable(null),
+		max : ko.observable(null),
 		increase : increase,
-
 		decrease : decrease
-		
 	}
-}}, {
+	ret.value = ko.observable(1).extend({
+		numeric : ret.precision,
+		clamp : { 
+					max : ret.max,
+					min : ret.min
+				}
+	})
+	return ret;
+}, {
 	type : 'SPINNER',
 
 	css : 'spinner',
 
 	initialize : function(){
-		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
-
-		var prevValue = this.viewModel.value() || 0;
-		this.viewModel.value.subscribe(function(newValue){
+		var prevValue = this.value() || 0;
+		this.value.subscribe(function(newValue){
 
 			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
 			prevValue = newValue;
@@ -8378,10 +8396,11 @@ return {
 
 		this._$value.change(function(){
 			// sync the value in the input
-			if( this.value !== self.viewModel.value().toString() ){
-				this.value = self.viewModel.value();
+			if( this.value !== self.value().toString() ){
+				this.value = self.value();
 			}
 		})
+
 	}
 })
 
@@ -8404,12 +8423,9 @@ return {
 	
 	tag : "div",
 
-	viewModel : {
-
-		text : ko.observable(""),
+	text : ko.observable(""),
 		
-		placeholder : ko.observable("")
-	}
+	placeholder : ko.observable("")
 
 }}, {
 	
@@ -8431,10 +8447,8 @@ define('components/container/container',["../base",
 
 var Container = Base.derive(function(){
 return {
-	viewModel : {
-		// all child components
-		children : ko.observableArray()
-	}
+	// all child components
+	children : ko.observableArray()
 
 }}, function(){
 
@@ -8451,15 +8465,15 @@ return {
 	// add child component
 	add : function( sub ){
 		sub.parent = this;
-		this.viewModel.children.push( sub );
+		this.children.push( sub );
 	},
 	// remove child component
 	remove : function(){
 		sub.parent = null;
-		this.viewModel.children.remove( sub );
+		this.children.remove( sub );
 	},
 	children : function(){
-		return this.viewModel.children()
+		return this.children()
 	},
 	afterResize : function(){
 		// trigger the after resize event in post-order
@@ -8470,7 +8484,7 @@ return {
 	},
 	dispose : function(){
 		
-		_.each(this.viewModel.children(), function(child){
+		_.each(this.children(), function(child){
 			child.dispose();
 		});
 
@@ -8560,12 +8574,8 @@ var Panel = Container.derive(function(){
 
 return {
 
-	viewModel : {
-
-		title : ko.observable(""),
-
-		children : ko.observableArray([])
-	}
+	title : ko.observable("")
+	
 }}, {
 
 	type : 'PANEL',
@@ -8627,25 +8637,23 @@ return {
 
 	$el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
 
-	viewModel : {
+	children : ko.observableArray(),
+	title : ko.observable("Window"),
 
-		children : ko.observableArray(),
-		title : ko.observable("Window"),
+	left : ko.observable(0),
+	top : ko.observable(0),
 
-		left : ko.observable(0),
-		top : ko.observable(0),
-
-		_leftPx : ko.computed(function(){
-			return this.viewModel.left()+"px";
-		}, this, {
-			deferEvaluation : true
-		}),
-		_topPx : ko.computed(function(){
-			return this.viewModel.top()+"px";
-		}, this, {
-			deferEvaluation : true
-		})
-	}
+	_leftPx : ko.computed(function(){
+		return this.left()+"px";
+	}, this, {
+		deferEvaluation : true
+	}),
+	_topPx : ko.computed(function(){
+		return this.top()+"px";
+	}, this, {
+		deferEvaluation : true
+	})
+	
 }}, {
 
 	type : 'WINDOW',
@@ -8682,17 +8690,13 @@ define('components/container/tab',["./panel",
 var Tab = Panel.derive(function(){
 
 return {
-	viewModel : {
 		
-		children : ko.observableArray(),
+	actived : ko.observable(0),
 
-		actived : ko.observable(0),
+	maxTabWidth : 100,
 
-		maxTabWidth : 100,
+	minTabWidth : 30
 
-		minTabWidth : 30
-
-	}
 }}, {
 
 	type : "TAB",
@@ -8705,26 +8709,25 @@ return {
 		}else{
 			console.error("Children of tab container must be instance of panel");
 		}
-		this._active( this.viewModel.actived() );
+		this._active( this.actived() );
 	},
 
 	eventsProvided : _.union('change', Container.prototype.eventsProvided),
 
 	initialize : function(){
-		this.viewModel.actived.subscribe(function(idx){
+		this.actived.subscribe(function(idx){
 			this._active(idx);
 		}, this)
 
 		// compute the tab value;
-		this.viewModel.children.subscribe(this._updateTabSize, this);
-
+		this.children.subscribe(this._updateTabSize, this);
 	},
 
 	template : '<div class="wse-tab-header">\
 					<ul class="wse-tab-tabs" data-bind="foreach:children">\
 						<li data-bind="css:{actived:$index()===$parent.actived()},\
 										click:$parent.actived.bind($data, $index())">\
-							<a data-bind="html:viewModel.title"></a>\
+							<a data-bind="html:title"></a>\
 						</li>\
 					</ul>\
 					<div class="wse-tab-tools"></div>\
@@ -8745,7 +8748,7 @@ return {
 		this._$body = $el.children(".wse-tab-body");
 		this._$footer = $el.children('.wse-tab-footer');
 
-		this._active( this.viewModel.actived() );
+		this._active( this.actived() );
 	},
 
 	afterResize : function(){
@@ -8755,40 +8758,40 @@ return {
 	},
 
 	_unActiveAll : function(){
-		_.each(this.viewModel.children(), function(child){
+		_.each(this.children(), function(child){
 			child.$el.css("display", "none");
 		});
 	},
 
 	_updateTabSize : function(){
-		var length = this.viewModel.children().length,
+		var length = this.children().length,
 			tabSize = Math.floor((this.$el.width()-20)/length);
 		// clamp
-		tabSize = Math.min(this.viewModel.maxTabWidth, Math.max(this.viewModel.minTabWidth, tabSize) );
+		tabSize = Math.min(this.maxTabWidth, Math.max(this.minTabWidth, tabSize) );
 
 		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
 	},
 
 	_adjustCurrentSize : function(){
 
-		var current = this.viewModel.children()[ this.viewModel.actived() ];
+		var current = this.children()[ this.actived() ];
 		if( current && this._$body ){
 			var headerHeight = this._$header.height(),
 				footerHeight = this._$footer.height();
 
-			if( this.viewModel.height() &&
-				this.viewModel.height() !== "auto" ){
-				current.viewModel.height( this.$el.height() - headerHeight - footerHeight );
+			if( this.height() &&
+				this.height() !== "auto" ){
+				current.height( this.$el.height() - headerHeight - footerHeight );
 			}
 			// PENDING : compute the width ???
-			if( this.viewModel.width() == "auto" ){
+			if( this.width() == "auto" ){
 			}
 		}
 	},
 
 	_active : function(idx){
 		this._unActiveAll();
-		var current = this.viewModel.children()[idx];
+		var current = this.children()[idx];
 		if( current ){
 			current.$el.css("display", "block");
 
@@ -8829,7 +8832,7 @@ return {
 
 	initialize : function(){
 
-		this.viewModel.children.subscribe(function(children){
+		this.children.subscribe(function(children){
 			this.resize();
 			_.each(children, function(child){
 				child.on('resize', this.afterResize, this);
@@ -8910,24 +8913,24 @@ return {
 			marginCache = [],
 			marginCacheWithFlex = [];
 
-		_.each(this.viewModel.children(), function(child){
+		_.each(this.children(), function(child){
 			var margin = this._getMargin(child.$el);
 			marginCache.push(margin);
 			// stretch the width
 			// (when align is stretch)
-			child.viewModel.width( this.$el.width()-margin.left-margin.right );
+			child.width( this.$el.width()-margin.left-margin.right );
 
-			var prefer = ko.utils.unwrapObservable( child.viewModel.prefer );
+			var prefer = ko.utils.unwrapObservable( child.prefer );
 
 			// item has a prefer size;
 			if( prefer ){
 				// TODO : if the prefer size is lager than vbox size??
 				prefer = Math.min(prefer, remainderHeight);
-				child.viewModel.height( prefer );
+				child.height( prefer );
 
 				remainderHeight -= prefer+margin.top+margin.bottom;
 			}else{
-				var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1);
+				var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1);
 				// put it in the next step to compute
 				// the height based on the flex property
 				childrenWithFlex.push(child);
@@ -8939,20 +8942,20 @@ return {
 
 		_.each( childrenWithFlex, function(child, idx){
 			var margin = marginCacheWithFlex[idx];
-			var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1),
+			var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1),
 				ratio = flex / flexSum;
-			child.viewModel.height( Math.floor(remainderHeight*ratio)-margin.top-margin.bottom );	
+			child.height( Math.floor(remainderHeight*ratio)-margin.top-margin.bottom );	
 		})
 
 		var prevHeight = 0;
-		_.each(this.viewModel.children(), function(child, idx){
+		_.each(this.children(), function(child, idx){
 			var margin = marginCache[idx];
 			child.$el.css({
 				"position" : "absolute",
 				"left" : '0px',	// still set left to zero, use margin to fix the layout
 				"top" : prevHeight + "px"
 			})
-			prevHeight += child.viewModel.height()+margin.top+margin.bottom;
+			prevHeight += child.height()+margin.top+margin.bottom;
 		})
 	}
 
@@ -8996,24 +8999,24 @@ return {
 			marginCache = [],
 			marginCacheWithFlex = [];
 
-		_.each(this.viewModel.children(), function(child, idx){
+		_.each(this.children(), function(child, idx){
 			var margin = this._getMargin(child.$el);
 			marginCache.push(margin);
 			// stretch the height
 			// (when align is stretch)
-			child.viewModel.height( this.$el.height()-margin.top-margin.bottom );
+			child.height( this.$el.height()-margin.top-margin.bottom );
 
-			var prefer = ko.utils.unwrapObservable( child.viewModel.prefer );
+			var prefer = ko.utils.unwrapObservable( child.prefer );
 
 			// item has a prefer size;
 			if( prefer ){
 				// TODO : if the prefer size is lager than vbox size??
 				prefer = Math.min(prefer, remainderWidth);
-				child.viewModel.width( prefer );
+				child.width( prefer );
 
 				remainderWidth -= prefer+margin.left+margin.right;
 			}else{
-				var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1);
+				var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1);
 				// put it in the next step to compute
 				// the height based on the flex property
 				childrenWithFlex.push(child);
@@ -9025,20 +9028,20 @@ return {
 
 		_.each( childrenWithFlex, function(child, idx){
 			var margin = marginCacheWithFlex[idx];
-			var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1),
+			var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1),
 				ratio = flex / flexSum;
-			child.viewModel.width( Math.floor(remainderWidth*ratio)-margin.left-margin.right );	
+			child.width( Math.floor(remainderWidth*ratio)-margin.left-margin.right );	
 		})
 
 		var prevWidth = 0;
-		_.each(this.viewModel.children(), function(child, idx){
+		_.each(this.children(), function(child, idx){
 			var margin = marginCache[idx];
 			child.$el.css({
 				"position" : "absolute",
 				"top" : '0px',
 				"left" : prevWidth + "px"
 			});
-			prevWidth += child.viewModel.width()+margin.left+margin.right;
+			prevWidth += child.width()+margin.left+margin.right;
 		})
 	}
 
@@ -9097,21 +9100,20 @@ define('components/widget/vector',['./widget',
 var Vector = Widget.derive(function(){
 return {
 
-	viewModel : {
-		// data source of item can be spinner type
-		// or range type, distinguish with type field
-		// @field type	spinner | range
-		items : ko.observableArray(),
+	// data source of item can be spinner type
+	// or range type, distinguish with type field
+	// @field type	spinner | range
+	items : ko.observableArray(),
 
-		// set true if you want to constrain the proportions
-		constrainProportion : ko.observable(false),
+	// set true if you want to constrain the proportions
+	constrainProportion : ko.observable(false),
 
-		constrainType : ko.observable("diff"),	//diff | ratio
+	constrainType : ko.observable("diff"),	//diff | ratio
 
-		_toggleConstrain : function(){
-			this.constrainProportion( ! this.constrainProportion() );
-		}
+	_toggleConstrain : function(){
+		this.constrainProportion( ! this.constrainProportion() );
 	},
+	
 	// Constrain ratio is only used when constrain type is ratio
 	_constrainRatio : [],
 	// Constrain diff is only uese when constrain type is diff
@@ -9128,7 +9130,7 @@ return {
 		this.$el.attr("data-bind", 'css:{"wse-vector-constrain":constrainProportion}')
 		// here has a problem that we cant be notified 
 		// if the object in the array is updated
-		this.viewModel.items.subscribe(function(item){
+		this.items.subscribe(function(item){
 			// make sure self has been rendered
 			if( this._$list ){
 				this._cacheSubComponents();
@@ -9136,12 +9138,14 @@ return {
 			}
 		}, this);
 
-		this.viewModel.constrainProportion.subscribe(function(constrain){
+		this.constrainProportion.subscribe(function(constrain){
 			if( constrain ){
 				this._computeContraintInfo();
 			}
-		}, this)
+		}, this);
 	},
+
+	eventsProvided : _.union(Widget.prototype.eventsProvided, "change"),
 
 	template : '<div class="wse-left">\
 					<div class="wse-vector-link" data-bind="click:_toggleConstrain"></div>\
@@ -9196,8 +9200,8 @@ return {
 			if( ! next){
 				return;
 			}
-			var value = sub.viewModel.value(),
-				nextValue = next.viewModel.value();
+			var value = sub.value(),
+				nextValue = next.value();
 			this._constrainDiff.push( nextValue-value);
 
 			this._constrainRatio.push(value == 0 ? 1 : nextValue/value);
@@ -9215,14 +9219,14 @@ return {
 
 	_constrainHandler : function(newValue, prevValue, sub){
 
-		if(this.viewModel.constrainProportion()){
+		if(this.constrainProportion()){
 
 			var selfIdx = this._sub.indexOf(sub),
-				constrainType = this.viewModel.constrainType();
+				constrainType = this.constrainType();
 
 			for(var i = selfIdx; i > 0; i--){
-				var current = this._sub[i].viewModel.value,
-					prev = this._sub[i-1].viewModel.value;
+				var current = this._sub[i].value,
+					prev = this._sub[i-1].value;
 				if( constrainType == "diff"){
 					var diff = this._constrainDiff[i-1];
 					prev( current() - diff );
@@ -9233,8 +9237,8 @@ return {
 
 			}
 			for(var i = selfIdx; i < this._sub.length-1; i++){
-				var current = this._sub[i].viewModel.value,
-					next = this._sub[i+1].viewModel.value;
+				var current = this._sub[i].value,
+					next = this._sub[i+1].value;
 
 				if( constrainType == "diff"){
 					var diff = this._constrainDiff[i];
@@ -9272,6 +9276,418 @@ XMLParser.provideParser("vector", function(xmlNode){
 return Vector;
 
 });
+//============================
+// view model for color
+// supply hsv and rgb color space
+// http://en.wikipedia.org/wiki/HSV_color_space.
+//============================
+define('components/widget/color_vm',['require','knockout','core/clazz'],function(require){
+
+var	ko = require("knockout"),
+	Clazz = require("core/clazz");
+
+
+function rgbToHsv(r, g, b){
+    r = r/255, g = g/255, b = b/255;
+
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var h, s, v = max;
+
+    var d = max - min;
+    s = max == 0 ? 0 : d / max;
+
+    if(max == min){
+        h = 0; // achromatic
+    }else{
+        switch(max){
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+
+    return [h*360, s*100, v*100];
+}
+
+function hsvToRgb(h, s, v){
+
+	h = h/360;
+	s = s/100;
+	v = v/100;
+
+    var r, g, b;
+
+    var i = Math.floor(h * 6);
+    var f = h * 6 - i;
+    var p = v * (1 - s);
+    var q = v * (1 - f * s);
+    var t = v * (1 - (1 - f) * s);
+
+    switch(i % 6){
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+}
+
+
+function intToRgb(value){
+	var r = (value >> 16) & 0xff,
+		g = (value >> 8) & 0xff,
+		b = value & 0xff;
+	return [r, g, b];
+}
+
+function rgbToInt(r, g, b){
+	return r << 16 | g << 8 | b;
+}
+
+function intToHsv(value){
+	var rgb = intToRgb(value);
+	return rgbToHsv(rgb[0], rgb[1], rgb[2]);
+}
+
+function hsvToInt(h, s, v){
+	return rgbToInt(hsvToRgb(h, s, v));
+}
+
+// hsv to rgb is multiple to one
+// dependency relationship
+// h,s,v(w)------->rgb(r)----->r,g,b(w)
+// r,g,b(w)------->hex(r)
+// hex(w)------->hsv(w)
+// hex(rw)<------->hexString(rw)
+//
+// so writing hsv will not result circular update
+//
+var Color = Clazz.derive({
+	//--------------------rgb color space
+	_r : ko.observable().extend({numeric:0}),
+	_g : ko.observable().extend({numeric:0}),
+	_b : ko.observable().extend({numeric:0}),
+	//--------------------hsv color space
+	_h : ko.observable().extend({clamp:{min:0,max:360}}),
+	_s : ko.observable().extend({clamp:{min:0,max:100}}),
+	_v : ko.observable().extend({clamp:{min:0,max:100}}),
+	alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
+}, function(){
+
+	this.hex = ko.computed({
+		read : function(){
+			return rgbToInt( this._r(), this._g(), this._b() );
+		},
+		write : function(value){
+			var hsv = intToHsv(value);
+			this._h(hsv[0]);
+			this._s(hsv[1]);
+			this._v(hsv[2]);
+		}
+	}, this);
+
+	// bridge of hsv to rgb
+	this.rgb = ko.computed({
+		read : function(){
+			var rgb = hsvToRgb(this._h(), this._s(), this._v());
+			this._r(rgb[0]);
+			this._g(rgb[1]);
+			this._b(rgb[2]);
+
+			return rgb;
+		}
+	}, this);
+
+	this.hsv = ko.computed(function(){
+		return [this._h(), this._s(), this._v()];
+	}, this);
+
+	// set rgb and hsv from hex manually
+	this.set = function(hex){
+		var hsv = intToHsv(hex);
+		var rgb = intToRgb(hex);
+		this._h(hsv[0]);
+		this._s(hsv[1]);
+		this._v(hsv[2]);
+		this._r(rgb[0]);
+		this._g(rgb[1]);
+		this._b(rgb[2]);
+	}
+	//---------------string of hex
+	this.hexString = ko.computed({
+		read : function(){
+			var string = this.hex().toString(16),
+				fill = []
+			for(var i = 0; i < 6-string.length; i++){
+				fill.push('0');
+			}
+			return fill.join("")+string;
+		},
+		write : function(){}
+	}, this);
+
+	//-----------------rgb color of hue when value and saturation is 100%
+	this.hueRGB = ko.computed(function(){
+		return "rgb(" + hsvToRgb(this._h(), 100, 100).join(",") + ")";
+	}, this);
+
+	//---------------items data for vector(rgb and hsv)
+	var vector = ['_r', '_g', '_b'];
+	this.rgbVector = [];
+	for(var i = 0; i < 3; i++){
+		this.rgbVector.push({
+			type : "spinner",
+			min : 0,
+			max : 255,
+			step : 1,
+			precision : 0,
+			value : this[vector[i]]
+		})
+	}
+	var vector = ['_h', '_s', '_v'];
+	this.hsvVector = [];
+	for(var i = 0; i < 3; i++){
+		this.hsvVector.push({
+			type : "spinner",
+			min : 0,
+			max : 100,
+			step : 1,
+			precision : 0,
+			value : this[vector[i]]
+		})
+	}
+	// modify the hue
+	this.hsvVector[0].max = 360;
+
+	// set default 0xffffff
+	this.set(0xffffff);
+});
+
+Color.intToRgb = intToRgb;
+Color.rgbToInt = rgbToInt;
+Color.rgbToHsv = rgbToHsv;
+Color.hsvToRgb = hsvToRgb;
+Color.intToHsv = intToHsv;
+Color.hsvToInt = hsvToInt;
+
+return Color;
+});
+//=============================================
+// Palette
+//=============================================
+define('components/widget/palette',['require','./widget','knockout','./color_vm','components/widget/vector','components/meta/textfield','components/meta/range'],function(require){
+
+var Widget = require("./widget"),
+	ko = require("knockout"),
+	Color = require("./color_vm");
+
+// component will be used in the widget
+require("components/widget/vector");
+require("components/meta/textfield");
+require("components/meta/range");
+
+var Palette = Widget.derive(function(){
+	var ret = new Color;
+	var self = this;
+
+	_.extend(ret, {
+		_recent : ko.observableArray(),
+		_recentMax : 5	
+	})
+	return ret;
+}, {
+
+	type : 'PALETTE',
+
+	css : 'palette',
+
+	eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply']),
+
+	template : 	'<div class="wse-palette-adjuster">\
+					<div class="wse-left">\
+						<div class="wse-palette-picksv" data-bind="style:{backgroundColor:hueRGB}">\
+							<div class="wse-palette-saturation">\
+								<div class="wse-palette-value"></div>\
+							</div>\
+							<div class="wse-palette-picker"></div>\
+						</div>\
+						<div class="wse-palette-pickh">\
+							<div class="wse-palette-picker"></div>\
+						</div>\
+						<div style="clear:both"></div>\
+						<div class="wse-palette-alpha">\
+							<div data-bind="wse_ui:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
+						</div>\
+					</div>\
+					<div class="wse-right">\
+						<div class="wse-palette-rgb">\
+							<div data-bind="wse_ui:{type:\'label\', text:\'RGB\'}"></div>\
+							<div data-bind="wse_ui:{type:\'vector\', items:rgbVector}"></div>\
+						</div>\
+						<div class="wse-palette-hsv">\
+							<div data-bind="wse_ui:{type:\'label\', text:\'HSV\'}"></div>\
+							<div data-bind="wse_ui:{type:\'vector\', items:hsvVector}"></div>\
+						</div>\
+						<div class="wse-palette-hex">\
+							<div data-bind="wse_ui:{type:\'label\', text:\'#\'}"></div>\
+							<div data-bind="wse_ui:{type:\'textfield\',text:hexString}"></div>\
+						</div>\
+					</div>\
+				</div>\
+				<div style="clear:both"></div>\
+				<ul class="wse-palette-recent" data-bind="foreach:_recent">\
+					<li data-bind="style:{backgroundColor:rgbString},\
+									attr:{title:hexString},\
+									click:$parent.hex.bind($parent, hex)"></li>\
+				</ul>\
+				<div class="wse-palette-buttons">\
+					<div data-bind="wse_ui:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel}"></div>\
+					<div data-bind="wse_ui:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply}"></div>\
+				</div>',
+
+	initialize : function(){
+		this.hsv.subscribe(function(hsv){
+			this._setPickerPosition();
+			this.trigger("change", this.hex());
+		}, this);
+		// incase the saturation and value is both zero or one, and
+		// the rgb value not change when hue is changed
+		this._h.subscribe(this._setPickerPosition, this);
+	},
+	afterRender : function(){
+		this._$svSpace = $('.wse-palette-picksv');
+		this._$hSpace = $('.wse-palette-pickh');
+		this._$svPicker = this._$svSpace.children('.wse-palette-picker');
+		this._$hPicker = this._$hSpace.children('.wse-palette-picker');
+
+		this._svSize = this._$svSpace.height();
+		this._hSize = this._$hSpace.height();
+
+		this._setPickerPosition();
+		this._setupSvDragHandler();
+		this._setupHDragHandler();
+	},
+
+	_setupSvDragHandler : function(){
+		var self = this;
+
+		var _getMousePos = function(e){
+			var offset = self._$svSpace.offset(),
+				left = e.pageX - offset.left,
+				top = e.pageY - offset.top;
+			return {
+				left :left,
+				top : top
+			}
+		};
+		var _mouseMoveHandler = function(e){
+			var pos = _getMousePos(e);
+			self._computeSV(pos.left, pos.top);
+		}
+		var _mouseUpHandler = function(e){
+			$(document.body).unbind("mousemove", _mouseMoveHandler)
+							.unbind("mouseup", _mouseUpHandler)
+							.unbind('mousedown', _disableSelect);
+		}
+		var _disableSelect = function(e){
+			e.preventDefault();
+		}
+		this._$svSpace.mousedown(function(e){
+			var pos = _getMousePos(e);
+			self._computeSV(pos.left, pos.top);
+
+			$(document.body).bind("mousemove", _mouseMoveHandler)
+							.bind("mouseup", _mouseUpHandler)
+							.bind("mousedown", _disableSelect);
+		})
+	},
+
+	_setupHDragHandler : function(){
+		var self = this;
+
+		var _getMousePos = function(e){
+			var offset = self._$hSpace.offset(),
+				top = e.pageY - offset.top;
+			return top;
+		};
+		var _mouseMoveHandler = function(e){
+			self._computeH(_getMousePos(e));
+		};
+		var _disableSelect = function(e){
+			e.preventDefault();
+		}
+		var _mouseUpHandler = function(e){
+			$(document.body).unbind("mousemove", _mouseMoveHandler)
+							.unbind("mouseup", _mouseUpHandler)
+							.unbind('mousedown', _disableSelect);
+		}
+
+		this._$hSpace.mousedown(function(e){
+			self._computeH(_getMousePos(e));
+
+			$(document.body).bind("mousemove", _mouseMoveHandler)
+							.bind("mouseup", _mouseUpHandler)
+							.bind("mousedown", _disableSelect);
+		})
+
+	},
+
+	_computeSV : function(left, top){
+		var saturation = left / this._svSize,
+			value = (this._svSize-top)/this._svSize;
+
+		this._s(saturation*100);
+		this._v(value*100);
+	},
+
+	_computeH : function(top){
+
+		this._h( top/this._hSize * 360 );
+	},
+
+	_setPickerPosition : function(){
+		if( this._$svPicker){
+			var hsv = this.hsv(),
+				hue = hsv[0],
+				saturation = hsv[1],
+				value = hsv[2];
+			// set position relitave to space
+			this._$svPicker.css({
+				left : Math.round( saturation/100 * this._svSize ) + "px",
+				top : Math.round( (100-value)/100 * this._svSize ) + "px"
+			})
+			this._$hPicker.css({
+				top : Math.round( hue/360 * this._hSize) + "px"
+			})
+		}
+	},
+
+	_apply : function(){
+		if( self._recent().length > self._recentMax){
+			self._recent.shift();
+		}
+		self._recent.push( {
+			rgbString : "rgb(" + self.rgb().join(",") + ")",
+			hexString : self.hexString(),
+			hex : self.hex()
+		});
+		
+		this.trigger("apply", this.hex());
+	},
+
+	_cancel : function(){
+
+	}
+})
+
+Widget.provideBinding("palette", Palette);
+
+return Palette;
+});
 // portal for all the components
 define('src/main',["core/xmlparser",
 		"core/mixin/derive",
@@ -9294,7 +9710,8 @@ define('src/main',["core/xmlparser",
 		"components/container/vbox",
 		"components/container/hbox",
 		"components/widget/vector",
-		"components/widget/widget"], function(){
+		"components/widget/widget",
+		"components/widget/palette"], function(){
 
 	console.log("wse ui is loaded");
 
@@ -9332,7 +9749,8 @@ define('src/main',["core/xmlparser",
 			},
 			widget : {
 				widget : require("components/widget/widget"),
-				vector : require("components/widget/vector")
+				vector : require("components/widget/vector"),
+				palette : require("components/widget/palette")
 			}
 		}
 	}

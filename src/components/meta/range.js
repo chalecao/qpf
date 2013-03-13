@@ -22,35 +22,33 @@ var Range = Meta.derive(function(){
 
 		$el : $('<div data-bind="css:orientation"></div>'),
 
-		viewModel : {
+		value : ko.observable(0),
 
-			value : ko.observable(0),
+		step : ko.observable(1),
 
-			step : ko.observable(1),
+		min : ko.observable(-100),
 
-			min : ko.observable(-100),
+		max : ko.observable(100),
 
-			max : ko.observable(100),
+		orientation : ko.observable("horizontal"),// horizontal | vertical
 
-			orientation : ko.observable("horizontal"),// horizontal | vertical
+		precision : ko.observable(0),
 
-			precision : ko.observable(0),
+		format : "{{value}}",
 
-			format : "{{value}}",
-
-			_format : function(number){
-				return this.format.replace("{{value}}", number);
-			}
+		_format : function(number){
+			return this.format.replace("{{value}}", number);
 		},
+
 		// compute size dynamically when dragging
 		autoResize : true
 	}
 
-	ret.viewModel.value = ko.observable(1).extend({
-		numeric : ret.viewModel.precision,
+	ret.value = ko.observable(1).extend({
+		numeric : ret.precision,
 		clamp : { 
-					max : ret.viewModel.max,
-					min : ret.viewModel.min
+					max : ret.max,
+					min : ret.min
 				}
 	})
 	return ret;
@@ -81,12 +79,12 @@ var Range = Meta.derive(function(){
 		// add draggable mixin
 		Draggable.applyTo( this, {
 			axis : ko.computed(function(){
-				return this.viewModel.orientation() == "horizontal" ? "x" : "y"
+				return this.orientation() == "horizontal" ? "x" : "y"
 			}, this)
 		});
 
-		var prevValue = this.viewModel.value();
-		this.viewModel.value.subscribe(function(newValue){
+		var prevValue = this.value();
+		this.value.subscribe(function(newValue){
 			if( this._$box){
 				this.updatePosition();
 			}
@@ -125,11 +123,11 @@ var Range = Meta.derive(function(){
 	_dragHandler : function(){
 
 		var percentage = this.computePercentage(),
-			min = parseFloat( this.viewModel.min() ),
-			max = parseFloat( this.viewModel.max() ),
+			min = parseFloat( this.min() ),
+			max = parseFloat( this.max() ),
 			value = (max-min)*percentage+min;
 
-		this.viewModel.value( value );
+		this.value( value );
 
 		
 	},
@@ -190,9 +188,9 @@ var Range = Meta.derive(function(){
 			this._cacheSize();
 		}
 
-		var min = this.viewModel.min(),
-			max = this.viewModel.max(),
-			value = this.viewModel.value(),
+		var min = this.min(),
+			max = this.max(),
+			value = this.value(),
 			percentage = ( value - min ) / ( max - min ),
 
 			size = (this._boxSize-this._sliderSize)*percentage;
@@ -208,7 +206,7 @@ var Range = Meta.derive(function(){
 	},
 
 	_isHorizontal : function(){
-		return ko.utils.unwrapObservable( this.viewModel.orientation ) == "horizontal";
+		return ko.utils.unwrapObservable( this.orientation ) == "horizontal";
 	}
 })
 

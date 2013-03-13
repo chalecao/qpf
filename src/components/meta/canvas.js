@@ -11,11 +11,8 @@ var Canvas = Meta.derive(function(){
 return {
 
 	tag : "canvas",
-
-	viewModel : {
 		
-		framerate : ko.observable(0)
-	},
+	framerate : ko.observable(0),
 
 	stage : null
 }}, {
@@ -28,7 +25,7 @@ return {
 
 		this.stage = Goo.create(this.$el[0]);
 
-		this.viewModel.framerate.subscribe(function(newValue){
+		this.framerate.subscribe(function(newValue){
 			newValue ?
 				this.run( newValue ) :
 				this.stop();
@@ -55,8 +52,8 @@ return {
 
 	afterResize : function(){
 		if( this.stage ){
-			var width = this.viewModel.width(),
-				height = this.viewModel.height();
+			var width = this.width(),
+				height = this.height();
 			if( width && height ){
 				this.stage.resize( width, height );
 			}

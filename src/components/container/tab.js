@@ -10,17 +10,13 @@ define(["./panel",
 var Tab = Panel.derive(function(){
 
 return {
-	viewModel : {
 		
-		children : ko.observableArray(),
+	actived : ko.observable(0),
 
-		actived : ko.observable(0),
+	maxTabWidth : 100,
 
-		maxTabWidth : 100,
+	minTabWidth : 30
 
-		minTabWidth : 30
-
-	}
 }}, {
 
 	type : "TAB",
@@ -33,25 +29,25 @@ return {
 		}else{
 			console.error("Children of tab container must be instance of panel");
 		}
-		this._active( this.viewModel.actived() );
+		this._active( this.actived() );
 	},
 
 	eventsProvided : _.union('change', Container.prototype.eventsProvided),
 
 	initialize : function(){
-		this.viewModel.actived.subscribe(function(idx){
+		this.actived.subscribe(function(idx){
 			this._active(idx);
 		}, this)
 
 		// compute the tab value;
-		this.viewModel.children.subscribe(this._updateTabSize, this);
+		this.children.subscribe(this._updateTabSize, this);
 	},
 
 	template : '<div class="wse-tab-header">\
 					<ul class="wse-tab-tabs" data-bind="foreach:children">\
 						<li data-bind="css:{actived:$index()===$parent.actived()},\
 										click:$parent.actived.bind($data, $index())">\
-							<a data-bind="html:viewModel.title"></a>\
+							<a data-bind="html:title"></a>\
 						</li>\
 					</ul>\
 					<div class="wse-tab-tools"></div>\
@@ -72,7 +68,7 @@ return {
 		this._$body = $el.children(".wse-tab-body");
 		this._$footer = $el.children('.wse-tab-footer');
 
-		this._active( this.viewModel.actived() );
+		this._active( this.actived() );
 	},
 
 	afterResize : function(){
@@ -82,40 +78,40 @@ return {
 	},
 
 	_unActiveAll : function(){
-		_.each(this.viewModel.children(), function(child){
+		_.each(this.children(), function(child){
 			child.$el.css("display", "none");
 		});
 	},
 
 	_updateTabSize : function(){
-		var length = this.viewModel.children().length,
+		var length = this.children().length,
 			tabSize = Math.floor((this.$el.width()-20)/length);
 		// clamp
-		tabSize = Math.min(this.viewModel.maxTabWidth, Math.max(this.viewModel.minTabWidth, tabSize) );
+		tabSize = Math.min(this.maxTabWidth, Math.max(this.minTabWidth, tabSize) );
 
 		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
 	},
 
 	_adjustCurrentSize : function(){
 
-		var current = this.viewModel.children()[ this.viewModel.actived() ];
+		var current = this.children()[ this.actived() ];
 		if( current && this._$body ){
 			var headerHeight = this._$header.height(),
 				footerHeight = this._$footer.height();
 
-			if( this.viewModel.height() &&
-				this.viewModel.height() !== "auto" ){
-				current.viewModel.height( this.$el.height() - headerHeight - footerHeight );
+			if( this.height() &&
+				this.height() !== "auto" ){
+				current.height( this.$el.height() - headerHeight - footerHeight );
 			}
 			// PENDING : compute the width ???
-			if( this.viewModel.width() == "auto" ){
+			if( this.width() == "auto" ){
 			}
 		}
 	},
 
 	_active : function(idx){
 		this._unActiveAll();
-		var current = this.viewModel.children()[idx];
+		var current = this.children()[idx];
 		if( current ){
 			current.$el.css("display", "block");
 

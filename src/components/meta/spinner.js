@@ -20,21 +20,19 @@ function decrease(){
 
 var Spinner = Meta.derive(function(){
 	var ret = {
-		viewModel : {
-			step : ko.observable(1),
-			valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
-			precision : ko.observable(2),
-			min : ko.observable(null),
-			max : ko.observable(null),
-			increase : increase,
-			decrease : decrease
-		}
+		step : ko.observable(1),
+		valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
+		precision : ko.observable(2),
+		min : ko.observable(null),
+		max : ko.observable(null),
+		increase : increase,
+		decrease : decrease
 	}
-	ret.viewModel.value = ko.observable(1).extend({
-		numeric : ret.viewModel.precision,
+	ret.value = ko.observable(1).extend({
+		numeric : ret.precision,
 		clamp : { 
-					max : ret.viewModel.max,
-					min : ret.viewModel.min
+					max : ret.max,
+					min : ret.min
 				}
 	})
 	return ret;
@@ -44,8 +42,8 @@ var Spinner = Meta.derive(function(){
 	css : 'spinner',
 
 	initialize : function(){
-		var prevValue = this.viewModel.value() || 0;
-		this.viewModel.value.subscribe(function(newValue){
+		var prevValue = this.value() || 0;
+		this.value.subscribe(function(newValue){
 
 			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
 			prevValue = newValue;
@@ -93,8 +91,8 @@ var Spinner = Meta.derive(function(){
 
 		this._$value.change(function(){
 			// sync the value in the input
-			if( this.value !== self.viewModel.value().toString() ){
-				this.value = self.viewModel.value();
+			if( this.value !== self.value().toString() ){
+				this.value = self.value();
 			}
 		})
 

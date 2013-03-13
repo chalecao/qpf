@@ -7,10 +7,9 @@ define(['./meta',
 
 var Label = Meta.derive(function(){
 return {
-	viewModel : {
-		// value of the Label
-		text : ko.observable('Label')
-	}
+	// value of the Label
+	text : ko.observable('Label')
+	
 } }, {
 
 	template : '<Label data-bind="html:text"></Label>',

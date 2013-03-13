@@ -17,7 +17,7 @@ return {
 
 	initialize : function(){
 
-		this.viewModel.children.subscribe(function(children){
+		this.children.subscribe(function(children){
 			this.resize();
 			_.each(children, function(child){
 				child.on('resize', this.afterResize, this);

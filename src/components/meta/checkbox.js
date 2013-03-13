@@ -7,11 +7,10 @@ define(['./meta',
 var Checkbox = Meta.derive(function(){
 return {
 	
-	viewModel : {
-		// value of the button
-		checked : ko.observable(false),
-		label : ko.observable("")
-	}
+	// value of the button
+	checked : ko.observable(false),
+	label : ko.observable("")
+	
 }}, {
 
 	template : '<input type="checkbox" data-bind="checked:checked" />\
@@ -23,9 +22,9 @@ return {
 
 	// binding events
 	afterRender : function(){
-		var vm = this.viewModel;
+		var self = this;
 		this.$el.click(function(){
-			vm.checked( ! vm.checked() );
+			self.checked( ! self.checked() );
 		})
 	}
 });

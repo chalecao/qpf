@@ -30,24 +30,24 @@ return {
 			marginCache = [],
 			marginCacheWithFlex = [];
 
-		_.each(this.viewModel.children(), function(child, idx){
+		_.each(this.children(), function(child, idx){
 			var margin = this._getMargin(child.$el);
 			marginCache.push(margin);
 			// stretch the height
 			// (when align is stretch)
-			child.viewModel.height( this.$el.height()-margin.top-margin.bottom );
+			child.height( this.$el.height()-margin.top-margin.bottom );
 
-			var prefer = ko.utils.unwrapObservable( child.viewModel.prefer );
+			var prefer = ko.utils.unwrapObservable( child.prefer );
 
 			// item has a prefer size;
 			if( prefer ){
 				// TODO : if the prefer size is lager than vbox size??
 				prefer = Math.min(prefer, remainderWidth);
-				child.viewModel.width( prefer );
+				child.width( prefer );
 
 				remainderWidth -= prefer+margin.left+margin.right;
 			}else{
-				var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1);
+				var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1);
 				// put it in the next step to compute
 				// the height based on the flex property
 				childrenWithFlex.push(child);
@@ -59,20 +59,20 @@ return {
 
 		_.each( childrenWithFlex, function(child, idx){
 			var margin = marginCacheWithFlex[idx];
-			var flex = parseInt(ko.utils.unwrapObservable( child.viewModel.flex ) || 1),
+			var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1),
 				ratio = flex / flexSum;
-			child.viewModel.width( Math.floor(remainderWidth*ratio)-margin.left-margin.right );	
+			child.width( Math.floor(remainderWidth*ratio)-margin.left-margin.right );	
 		})
 
 		var prevWidth = 0;
-		_.each(this.viewModel.children(), function(child, idx){
+		_.each(this.children(), function(child, idx){
 			var margin = marginCache[idx];
 			child.$el.css({
 				"position" : "absolute",
 				"top" : '0px',
 				"left" : prevWidth + "px"
 			});
-			prevWidth += child.viewModel.width()+margin.left+margin.right;
+			prevWidth += child.width()+margin.left+margin.right;
 		})
 	}
 

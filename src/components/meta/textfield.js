@@ -13,12 +13,9 @@ return {
 	
 	tag : "div",
 
-	viewModel : {
-
-		text : ko.observable(""),
+	text : ko.observable(""),
 		
-		placeholder : ko.observable("")
-	}
+	placeholder : ko.observable("")
 
 }}, {
 	

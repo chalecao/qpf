@@ -6,10 +6,8 @@ define(["../base",
 
 var Container = Base.derive(function(){
 return {
-	viewModel : {
-		// all child components
-		children : ko.observableArray()
-	}
+	// all child components
+	children : ko.observableArray()
 
 }}, function(){
 
@@ -26,15 +24,15 @@ return {
 	// add child component
 	add : function( sub ){
 		sub.parent = this;
-		this.viewModel.children.push( sub );
+		this.children.push( sub );
 	},
 	// remove child component
 	remove : function(){
 		sub.parent = null;
-		this.viewModel.children.remove( sub );
+		this.children.remove( sub );
 	},
 	children : function(){
-		return this.viewModel.children()
+		return this.children()
 	},
 	afterResize : function(){
 		// trigger the after resize event in post-order
@@ -45,7 +43,7 @@ return {
 	},
 	dispose : function(){
 		
-		_.each(this.viewModel.children(), function(child){
+		_.each(this.children(), function(child){
 			child.dispose();
 		});
 

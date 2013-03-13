@@ -16,35 +16,14 @@ return {
 
 	$el : $('<div data-bind="css:{active:active}" tabindex="0"></div>'),
 
-	viewModel : {
+	value : ko.observable(),
 
-		value : ko.observable(),
+	items : ko.observableArray(),	//{value, text}
 
-		items : ko.observableArray(),	//{value, text}
+	defaultText : ko.observable("select"),
 
-		defaultText : ko.observable("select"),
+	active : ko.observable(false),
 
-		active : ko.observable(false),
-
-		//events
-		_focus : function(){
-			this.active(true);
-		},
-		_blur : function(){
-			this.active(false);
-		},
-		_toggle : function(){
-			this.active( ! this.active() );
-		},
-		_select : function(value){
-			value = ko.utils.unwrapObservable(value);
-			this.value(value);
-			this._blur();
-		},
-		_isSelected : function(value){
-			return this.value() === ko.utils.unwrapObservable(value);
-		}
-	}
 }}, {
 	
 	type : 'COMBOBOX',
@@ -55,7 +34,7 @@ return {
 
 	initialize : function(){
 
-		this.viewModel.selectedText = ko.computed(function(){
+		this.selectedText = ko.computed(function(){
 			var val = this.value();
 			var result =  _.filter(this.items(), function(item){
 				return ko.utils.unwrapObservable(item.value) == val;
@@ -64,7 +43,7 @@ return {
 				return this.defaultText();
 			}
 			return ko.utils.unwrapObservable(result.text);
-		}, this.viewModel);
+		}, this);
 
 	},
 
@@ -80,14 +59,28 @@ return {
 		this._$items = this.$el.find(".wse-combobox-items");
 
 		this.$el.blur(function(){
-			self.viewModel._blur();
+			self._blur();
 		})
 
 	},
 
-	//-------method provided for the developers
-	select : function(value){
-		this.viewModel.select(value);
+	//events
+	_focus : function(){
+		this.active(true);
+	},
+	_blur : function(){
+		this.active(false);
+	},
+	_toggle : function(){
+		this.active( ! this.active() );
+	},
+	_select : function(value){
+		value = ko.utils.unwrapObservable(value);
+		this.value(value);
+		this._blur();
+	},
+	_isSelected : function(value){
+		return this.value() === ko.utils.unwrapObservable(value);
 	}
 })
 

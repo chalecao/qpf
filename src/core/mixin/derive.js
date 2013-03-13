@@ -43,11 +43,6 @@ function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
 		_.extend( this, typeof makeDefaultOpt == "function" ?
 						makeDefaultOpt.call(this) : makeDefaultOpt );
 
-		for( var name in options ){
-			if( typeof this[name] == "undefined" ){
-				console.warn( name+" is not an option");
-			}
-		}
 		_.extend( this, options );
 
 		if( this.constructor == sub){

@@ -58,7 +58,7 @@ define(['knockout',
 
 		var component = new Constructor({
 			name : name || "",
-			attribute : attr,
+			attributes : attr,
 			events : events
 		});
 

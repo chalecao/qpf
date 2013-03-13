@@ -8,11 +8,10 @@ define(['./meta',
 var Button = Meta.derive(function(){
 return {
 	$el : $('<button data-bind="html:text"></button>'),
-
-	viewModel : {
-		// value of the button
-		text : ko.observable('Button')
-	}
+	
+	// value of the button
+	text : ko.observable('Button')
+	
 }}, {
 
 	type : 'BUTTON',

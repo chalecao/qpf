@@ -20,16 +20,12 @@ return {	// Public properties
 	// Jquery element as a wrapper
 	// It will be created in the constructor
 	$el : null,
-	// ViewModel for knockout binding
-	// !IMPORTANT the property in the view model can not be override
-	// set method is provided if you want to set the value in the viewModel
-	viewModel : {},
-	// Attribute will be applied to the viewModel
+	// Attribute will be applied to self
 	// WARNING: It will be only used in the constructor
 	// So there is no need to re-assign a new viewModel when created an instance
 	// if property in the attribute is a observable
 	// it will be binded to the property in viewModel
-	attribute : {},
+	attributes : {},
 	
 	parent : null,
 	// ui skin
@@ -39,6 +35,12 @@ return {	// Public properties
 	// Skin prefix
 	skinPrefix : "wse-skin-",
 
+	id : ko.observable(""),
+	width : ko.observable(),
+	class : ko.observable(),
+	height : ko.observable(),
+	disable : ko.observable(false),
+	style : ko.observable(""),
 	// events list inited at first time
 	events : {}
 }}, function(){	//constructor
@@ -63,40 +65,29 @@ return {	// Public properties
 	}
 	// Class name of wrapper element is depend on the lowercase of component type
 	// this.$el.addClass( this.withPrefix(this.type.toLowerCase(), this.classPrefix) );
-	
-	// extend default properties to view Models
-	// like normal dom element, node of wse will have height, width, id
-	// style attribute, and all this will map to the attribute in dom
-	_.extend(this.viewModel, {
-		id : ko.observable(""),
-		width : ko.observable(),
-		class : ko.observable(),
-		height : ko.observable(),
-		disable : ko.observable(false),
-		style : ko.observable("")
-	});
-	this.viewModel.width.subscribe(function(newValue){
+
+	this.width.subscribe(function(newValue){
 		this.$el.width(newValue);
 		if( ! this.__resizing__ ){
 			this.afterResize();
 		}
 	}, this);
-	this.viewModel.height.subscribe(function(newValue){
+	this.height.subscribe(function(newValue){
 		this.$el.height(newValue);
 		if( ! this.__resizing__){
 			this.afterResize();
 		}
 	}, this);
-	this.viewModel.disable.subscribe(function(newValue){
+	this.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
 	}, this);
-	this.viewModel.id.subscribe(function(newValue){
+	this.id.subscribe(function(newValue){
 		this.$el.attr("id", newValue);
 	}, this);
-	this.viewModel.class.subscribe(function(newValue){
+	this.class.subscribe(function(newValue){
 		this.$el.addClass( newValue );
 	}, this);
-	this.viewModel.style.subscribe(function(newValue){
+	this.style.subscribe(function(newValue){
 		var valueSv = newValue;
 		var styleRegex = /\s*(\S*?)\s*:\s*(\S*)\s*/g;
 		// preprocess the style string
@@ -125,8 +116,8 @@ return {	// Public properties
 	this.initialize();
 	this.trigger("initialize");
 	
-	// apply attribute to the view model
-	this._mappingAttributesToViewModel( this.attribute );
+	// apply attribute 
+	this._mappingAttributes( this.attributes );
 
 	// Here we removed auto rendering at constructor
 	// to support deferred rendering after the $el is attached
@@ -174,7 +165,7 @@ return {	// Public properties
 	// Default render method
 	doRender : function(){
 		this.$el.html(this.template);
-		ko.applyBindings( this.viewModel, this.$el[0] );
+		ko.applyBindings( this, this.$el[0] );
 	},
 	// Dispose the component instance
 	dispose : function(){
@@ -190,10 +181,10 @@ return {	// Public properties
 	resize : function(width, height){
 		this.__resizing__ = true;
 		if( width || width === 0){
-			this.viewModel.width( width );
+			this.width( width );
 		}
 		if( height || height === 0){
-			this.viewModel.height( height );
+			this.height( height );
 		}
 		this.__resizing__ = false;
 	},
@@ -210,27 +201,25 @@ return {	// Public properties
 			return className.substr(prefix.length);
 		}
 	},
-	// mapping the attributes to viewModel 
-	_mappingAttributesToViewModel : function(attributes, onlyUpdate){
+	_mappingAttributes : function(attributes, onlyUpdate){
 		for(var name in attributes){
 			var attr = attributes[name];
-			var propInVM = this.viewModel[name];
-			// create new attribute when it is not existed
-			// in the viewModel, even if it will not be used
+			var propInVM = this[name];
+			// create new attribute when property is not existed, even if it will not be used
 			if( ! propInVM ){
 				var value = ko.utils.unwrapObservable(attr);
 				// is observableArray or plain array
 				if( (ko.isObservable(attr) && attr.push) ||
 					attr.constructor == Array){
-					this.viewModel[name] = ko.observableArray(value);
+					this[name] = ko.observableArray(value);
 				}else{
-					this.viewModel[name] = ko.observable(value);
+					this[name] = ko.observable(value);
 				}
 			}
 			else if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
 			}else{
-				this.viewModel[name] = ko.utils.unwrapObservable(attr);
+				this[name] = ko.utils.unwrapObservable(attr);
 			}
 			if( ! onlyUpdate){
 				if( ko.isObservable(attr) ){
@@ -389,23 +378,6 @@ ko.bindingHandlers["wse_ui"] = {
 	},
 
 	update : function( element, valueAccessor ){
-		// var value = valueAccessor();
-		// var options = unwrap(value) || {},
-		// 	type = unwrap(options.type),
-		// 	name  = unwrap(options.name),
-		// 	attr = unwrap(options.attribute);
-
-		// var component = Base.get( element.getAttribute("data-wse-guid") );
-
-		// if( component &&
-		// 	component.type.toLowerCase() == type.toLowerCase() ){	// do simple update
-		// 	component.name = name;
-		// 	if( attr ){
-		// 		koMapping.fromJS( attr, {}, component.viewModel );	
-		// 	}
-		// }else{
-		// 	ko.bindingHandlers["wse_meta"].init( element, valueAccessor );
-		// }
 
 	}
 }
