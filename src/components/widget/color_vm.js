@@ -82,57 +82,66 @@ function hsvToInt(h, s, v){
 	return rgbToInt(hsvToRgb(h, s, v));
 }
 
-function makeComputed(space, idx, read, write){
-	return ko.computed({
-		read : function(){
-			var ret = space()[idx];
-			// read pre process
-			return read ? read( ret ) : ret;
-		},
-		write : function(value){
-			// write pre process
-			value = write ? write(value) : value;
-			var s = space();
-			s[idx] = value;
-			space(s);
-		}
-	})
-}
-// color view model
+// hsv to rgb is multiple to one
+// dependency relationship
+// h,s,v(w)------->rgb(r)----->r,g,b(w)
+// r,g,b(w)------->hex(r)
+// hex(w)------->hsv(w)
+// hex(rw)<------->hexString(rw)
+//
+// so writing hsv will not result circular update
+//
 var Color = Clazz.derive({
-	hex : ko.observable(0xffffff),
+	//--------------------rgb color space
+	_r : ko.observable().extend({numeric:0}),
+	_g : ko.observable().extend({numeric:0}),
+	_b : ko.observable().extend({numeric:0}),
+	//--------------------hsv color space
+	_h : ko.observable().extend({clamp:{min:0,max:360}}),
+	_s : ko.observable().extend({clamp:{min:0,max:360}}),
+	_v : ko.observable().extend({clamp:{min:0,max:360}}),
 	alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
 }, function(){
 
-	//-------------rgb color space
+	this.hex = ko.computed({
+		read : function(){
+			return rgbToInt( this._r(), this._g(), this._b() );
+		},
+		write : function(value){
+			var hsv = intToHsv(value);
+			this._h(hsv[0]);
+			this._s(hsv[1]);
+			this._v(hsv[2]);
+		}
+	}, this);
+
+	// bridge of hsv to rgb
 	this.rgb = ko.computed({
 		read : function(){
-			return intToRgb(parseInt(this.hex()));
-		},
-		// value is rgb array
-		write : function(value){
-			this.hex( rgbToInt(value) );
+			var rgb = hsvToRgb(this._h(), this._s(), this._v());
+			this._r(rgb[0]);
+			this._g(rgb[1]);
+			this._b(rgb[2]);
+
+			return rgb;
 		}
 	}, this);
 
-	this.r = makeComputed(this.rgb, 0).extend({numeric:0});
-	this.g = makeComputed(this.rgb, 1).extend({numeric:0});
-	this.b = makeComputed(this.rgb, 2).extend({numeric:0});
-
-	//---------------hsv color space
-	this.hsv = ko.computed({
-		read : function(){
-			return intToHsv(parseInt(this.hex()));
-		},
-		// value is hsv array
-		write : function(value){
-			this.hex( hsvToInt(value[0], value[1], value[2]) );
-		}
+	this.hsv = ko.computed(function(){
+		return [this._h(), this._s(), this._v()];
 	}, this);
-	this.h = makeComputed(this.hsv, 0).extend({clamp:{min:0,max:360}});
-	this.s = makeComputed(this.hsv, 1).extend({clamp:{min:0,max:100}});
-	this.v = makeComputed(this.hsv, 2).extend({clamp:{min:0,max:100}});
 
+	// set rgb and hsv from hex manually
+	this.set = function(hex){
+		var hsv = intToHsv(hex);
+		var rgb = intToRgb(hex);
+		this._h(hsv[0]);
+		this._s(hsv[1]);
+		this._v(hsv[2]);
+		this._r(rgb[0]);
+		this._g(rgb[1]);
+		this._b(rgb[2]);
+	}
 	//---------------string of hex
 	this.hexString = ko.computed({
 		read : function(){
@@ -150,11 +159,11 @@ var Color = Clazz.derive({
 
 	//-----------------rgb color of hue when value and saturation is 100%
 	this.hueRGB = ko.computed(function(){
-		return "rgb(" + hsvToRgb(this.h(), 100, 100).join(",") + ")";
-	}, this)
+		return "rgb(" + hsvToRgb(this._h(), 100, 100).join(",") + ")";
+	}, this);
 
 	//---------------items data for vector(rgb and hsv)
-	var vector = ['r', 'g', 'b'];
+	var vector = ['_r', '_g', '_b'];
 	this.rgbVector = [];
 	for(var i = 0; i < 3; i++){
 		this.rgbVector.push({
@@ -166,7 +175,7 @@ var Color = Clazz.derive({
 			value : this[vector[i]]
 		})
 	}
-	var vector = ['h', 's', 'v'];
+	var vector = ['_h', '_s', '_v'];
 	this.hsvVector = [];
 	for(var i = 0; i < 3; i++){
 		this.hsvVector.push({
@@ -180,7 +189,17 @@ var Color = Clazz.derive({
 	}
 	// modify the hue
 	this.hsvVector[0].max = 360;
+
+	// set default 0xffffff
+	this.set(0xffffff);
 });
+
+Color.intToRgb = intToRgb;
+Color.rgbToInt = rgbToInt;
+Color.rgbToHsv = rgbToHsv;
+Color.hsvToRgb = hsvToRgb;
+Color.intToHsv = intToHsv;
+Color.hsvToInt = hsvToInt;
 
 return Color;
 })

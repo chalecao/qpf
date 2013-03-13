@@ -64,11 +64,10 @@ var Palette = Widget.derive(function(){
 				</div>',
 
 	initialize : function(){
-		this.viewModel.hsv.subscribe(function(){
-			this._setPickerPosition();
-		}, this);
+		this.viewModel.hex.subscribe(this._setPickerPosition, this);
 		// incase the saturation and value is both zero or one, and
 		// the rgb value not change when hue is changed
+		this.viewModel._h.subscribe(this._setPickerPosition, this);
 	},
 	afterRender : function(){
 		this._$svSpace = $('.wse-palette-picksv');
@@ -152,20 +151,21 @@ var Palette = Widget.derive(function(){
 		var saturation = left / this._svSize,
 			value = (this._svSize-top)/this._svSize;
 
-		this.viewModel.s(saturation*100);
-		this.viewModel.v(value*100);
+		this.viewModel._s(saturation*100);
+		this.viewModel._v(value*100);
 	},
 
 	_computeH : function(top){
 
-		this.viewModel.h( top/this._hSize * 360 );
+		this.viewModel._h( top/this._hSize * 360 );
 	},
 
 	_setPickerPosition : function(){
 		if( this._$svPicker){
-			var hue = this.viewModel.h(),
-				saturation = this.viewModel.s(),
-				value = this.viewModel.v();
+			var hsv = this.viewModel.hsv(),
+				hue = hsv[0],
+				saturation = hsv[1],
+				value = hsv[2];
 
 			// set position relitave to space
 			this._$svPicker.css({

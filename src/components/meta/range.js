@@ -43,7 +43,7 @@ var Range = Meta.derive(function(){
 			}
 		},
 		// compute size dynamically when dragging
-		autoResize : true,
+		autoResize : true
 	}
 
 	ret.viewModel.value = ko.observable(1).extend({

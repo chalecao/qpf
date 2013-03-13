@@ -59,8 +59,10 @@ return {
 			if( constrain ){
 				this._computeContraintInfo();
 			}
-		}, this)
+		}, this);
 	},
+
+	eventsProvided : _.union(Widget.prototype.eventsProvided, "change"),
 
 	template : '<div class="wse-left">\
 					<div class="wse-vector-link" data-bind="click:_toggleConstrain"></div>\
