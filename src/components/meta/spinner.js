@@ -19,30 +19,31 @@ function decrease(){
 }
 
 var Spinner = Meta.derive(function(){
-return {
-	viewModel : {
-
-		step : ko.observable(1),
-		
-		value : ko.observable(1),
-
-		valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
-
-		precision : ko.observable(2),
-
-		increase : increase,
-
-		decrease : decrease
-		
+	var ret = {
+		viewModel : {
+			step : ko.observable(1),
+			valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
+			precision : ko.observable(2),
+			min : ko.observable(null),
+			max : ko.observable(null),
+			increase : increase,
+			decrease : decrease
+		}
 	}
-}}, {
+	ret.viewModel.value = ko.observable(1).extend({
+		numeric : ret.viewModel.precision,
+		clamp : { 
+					max : ret.viewModel.max,
+					min : ret.viewModel.min
+				}
+	})
+	return ret;
+}, {
 	type : 'SPINNER',
 
 	css : 'spinner',
 
 	initialize : function(){
-		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
-
 		var prevValue = this.viewModel.value() || 0;
 		this.viewModel.value.subscribe(function(newValue){
 
@@ -96,6 +97,7 @@ return {
 				this.value = self.viewModel.value();
 			}
 		})
+
 	}
 })
 

@@ -7,7 +7,7 @@
 define(function(require, exports, module){
 	
 	// return document fragment converted from the xml
-	var parse = function( xmlString ){
+	var parse = function( xmlString, dom ){
 		
 		if( typeof(xmlString) == "string"){
 			var xml = parseXML( xmlString );
@@ -16,7 +16,7 @@ define(function(require, exports, module){
 		}
 		if( xml ){
 
-			var rootDomNode = document.createElement("div");
+			var rootDomNode = dom || document.createElement("div");
 
 			convert( xml, rootDomNode);
 

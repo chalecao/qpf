@@ -1,5 +1,5 @@
-<window width="600" left="100" top="100" title="Components">
-	<tab width="500">
+<container width="@binding[windowWidth]" height="@binding[windowHeight]">
+	<tab height="100%" actived="1">
 		<panel title="Meta">
 			<label>Button</label>
 			<button name="button" onclick="@binding[clickHandler]"> click me!</button>
@@ -20,7 +20,7 @@
 			<label>Spinner</label>
 			<spinner value="20"></spinner>
 		</panel>
-		<panel title="Vector">
+		<panel title="Widget">
 			<label>
 				Spinner
 			</label>
@@ -35,6 +35,7 @@
 				<range value="100"></range>
 				<range value="10"></range>
 			</vector>
+			<palette></palette>
 		</panel>
 		<panel title="VBox">
 			<vbox height="400">
@@ -50,5 +51,8 @@
 				<panel title="third" flex="2" style="margin:5px;"></panel>
 			</hbox>
 		</panel>
+		<panel title="Canvas">
+			<canvas width="1000" height="400" oninitialize="@binding[drawCanvas]"></canvas>
+		</panel>
 	</tab>
-</window>
+</container>

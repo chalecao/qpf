@@ -8,8 +8,8 @@
 define(['./meta',
 		'knockout'], function(Meta, ko){
 
-var TextField = Meta.derive(
-{
+var TextField = Meta.derive(function(){
+return {
 	
 	tag : "div",
 
@@ -20,7 +20,7 @@ var TextField = Meta.derive(
 		placeholder : ko.observable("")
 	}
 
-}, {
+}}, {
 	
 	type : "TEXTFIELD",
 

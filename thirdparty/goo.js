@@ -1037,8 +1037,8 @@ computeAABB : function(){
 },
 draw : function(ctx){
 	
-	var start = this.fixAA ? _Math.fixPos(start) : start,
-		end = this.fixAA ? _Math.fixPos(end) : end;
+	var start = this.fixAA ? _Math.fixPos(this.start) : this.start,
+		end = this.fixAA ? _Math.fixPos(this.end) : this.end;
 
 	ctx.beginPath();
 	ctx.moveTo(start[0], start[1]);

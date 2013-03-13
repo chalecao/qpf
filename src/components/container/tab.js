@@ -33,20 +33,18 @@ return {
 		}else{
 			console.error("Children of tab container must be instance of panel");
 		}
-		this.active( this.viewModel.actived() );
+		this._active( this.viewModel.actived() );
 	},
 
 	eventsProvided : _.union('change', Container.prototype.eventsProvided),
 
 	initialize : function(){
 		this.viewModel.actived.subscribe(function(idx){
-			this.active(idx);
+			this._active(idx);
 		}, this)
-		this.active( this.viewModel.actived() );
 
 		// compute the tab value;
 		this.viewModel.children.subscribe(this._updateTabSize, this);
-
 	},
 
 	template : '<div class="wse-tab-header">\
@@ -74,12 +72,12 @@ return {
 		this._$body = $el.children(".wse-tab-body");
 		this._$footer = $el.children('.wse-tab-footer');
 
-		this.active( this.viewModel.actived() );
+		this._active( this.viewModel.actived() );
 	},
 
 	afterResize : function(){
-		this._updateTabSize();
 		this._adjustCurrentSize();
+		this._updateTabSize();
 		Container.prototype.afterResize.call(this);
 	},
 
@@ -115,17 +113,17 @@ return {
 		}
 	},
 
-	active : function(idx){
+	_active : function(idx){
 		this._unActiveAll();
 		var current = this.viewModel.children()[idx];
 		if( current ){
 			current.$el.css("display", "block");
 
-			this._adjustCurrentSize();
 			// Trigger the resize events manually
 			// Because the width and height is zero when the panel is hidden,
 			// so the children may not be properly layouted, We need to force the
 			// children do layout again when panel is visible;
+			this._adjustCurrentSize();
 			current.afterResize();
 
 			this.trigger('change', idx, current);

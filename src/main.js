@@ -20,7 +20,8 @@ define(["core/xmlparser",
 		"components/container/vbox",
 		"components/container/hbox",
 		"components/widget/vector",
-		"components/widget/widget"], function(){
+		"components/widget/widget",
+		"components/widget/palette"], function(){
 
 	console.log("wse ui is loaded");
 
@@ -58,7 +59,8 @@ define(["core/xmlparser",
 			},
 			widget : {
 				widget : require("components/widget/widget"),
-				vector : require("components/widget/vector")
+				vector : require("components/widget/vector"),
+				palette : require("components/widget/palette")
 			}
 		}
 	}

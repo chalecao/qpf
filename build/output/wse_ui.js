@@ -426,7 +426,7 @@ define("build/almond", function(){});
 define('core/xmlparser',['require','exports','module'],function(require, exports, module){
 	
 	// return document fragment converted from the xml
-	var parse = function( xmlString ){
+	var parse = function( xmlString, dom ){
 		
 		if( typeof(xmlString) == "string"){
 			var xml = parseXML( xmlString );
@@ -435,7 +435,7 @@ define('core/xmlparser',['require','exports','module'],function(require, exports
 		}
 		if( xml ){
 
-			var rootDomNode = document.createElement("div");
+			var rootDomNode = dom || document.createElement("div");
 
 			convert( xml, rootDomNode);
 
@@ -8183,6 +8183,12 @@ return {
 		});
 	},
 
+	afterResize : function(){
+
+		this.updatePosition();
+		Meta.prototype.afterResize.call(this);
+	},
+
 	_dragHandler : function(){
 
 		var percentage = this.computePercentage(),
@@ -8191,12 +8197,14 @@ return {
 			value = (max-min)*percentage+min;
 
 		this.viewModel.value( value );
+
+		
 	},
 
 	_cacheSize : function(){
 
 		// cache the size of the groove and slider
-		var isHorizontal =this._isHorizontal(); 
+		var isHorizontal =this._isHorizontal();
 		this._boxSize =  isHorizontal ?
 							this._$box.width() :
 							this._$box.height();
@@ -8241,7 +8249,10 @@ return {
 	},
 
 	updatePosition : function(){
-
+		
+		if( ! this._$slider){
+			return;
+		}
 		if( this.autoResize ){
 			this._cacheSize();
 		}
@@ -8253,12 +8264,12 @@ return {
 
 			size = (this._boxSize-this._sliderSize)*percentage;
 		
-		// if( this._boxSize > 0 ){
-			// this._setOffset(size);
-		// }else{	//incase the element is still not in the document
+		if( this._boxSize > 0 ){
+			this._setOffset(size);
+		}else{	//incase the element is still not in the document
 			this._$slider.css( this._isHorizontal() ?
 								"right" : "bottom", (1-percentage)*100+"%");
-		// }
+		}
 		this._$percentage.css( this._isHorizontal() ?
 								'width' : 'height', percentage*100+"%");
 	},
@@ -8388,8 +8399,8 @@ return Spinner;
 define('components/meta/textfield',['./meta',
 		'knockout'], function(Meta, ko){
 
-var TextField = Meta.derive(
-{
+var TextField = Meta.derive(function(){
+return {
 	
 	tag : "div",
 
@@ -8400,7 +8411,7 @@ var TextField = Meta.derive(
 		placeholder : ko.observable("")
 	}
 
-}, {
+}}, {
 	
 	type : "TEXTFIELD",
 
@@ -8694,16 +8705,15 @@ return {
 		}else{
 			console.error("Children of tab container must be instance of panel");
 		}
-		this.active( this.viewModel.actived() );
+		this._active( this.viewModel.actived() );
 	},
 
 	eventsProvided : _.union('change', Container.prototype.eventsProvided),
 
 	initialize : function(){
 		this.viewModel.actived.subscribe(function(idx){
-			this.active(idx);
+			this._active(idx);
 		}, this)
-		this.active( this.viewModel.actived() );
 
 		// compute the tab value;
 		this.viewModel.children.subscribe(this._updateTabSize, this);
@@ -8735,12 +8745,12 @@ return {
 		this._$body = $el.children(".wse-tab-body");
 		this._$footer = $el.children('.wse-tab-footer');
 
-		this.active( this.viewModel.actived() );
+		this._active( this.viewModel.actived() );
 	},
 
 	afterResize : function(){
-		this._updateTabSize();
 		this._adjustCurrentSize();
+		this._updateTabSize();
 		Container.prototype.afterResize.call(this);
 	},
 
@@ -8776,17 +8786,17 @@ return {
 		}
 	},
 
-	active : function(idx){
+	_active : function(idx){
 		this._unActiveAll();
 		var current = this.viewModel.children()[idx];
 		if( current ){
 			current.$el.css("display", "block");
 
-			this._adjustCurrentSize();
 			// Trigger the resize events manually
 			// Because the width and height is zero when the panel is hidden,
 			// so the children may not be properly layouted, We need to force the
 			// children do layout again when panel is visible;
+			this._adjustCurrentSize();
 			current.afterResize();
 
 			this.trigger('change', idx, current);
@@ -9148,6 +9158,13 @@ return {
 
 		this._cacheSubComponents();
 		this._updateConstraint();
+	},
+
+	afterResize : function(){
+		_.each( this._sub, function(item){
+			item.afterResize();
+		} )
+		Widget.prototype.afterResize.call(this);
 	},
 
 	dispose : function(){

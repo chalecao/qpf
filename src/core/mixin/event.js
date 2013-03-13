@@ -34,7 +34,7 @@ return{
 			handlers[target] = [];
 		}
 		if( handlers[target].indexOf(handler) == -1){
-			// struct in list
+			// structure in list
 			// [handler,context,handler,context,handler,context..]
 			handlers[target].push( handler );
 			handlers[target].push( context );

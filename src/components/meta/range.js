@@ -18,35 +18,44 @@ define(['./meta',
 
 var Range = Meta.derive(function(){
 
-return {
+	var ret =  {
 
-	$el : $('<div data-bind="css:orientation"></div>'),
+		$el : $('<div data-bind="css:orientation"></div>'),
 
-	viewModel : {
+		viewModel : {
 
-		value : ko.observable(0),
+			value : ko.observable(0),
 
-		step : ko.observable(1),
+			step : ko.observable(1),
 
-		min : ko.observable(-100),
+			min : ko.observable(-100),
 
-		max : ko.observable(100),
+			max : ko.observable(100),
 
-		orientation : ko.observable("horizontal"),// horizontal | vertical
+			orientation : ko.observable("horizontal"),// horizontal | vertical
 
-		precision : ko.observable(0),
+			precision : ko.observable(0),
 
-		format : "{{value}}",
+			format : "{{value}}",
 
-		_format : function(number){
-			return this.format.replace("{{value}}", number);
-		}
-	},
+			_format : function(number){
+				return this.format.replace("{{value}}", number);
+			}
+		},
+		// compute size dynamically when dragging
+		autoResize : true,
+	}
 
-	// compute size dynamically when dragging
-	autoResize : true,
+	ret.viewModel.value = ko.observable(1).extend({
+		numeric : ret.viewModel.precision,
+		clamp : { 
+					max : ret.viewModel.max,
+					min : ret.viewModel.min
+				}
+	})
+	return ret;
 
-}}, {
+}, {
 
 	type : "RANGE",
 
@@ -69,9 +78,6 @@ return {
 	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
 	
 	initialize : function(){
-
-		this.viewModel.value = this.viewModel.value.extend( {numeric : this.viewModel.precision} );
-
 		// add draggable mixin
 		Draggable.applyTo( this, {
 			axis : ko.computed(function(){
@@ -131,7 +137,7 @@ return {
 	_cacheSize : function(){
 
 		// cache the size of the groove and slider
-		var isHorizontal =this._isHorizontal(); 
+		var isHorizontal =this._isHorizontal();
 		this._boxSize =  isHorizontal ?
 							this._$box.width() :
 							this._$box.height();
@@ -176,7 +182,10 @@ return {
 	},
 
 	updatePosition : function(){
-
+		
+		if( ! this._$slider){
+			return;
+		}
 		if( this.autoResize ){
 			this._cacheSize();
 		}

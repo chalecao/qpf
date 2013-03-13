@@ -58,12 +58,9 @@ define(['knockout',
 
 		var component = new Constructor({
 			name : name || "",
-			attribute : attr
+			attribute : attr,
+			events : events
 		});
-		// binding events
-		_.each(events, function(handler, name){
-			component.on(name, handler);
-		})
 
 		return component;
 	

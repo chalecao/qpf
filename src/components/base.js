@@ -2,19 +2,14 @@
 // Base class of all components
 // it also provides some util methods like
 //=====================================
-define(["core/mixin/derive",
+define(["core/clazz",
 		"core/mixin/event",
 		"./util",
-		"knockout"], function(Derive, Event, Util, ko){
-
-var clazz = new Function();
-
-_.extend(clazz, Derive);
-_.extend(clazz.prototype, Event);
+		"knockout"], function(Clazz, Event, Util, ko){
 
 var repository = {};	//repository to store all the component instance
 
-var Base = clazz.derive(function(){
+var Base = Clazz.derive(function(){
 return {	// Public properties
 	// Name of component, will be used in the query of the component
 	name : "",
@@ -42,7 +37,10 @@ return {	// Public properties
 	// Class prefix
 	classPrefix : "wse-ui-",
 	// Skin prefix
-	skinPrefix : "wse-skin-"
+	skinPrefix : "wse-skin-",
+
+	// events list inited at first time
+	events : {}
 }}, function(){	//constructor
 
 	this.__GUID__ = genGUID();
@@ -116,11 +114,20 @@ return {	// Public properties
 		}
 	}, this)
 
+	// register the events before initialize
+	for( var name in this.events ){
+		var handler = this.events[name];
+		if( typeof(handler) == "function"){
+			this.on(name, handler);
+		}
+	}
 
+	this.initialize();
+	this.trigger("initialize");
+	
 	// apply attribute to the view model
 	this._mappingAttributesToViewModel( this.attribute );
 
-	this.initialize();
 	// Here we removed auto rendering at constructor
 	// to support deferred rendering after the $el is attached
 	// to the document
@@ -136,7 +143,8 @@ return {	// Public properties
 	// Developers can use on method to subscribe these events
 	// It is used in the binding handlers to judge which parameter
 	// passed in is events
-	eventsProvided : ["click", "mousedown", "mouseup", "mousemove", "resize"],
+	eventsProvided : ["click", "mousedown", "mouseup", "mousemove", "resize",
+						"initialize", "beforerender", "render", "dispose"],
 
 	// Will be called after the component first created
 	initialize : function(){},
@@ -156,6 +164,8 @@ return {	// Public properties
 	// the subclasses
 	render : function(){
 		this.beforeRender && this.beforeRender();
+		this.trigger("beforerender");
+
 		this.doRender();
 		this.afterRender && this.afterRender();
 
@@ -312,13 +322,12 @@ ko.extenders.numeric = function(target, precision) {
 				var val = parseFloat(newValue);
 			}
 			val = isNaN( val ) ? 0 : val;
-			precision = ko.utils.unwrapObservable(precision);
-			var multiplier = Math.pow(10, precision);
-			val = Math.round(val * multiplier) / multiplier;
-			// dont update the value again when the value is still the same
-			if( target() !== val ){
-				target(val);
+			var precisionValue = ko.utils.unwrapObservable(precision);
+			if( typeof(precisionValue)=="number" ) {
+				var multiplier = Math.pow(10, precisionValue);
+				val = Math.round(val * multiplier) / multiplier;
 			}
+			target(val);
 		}
 	});
 
@@ -326,6 +335,30 @@ ko.extenders.numeric = function(target, precision) {
 
 	return fixer;
 };
+
+ko.extenders.clamp = function(target, options){
+	var min = options.min,
+		max = options.max;
+
+	var clamper = ko.computed({
+		read : target,
+		write : function(value){
+			var minValue = ko.utils.unwrapObservable(min),
+				maxValue = ko.utils.unwrapObservable(max);
+
+			if( typeof(minValue) == 'number' ){
+				value = Math.max(minValue, value);
+			}
+			if( typeof(maxValue) == 'number' ){
+				value = Math.min(maxValue, value);
+			}
+			target(value);
+		}
+	})
+
+	clamper( target() );
+	return clamper;
+}
 
 //-------------------------------------------
 // Handle bingings in the knockout template

@@ -1,8 +1,9 @@
 define(function(require){
 	
-	var XMLParser = require("core/xmlparser");
+	var wse_ui = require("wse_ui");
+	var XMLParser = wse_ui.use("core/xmlparser");
 	var shaders =  require("./shaders");
-	var ko = require("knockout");
+	var ko = wse_ui.use("knockout");
 	
 	var viewportWidth = window.innerWidth;
 	var viewportHeight = window.innerHeight;

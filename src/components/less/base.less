@@ -466,6 +466,119 @@ body{
 }
 
 //-------------------------------------
+// widget : palette
+//-------------------------------------
+.wse-ui-palette{
+	width:350px;
+
+	.wse-palette-adjuster{
+
+		&>.wse-left{
+			float:left;
+			margin-top: 10px;
+		}
+		&>.wse-right{
+			float:left;
+			width:100px;
+			margin-left: 20px;
+
+			.wse-ui-spinner{
+				input{
+					width:60px;
+				}
+			}
+		}
+	}
+
+	.wse-palette-picksv{
+		position: relative;
+		float:left;
+		width:200px;
+		height:200px;
+
+		overflow: hidden;
+
+		.wse-palette-saturation{
+			height:100%;
+			.linear-gradient-left(none, white, 0%, rgba(204, 154, 129, 0), 100%);
+		}
+		.wse-palette-value{
+			height:100%;
+			.linear-gradient-top(none, rgba(204, 154, 129, 0), 0%, black, 100%);
+		}
+		.wse-palette-picker{
+			width:8px;
+			height:8px;
+			border-radius: 5px;
+			border:2px solid #ffffff;
+			margin-left: -5px;
+			margin-top: -5px;
+			box-shadow: 0px 0px 3px black;
+		}
+	}
+	.wse-palette-pickh{
+		position: relative;
+		float:left;
+		margin-left: 10px;
+
+		width:20px;
+		height:200px;
+
+		background: -webkit-linear-gradient(top, red 0%, yellow 17%, lime 33%, cyan 50%, blue 67%, magenta 83%, red 100%);
+		background: -moz-linear-gradient(top, red 0%, yellow 17%, lime 33%, cyan 50%, blue 67%, magenta 83%, red 100%);
+		background: linear-gradient(top, red 0%, yellow 17%, lime 33%, cyan 50%, blue 67%, magenta 83%, red 100%);
+
+		overflow: hidden;
+
+		.wse-palette-picker{
+			width:16px;
+			height:4px;
+			border-radius: 3px;
+			border:2px solid #ffffff;
+			margin: -4px 0px;
+			box-shadow: 0px 0px 3px black;
+		}
+	}
+	.wse-palette-picker{
+		position: absolute;
+	}
+
+	.wse-ui-label{
+		font-size: 12px;
+		color:#666666;
+	}
+
+	.wse-palette-hex{
+		&>div{
+			float: left;
+		}
+		input{
+			width:80px;
+		}
+		.wse-ui-label{
+			margin:5px;
+		}
+	}
+
+	.wse-palette-alpha{
+		clear:both;
+		margin-top: 5px;
+	}
+
+	.wse-palette-recent{
+		height:30px;
+		background-color: white;
+		margin:10px 0px;
+	}
+	.wse-palette-buttons{
+		&>div{
+			float:right;
+			margin:4px 6px;
+		}
+	}
+}
+
+//-------------------------------------
 // container : panel
 //-------------------------------------
 .wse-ui-panel{
