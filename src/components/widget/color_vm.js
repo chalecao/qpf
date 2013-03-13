@@ -95,8 +95,8 @@ var Color = Clazz.derive({
 	_b : ko.observable().extend({numeric:0}),
 	//--------------------hsv color space
 	_h : ko.observable().extend({clamp:{min:0,max:360}}),
-	_s : ko.observable().extend({clamp:{min:0,max:360}}),
-	_v : ko.observable().extend({clamp:{min:0,max:360}}),
+	_s : ko.observable().extend({clamp:{min:0,max:100}}),
+	_v : ko.observable().extend({clamp:{min:0,max:100}}),
 	alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
 }, function(){
 
@@ -149,9 +149,7 @@ var Color = Clazz.derive({
 			}
 			return fill.join("")+string;
 		},
-		write : function(str){
-			this.hex( parseInt(str, 16) );
-		}
+		write : function(){}
 	}, this);
 
 	//-----------------rgb color of hue when value and saturation is 100%

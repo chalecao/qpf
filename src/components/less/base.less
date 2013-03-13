@@ -505,6 +505,8 @@ body{
 		.wse-palette-value{
 			height:100%;
 			.linear-gradient-top(none, rgba(204, 154, 129, 0), 0%, black, 100%);
+			
+			box-shadow: inset 0px 0px 5px black;
 		}
 		.wse-palette-picker{
 			width:8px;
@@ -529,6 +531,9 @@ body{
 		background: linear-gradient(top, red 0%, yellow 17%, lime 33%, cyan 50%, blue 67%, magenta 83%, red 100%);
 
 		overflow: hidden;
+		
+		box-shadow: inset 0px 0px 5px black;
+
 
 		.wse-palette-picker{
 			width:16px;
@@ -572,12 +577,19 @@ body{
 			width:30px;
 			height:20px;
 			float: left;
-			border-radius: 3px;
 			list-style: none;
 			margin:1px;
 			cursor: pointer;
 
-			.transition(all 0.2s linear)
+			.transition(all 0.2s linear);
+
+			box-shadow: 0px 0px 2px black;
+		}
+		li:first-of-type{
+			border-radius: 5px 0px 0px 5px;
+		}
+		li:last-of-type{
+			border-radius: 0px 5px 5px 0px;
 		}
 		li:hover{
 			width:34px;

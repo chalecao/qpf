@@ -89,9 +89,9 @@ var Palette = Widget.derive(function(){
 				</div>',
 
 	initialize : function(){
-		this.viewModel.hex.subscribe(function(hex){
+		this.viewModel.hsv.subscribe(function(hsv){
 			this._setPickerPosition();
-			this.trigger("change", hex);
+			this.trigger("change", this.viewModel.hex());
 		}, this);
 		// incase the saturation and value is both zero or one, and
 		// the rgb value not change when hue is changed
@@ -194,7 +194,6 @@ var Palette = Widget.derive(function(){
 				hue = hsv[0],
 				saturation = hsv[1],
 				value = hsv[2];
-
 			// set position relitave to space
 			this._$svPicker.css({
 				left : Math.round( saturation/100 * this._svSize ) + "px",
