@@ -9,15 +9,22 @@ define(["./panel",
 
 var Tab = Panel.derive(function(){
 
-return {
-		
-	actived : ko.observable(0),
+	var ret = {
+			
+		actived : ko.observable(0),
 
-	maxTabWidth : 100,
+		maxTabWidth : 100,
 
-	minTabWidth : 30
+		minTabWidth : 30
 
-}}, {
+	}
+
+	ret.actived.subscribe(function(idx){
+		this._active(idx);
+	}, this);
+
+	return ret;
+}, {
 
 	type : "TAB",
 
@@ -35,25 +42,22 @@ return {
 	eventsProvided : _.union('change', Container.prototype.eventsProvided),
 
 	initialize : function(){
-		this.actived.subscribe(function(idx){
-			this._active(idx);
-		}, this)
-
 		// compute the tab value;
-		this.children.subscribe(this._updateTabSize, this);
+		this.children.subscribe(function(){
+			this._updateTabSize();
+		}, this);
 	},
 
 	template : '<div class="wse-tab-header">\
 					<ul class="wse-tab-tabs" data-bind="foreach:children">\
-						<li data-bind="css:{actived:$index()===$parent.actived()},\
-										click:$parent.actived.bind($data, $index())">\
+						<li data-bind="click:$parent.actived.bind($data, $index())">\
 							<a data-bind="html:title"></a>\
 						</li>\
 					</ul>\
 					<div class="wse-tab-tools"></div>\
 				</div>\
 				<div class="wse-tab-body">\
-					<div class="wse-tab-views" data-bind="foreach:children">\
+					<div class="wse-tab-views" data-bind="foreach:children" class="wse-children">\
 						<div data-bind="wse_view:$data"></div>\
 					</div>\
 				</div>\
@@ -124,6 +128,10 @@ return {
 
 			this.trigger('change', idx, current);
 		}
+
+		this.$el.find(".wse-tab-header>.wse-tab-tabs>li")
+				.removeClass("actived")
+				.eq(idx).addClass("actived");
 	}
 
 })

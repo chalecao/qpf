@@ -73,7 +73,7 @@ define(function(require, exports, module){
 		var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
 
 		var domNode = document.createElement('div');
-		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
+		domNode.setAttribute('data-bind',  "qpf:"+bindingString);
 
 		return domNode;
 	}
@@ -101,7 +101,7 @@ define(function(require, exports, module){
 				}else if( value.constructor == Object){
 					bindingResults[name] = {};
 					preProcess(value, bindingResults[name]);
-				}else if( value ){
+				}else if( typeof(value) !== "undefined" ){
 					// this value is an expression or observable
 					// in the viewModel if it has @binding[] flag
 					var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);

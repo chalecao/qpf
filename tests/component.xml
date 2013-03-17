@@ -1,24 +1,28 @@
-<container width="@binding[windowWidth]" height="@binding[windowHeight]">
+<application>
 	<tab height="100%" actived="1">
 		<panel title="Meta">
-			<label>Button</label>
-			<button name="button" onclick="@binding[clickHandler]"> click me!</button>
-			<label>Checkbox</label>
+			<inline>
+				<label>Button</label>
+				<button name="button" onclick="@binding[clickHandler]"> click me!</button>
+			</inline>
 			<checkbox checked="1" label="I am a checkbox"></checkbox>
 
-			<label>TextField</label>
-			<textfield text="Hi"></textfield>
-
-			<label>Combobox</label>
-			<combobox value="4">
-				<item value="1">JavaScript</item>
-				<item value="2">PHP</item>
-				<item value="3">Ruby</item>
-				<item value="4">Python</item>
-			</combobox>
+			<inline>
+				<label>TextField</label>
+				<textfield text="Hi"></textfield>
+			</inline>
+			<inline>
+				<label>Combobox</label>
+				<combobox value="4">
+					<item value="1">JavaScript</item>
+					<item value="2">PHP</item>
+					<item value="3">Ruby</item>
+					<item value="4">Python</item>
+				</combobox>
+			</inline>
 
 			<label>Spinner</label>
-			<spinner value="20"></spinner>
+			<spinner value="20" max="100"></spinner>
 		</panel>
 		<panel title="Widget">
 			<label>
@@ -55,4 +59,4 @@
 			<canvas width="1000" height="400" oninitialize="@binding[drawCanvas]"></canvas>
 		</panel>
 	</tab>
-</container>
+</application>

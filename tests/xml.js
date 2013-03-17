@@ -15,10 +15,6 @@ define(["knockout",
 		},
 		info : ko.observable("Im a label~"),
 
-		windowWidth : window.innerWidth,
-		windowHeight : window.innerHeight,
-
-
 		drawCanvas : drawCanvas
 	}
 

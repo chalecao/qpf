@@ -57,7 +57,7 @@ return {
 			if( width && height ){
 				this.stage.resize( width, height );
 			}
-			this.render();
+			this.doRender();
 		}
 	}
 });

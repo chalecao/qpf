@@ -68,15 +68,11 @@ return {	// Public properties
 
 	this.width.subscribe(function(newValue){
 		this.$el.width(newValue);
-		if( ! this.__resizing__ ){
-			this.afterResize();
-		}
+		this.afterResize();
 	}, this);
 	this.height.subscribe(function(newValue){
 		this.$el.height(newValue);
-		if( ! this.__resizing__){
-			this.afterResize();
-		}
+		this.afterResize();
 	}, this);
 	this.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
@@ -89,11 +85,12 @@ return {	// Public properties
 	}, this);
 	this.style.subscribe(function(newValue){
 		var valueSv = newValue;
-		var styleRegex = /\s*(\S*?)\s*:\s*(\S*)\s*/g;
+		var styleRegex = /(\S*?)\s*:\s*(.*)/g;
 		// preprocess the style string
 		newValue = "{" + _.chain(newValue.split(";"))
 						.map(function(item){
-							return item.replace(styleRegex, '"$1":"$2"');
+							return item.replace(/(^\s*)|(\s*$)/g, "") //trim
+										.replace(styleRegex, '"$1":"$2"');
 						})
 						.filter(function(item){return item;})
 						.value().join(",") + "}";
@@ -113,12 +110,11 @@ return {	// Public properties
 		}
 	}
 
-	this.initialize();
-	this.trigger("initialize");
-	
 	// apply attribute 
 	this._mappingAttributes( this.attributes );
 
+	this.initialize();
+	this.trigger("initialize");
 	// Here we removed auto rendering at constructor
 	// to support deferred rendering after the $el is attached
 	// to the document
@@ -161,9 +157,14 @@ return {	// Public properties
 		this.afterRender && this.afterRender();
 
 		this.trigger("render");
+		// trigger the resize events
+		this.afterResize();
 	},
 	// Default render method
 	doRender : function(){
+		
+		Base.disposeDom( this.$el[0] );
+
 		this.$el.html(this.template);
 		ko.applyBindings( this, this.$el[0] );
 	},
@@ -179,14 +180,12 @@ return {	// Public properties
 		this.trigger("dispose");
 	},
 	resize : function(width, height){
-		this.__resizing__ = true;
-		if( width || width === 0){
+		if( typeof(width) === "number"){
 			this.width( width );
 		}
-		if( height || height === 0){
+		if( typeof(height) == "number"){
 			this.height( height );
 		}
-		this.__resizing__ = false;
 	},
 	afterResize : function(){
 		this.trigger('resize');
@@ -311,8 +310,8 @@ ko.extenders.numeric = function(target, precision) {
 				var val = parseFloat(newValue);
 			}
 			val = isNaN( val ) ? 0 : val;
-			var precisionValue = ko.utils.unwrapObservable(precision);
-			if( typeof(precisionValue)=="number" ) {
+			var precisionValue = parseFloat( ko.utils.unwrapObservable(precision) );
+			if( ! isNaN( precisionValue ) ) {
 				var multiplier = Math.pow(10, precisionValue);
 				val = Math.round(val * multiplier) / multiplier;
 			}
@@ -332,13 +331,13 @@ ko.extenders.clamp = function(target, options){
 	var clamper = ko.computed({
 		read : target,
 		write : function(value){
-			var minValue = ko.utils.unwrapObservable(min),
-				maxValue = ko.utils.unwrapObservable(max);
+			var minValue = parseFloat( ko.utils.unwrapObservable(min) ),
+				maxValue = parseFloat( ko.utils.unwrapObservable(max) );
 
-			if( typeof(minValue) == 'number' ){
+			if( ! isNaN(minValue) ){
 				value = Math.max(minValue, value);
 			}
-			if( typeof(maxValue) == 'number' ){
+			if( ! isNaN(maxValue) ){
 				value = Math.min(maxValue, value);
 			}
 			target(value);
@@ -356,7 +355,7 @@ Base.provideBinding = function(name, Component ){
 	bindings[name] = Component;
 }
 // provide bindings to knockout
-ko.bindingHandlers["wse_ui"] = {
+ko.bindingHandlers["qpf"] = {
 
 	createComponent : function(element, valueAccessor){
 		// dispose the previous component host on the element
@@ -370,7 +369,7 @@ ko.bindingHandlers["wse_ui"] = {
 
 	init : function( element, valueAccessor ){
 
-		var component = ko.bindingHandlers["wse_ui"].createComponent(element, valueAccessor);
+		var component = ko.bindingHandlers["qpf"].createComponent(element, valueAccessor);
 
 		component.render();
 		// not apply bindings to the descendant doms in the UI component

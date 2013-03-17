@@ -4,7 +4,7 @@
  		define(["exports"], factory);
  	// No module loader
  	}else{
- 		factory( window["wse_ui"] = {} );
+ 		factory( window["qpf"] = {} );
  	}
 
 })(function(_exports){
@@ -492,7 +492,7 @@ define('core/xmlparser',['require','exports','module'],function(require, exports
 		var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
 
 		var domNode = document.createElement('div');
-		domNode.setAttribute('data-bind',  "wse_ui:"+bindingString);
+		domNode.setAttribute('data-bind',  "qpf:"+bindingString);
 
 		return domNode;
 	}
@@ -520,7 +520,7 @@ define('core/xmlparser',['require','exports','module'],function(require, exports
 				}else if( value.constructor == Object){
 					bindingResults[name] = {};
 					preProcess(value, bindingResults[name]);
-				}else if( value ){
+				}else if( typeof(value) !== "undefined" ){
 					// this value is an expression or observable
 					// in the viewModel if it has @binding[] flag
 					var isBinding = /^\s*@binding\[(.*?)\]\s*$/.exec(value);
@@ -4503,15 +4503,11 @@ return {	// Public properties
 
 	this.width.subscribe(function(newValue){
 		this.$el.width(newValue);
-		if( ! this.__resizing__ ){
-			this.afterResize();
-		}
+		this.afterResize();
 	}, this);
 	this.height.subscribe(function(newValue){
 		this.$el.height(newValue);
-		if( ! this.__resizing__){
-			this.afterResize();
-		}
+		this.afterResize();
 	}, this);
 	this.disable.subscribe(function(newValue){
 		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
@@ -4524,11 +4520,12 @@ return {	// Public properties
 	}, this);
 	this.style.subscribe(function(newValue){
 		var valueSv = newValue;
-		var styleRegex = /\s*(\S*?)\s*:\s*(\S*)\s*/g;
+		var styleRegex = /(\S*?)\s*:\s*(.*)/g;
 		// preprocess the style string
 		newValue = "{" + _.chain(newValue.split(";"))
 						.map(function(item){
-							return item.replace(styleRegex, '"$1":"$2"');
+							return item.replace(/(^\s*)|(\s*$)/g, "") //trim
+										.replace(styleRegex, '"$1":"$2"');
 						})
 						.filter(function(item){return item;})
 						.value().join(",") + "}";
@@ -4548,12 +4545,11 @@ return {	// Public properties
 		}
 	}
 
-	this.initialize();
-	this.trigger("initialize");
-	
 	// apply attribute 
 	this._mappingAttributes( this.attributes );
 
+	this.initialize();
+	this.trigger("initialize");
 	// Here we removed auto rendering at constructor
 	// to support deferred rendering after the $el is attached
 	// to the document
@@ -4596,9 +4592,14 @@ return {	// Public properties
 		this.afterRender && this.afterRender();
 
 		this.trigger("render");
+		// trigger the resize events
+		this.afterResize();
 	},
 	// Default render method
 	doRender : function(){
+		
+		Base.disposeDom( this.$el[0] );
+
 		this.$el.html(this.template);
 		ko.applyBindings( this, this.$el[0] );
 	},
@@ -4614,14 +4615,12 @@ return {	// Public properties
 		this.trigger("dispose");
 	},
 	resize : function(width, height){
-		this.__resizing__ = true;
-		if( width || width === 0){
+		if( typeof(width) === "number"){
 			this.width( width );
 		}
-		if( height || height === 0){
+		if( typeof(height) == "number"){
 			this.height( height );
 		}
-		this.__resizing__ = false;
 	},
 	afterResize : function(){
 		this.trigger('resize');
@@ -4746,8 +4745,8 @@ ko.extenders.numeric = function(target, precision) {
 				var val = parseFloat(newValue);
 			}
 			val = isNaN( val ) ? 0 : val;
-			var precisionValue = ko.utils.unwrapObservable(precision);
-			if( typeof(precisionValue)=="number" ) {
+			var precisionValue = parseFloat( ko.utils.unwrapObservable(precision) );
+			if( ! isNaN( precisionValue ) ) {
 				var multiplier = Math.pow(10, precisionValue);
 				val = Math.round(val * multiplier) / multiplier;
 			}
@@ -4767,13 +4766,13 @@ ko.extenders.clamp = function(target, options){
 	var clamper = ko.computed({
 		read : target,
 		write : function(value){
-			var minValue = ko.utils.unwrapObservable(min),
-				maxValue = ko.utils.unwrapObservable(max);
+			var minValue = parseFloat( ko.utils.unwrapObservable(min) ),
+				maxValue = parseFloat( ko.utils.unwrapObservable(max) );
 
-			if( typeof(minValue) == 'number' ){
+			if( ! isNaN(minValue) ){
 				value = Math.max(minValue, value);
 			}
-			if( typeof(maxValue) == 'number' ){
+			if( ! isNaN(maxValue) ){
 				value = Math.min(maxValue, value);
 			}
 			target(value);
@@ -4791,7 +4790,7 @@ Base.provideBinding = function(name, Component ){
 	bindings[name] = Component;
 }
 // provide bindings to knockout
-ko.bindingHandlers["wse_ui"] = {
+ko.bindingHandlers["qpf"] = {
 
 	createComponent : function(element, valueAccessor){
 		// dispose the previous component host on the element
@@ -4805,7 +4804,7 @@ ko.bindingHandlers["wse_ui"] = {
 
 	init : function( element, valueAccessor ){
 
-		var component = ko.bindingHandlers["wse_ui"].createComponent(element, valueAccessor);
+		var component = ko.bindingHandlers["qpf"].createComponent(element, valueAccessor);
 
 		component.render();
 		// not apply bindings to the descendant doms in the UI component
@@ -7495,7 +7494,7 @@ return {
 			if( width && height ){
 				this.stage.resize( width, height );
 			}
-			this.render();
+			this.doRender();
 		}
 	}
 });
@@ -8446,20 +8445,18 @@ define('components/container/container',["../base",
 		"knockout"], function(Base, ko){
 
 var Container = Base.derive(function(){
-return {
-	// all child components
-	children : ko.observableArray()
-
-}}, function(){
-
+	return {
+		// all child components
+		children : ko.observableArray()
+	}
 }, {
 
 	type : "CONTAINER",
 
 	css : 'container',
 	
-	template : '<div data-bind="foreach:children" style="height:100%;width:100%">\
-					<div data-bind="wse_view:$data" class="wse-container-item"></div>\
+	template : '<div data-bind="foreach:children" class="wse-children">\
+					<div data-bind="wse_view:$data"></div>\
 				</div>',
 
 	// add child component
@@ -8475,7 +8472,12 @@ return {
 	children : function(){
 		return this.children()
 	},
+	// resize when width or height is changed
 	afterResize : function(){
+		// stretch the children
+		if( this.height() ){
+			this.$el.children(".wse-children").height( this.height() );	
+		}
 		// trigger the after resize event in post-order
 		_.each(this.children(), function(child){
 			child.afterResize();
@@ -8501,9 +8503,9 @@ return {
 
 Container.provideBinding = Base.provideBinding;
 
-// modify the wse_ui bindler
-var baseBindler = ko.bindingHandlers["wse_ui"];
-ko.bindingHandlers["wse_ui"] = {
+// modify the qpf bindler
+var baseBindler = ko.bindingHandlers["qpf"];
+ko.bindingHandlers["qpf"] = {
 
 	init : function(element, valueAccessor, allBindingsAccessor, viewModel){
 		
@@ -8586,8 +8588,8 @@ return {
 					<div class="wse-panel-title" data-bind="html:title"></div>\
 					<div class="wse-panel-tools"></div>\
 				</div>\
-				<div class="wse-panel-body" data-bind="foreach:children">\
-					<div data-bind="wse_view:$data" class="wse-container-item"></div>\
+				<div class="wse-panel-body" data-bind="foreach:children" class="wse-children">\
+					<div data-bind="wse_view:$data"></div>\
 				</div>\
 				<div class="wse-panel-footer"></div>',
 	
@@ -8600,8 +8602,8 @@ return {
 	},
 
 	afterResize : function(){
-		// stretch the body
-		if( this._$body){		
+		// stretch the body when the panel's height is given
+		if( this._$body && this.height() ){
 			var headerHeight = this._$header.height();
 			var footerHeight = this._$footer.height();
 
@@ -8689,15 +8691,22 @@ define('components/container/tab',["./panel",
 
 var Tab = Panel.derive(function(){
 
-return {
-		
-	actived : ko.observable(0),
+	var ret = {
+			
+		actived : ko.observable(0),
 
-	maxTabWidth : 100,
+		maxTabWidth : 100,
 
-	minTabWidth : 30
+		minTabWidth : 30
 
-}}, {
+	}
+
+	ret.actived.subscribe(function(idx){
+		this._active(idx);
+	}, this);
+
+	return ret;
+}, {
 
 	type : "TAB",
 
@@ -8715,25 +8724,22 @@ return {
 	eventsProvided : _.union('change', Container.prototype.eventsProvided),
 
 	initialize : function(){
-		this.actived.subscribe(function(idx){
-			this._active(idx);
-		}, this)
-
 		// compute the tab value;
-		this.children.subscribe(this._updateTabSize, this);
+		this.children.subscribe(function(){
+			this._updateTabSize();
+		}, this);
 	},
 
 	template : '<div class="wse-tab-header">\
 					<ul class="wse-tab-tabs" data-bind="foreach:children">\
-						<li data-bind="css:{actived:$index()===$parent.actived()},\
-										click:$parent.actived.bind($data, $index())">\
+						<li data-bind="click:$parent.actived.bind($data, $index())">\
 							<a data-bind="html:title"></a>\
 						</li>\
 					</ul>\
 					<div class="wse-tab-tools"></div>\
 				</div>\
 				<div class="wse-tab-body">\
-					<div class="wse-tab-views" data-bind="foreach:children">\
+					<div class="wse-tab-views" data-bind="foreach:children" class="wse-children">\
 						<div data-bind="wse_view:$data"></div>\
 					</div>\
 				</div>\
@@ -8804,6 +8810,10 @@ return {
 
 			this.trigger('change', idx, current);
 		}
+
+		this.$el.find(".wse-tab-header>.wse-tab-tabs>li")
+				.removeClass("actived")
+				.eq(idx).addClass("actived");
 	}
 
 })
@@ -8833,10 +8843,12 @@ return {
 	initialize : function(){
 
 		this.children.subscribe(function(children){
-			this.resize();
-			_.each(children, function(child){
-				child.on('resize', this.afterResize, this);
-			}, this)
+			this.afterResize();
+			// resize after the child resize happens will cause recursive
+			// reszie problem
+			// _.each(children, function(child){
+			// 	child.on('resize', this.afterResize, this);
+			// }, this)
 		}, this);
 
 		this.$el.css("position", "relative");
@@ -8856,6 +8868,7 @@ return {
 	_resizeTimeout : 0,
 
 	afterResize : function(){
+
 		var self = this;
 		// put resize in next tick,
 		// if multiple child have triggered the resize event
@@ -8864,10 +8877,10 @@ return {
 			clearTimeout( this._resizeTimeout );
 		}
 		this._resizeTimeout = setTimeout(function(){
-			self.resize()
+			self.resizeChildren();
+			Container.prototype.afterResize.call(self);
 		});
 
-		Container.prototype.resize.call(this);
 	}
 
 })
@@ -8904,7 +8917,7 @@ return {
 
 	css : 'vbox',
 
-	resize : function(){
+	resizeChildren : function(){
 
 		var flexSum = 0,
 			remainderHeight = this.$el.height(),
@@ -8990,7 +9003,7 @@ return {
 
 	css : 'hbox',
 
-	resize : function(){
+	resizeChildren : function(){
 
 		var flexSum = 0,
 			remainderWidth = this.$el.width(),
@@ -9052,6 +9065,64 @@ Container.provideBinding("hbox", hBox);
 
 return hBox;
 
+});
+//=============================================
+// Inline Layout
+//=============================================
+define('components/container/inline',["./container",
+		"knockout"], function(Container, ko){
+
+var Inline = Container.derive({
+}, {
+
+	type : "INLINE",
+
+	css : "inline",
+
+	template : '<div data-bind="foreach:children" class="wse-children">\
+					<div data-bind="wse_view:$data"></div>\
+				</div>\
+				<div style="clear:both"></div>'
+})
+
+Container.provideBinding("inline", Inline);
+
+return Inline;
+
+});
+//=============================================================
+// application.js
+// 
+// Container of the whole web app, mainly for monitor the resize
+// event of Window and resize all the component in the app
+//=============================================================
+
+define('components/container/application',["./container",
+		"knockout"], function(Container, ko){
+	
+	var Application = Container.derive(function(){
+
+	}, {
+
+		type : "APPLICATION",
+		
+		css : "application",
+
+		initialize : function(){
+
+			$(window).resize( this._resize.bind(this) );
+			this._resize();
+		},
+
+		_resize : function(){
+			this.width( $(window).width() );
+			this.height( $(window).height() );
+		}
+	})
+
+	Container.provideBinding("application", Application);
+
+	return Application;
 });
 //====================================
 // Base class of all widget component
@@ -9152,7 +9223,7 @@ return {
 				</div>\
 				<div class="wse-right" >\
 					<ul class="wse-list" data-bind="foreach:items">\
-						<li data-bind="wse_ui:$data"></li>\
+						<li data-bind="qpf:$data"></li>\
 					</ul>\
 				</div>',
 
@@ -9520,21 +9591,21 @@ var Palette = Widget.derive(function(){
 						</div>\
 						<div style="clear:both"></div>\
 						<div class="wse-palette-alpha">\
-							<div data-bind="wse_ui:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
+							<div data-bind="qpf:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
 						</div>\
 					</div>\
 					<div class="wse-right">\
 						<div class="wse-palette-rgb">\
-							<div data-bind="wse_ui:{type:\'label\', text:\'RGB\'}"></div>\
-							<div data-bind="wse_ui:{type:\'vector\', items:rgbVector}"></div>\
+							<div data-bind="qpf:{type:\'label\', text:\'RGB\'}"></div>\
+							<div data-bind="qpf:{type:\'vector\', items:rgbVector}"></div>\
 						</div>\
 						<div class="wse-palette-hsv">\
-							<div data-bind="wse_ui:{type:\'label\', text:\'HSV\'}"></div>\
-							<div data-bind="wse_ui:{type:\'vector\', items:hsvVector}"></div>\
+							<div data-bind="qpf:{type:\'label\', text:\'HSV\'}"></div>\
+							<div data-bind="qpf:{type:\'vector\', items:hsvVector}"></div>\
 						</div>\
 						<div class="wse-palette-hex">\
-							<div data-bind="wse_ui:{type:\'label\', text:\'#\'}"></div>\
-							<div data-bind="wse_ui:{type:\'textfield\',text:hexString}"></div>\
+							<div data-bind="qpf:{type:\'label\', text:\'#\'}"></div>\
+							<div data-bind="qpf:{type:\'textfield\',text:hexString}"></div>\
 						</div>\
 					</div>\
 				</div>\
@@ -9545,8 +9616,8 @@ var Palette = Widget.derive(function(){
 									click:$parent.hex.bind($parent, hex)"></li>\
 				</ul>\
 				<div class="wse-palette-buttons">\
-					<div data-bind="wse_ui:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel}"></div>\
-					<div data-bind="wse_ui:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply}"></div>\
+					<div data-bind="qpf:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel.bind($data)}"></div>\
+					<div data-bind="qpf:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply.bind($data)}"></div>\
 				</div>',
 
 	initialize : function(){
@@ -9667,13 +9738,13 @@ var Palette = Widget.derive(function(){
 	},
 
 	_apply : function(){
-		if( self._recent().length > self._recentMax){
-			self._recent.shift();
+		if( this._recent().length > this._recentMax){
+			this._recent.shift();
 		}
-		self._recent.push( {
-			rgbString : "rgb(" + self.rgb().join(",") + ")",
-			hexString : self.hexString(),
-			hex : self.hex()
+		this._recent.push( {
+			rgbString : "rgb(" + this.rgb().join(",") + ")",
+			hexString : this.hexString(),
+			hex : this.hex()
 		});
 		
 		this.trigger("apply", this.hex());
@@ -9709,6 +9780,8 @@ define('src/main',["core/xmlparser",
 		"components/container/tab",
 		"components/container/vbox",
 		"components/container/hbox",
+		"components/container/inline",
+		"components/container/application",
 		"components/widget/vector",
 		"components/widget/widget",
 		"components/widget/palette"], function(){
@@ -9745,7 +9818,9 @@ define('src/main',["core/xmlparser",
 				window : require('components/container/window'),
 				tab : require("components/container/tab"),
 				vbox : require("components/container/vbox"),
-				hbox : require("components/container/hbox")
+				hbox : require("components/container/hbox"),
+				inline : require("components/container/inline"),
+				application : require("components/container/application")
 			},
 			widget : {
 				widget : require("components/widget/widget"),
@@ -9755,7 +9830,7 @@ define('src/main',["core/xmlparser",
 		}
 	}
 });
-var wse_ui = require("src/main");
+var qpf = require("src/main");
 
 // only export the use method 
 _exports.use = function(path){

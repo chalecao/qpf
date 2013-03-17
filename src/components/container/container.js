@@ -5,20 +5,18 @@ define(["../base",
 		"knockout"], function(Base, ko){
 
 var Container = Base.derive(function(){
-return {
-	// all child components
-	children : ko.observableArray()
-
-}}, function(){
-
+	return {
+		// all child components
+		children : ko.observableArray()
+	}
 }, {
 
 	type : "CONTAINER",
 
 	css : 'container',
 	
-	template : '<div data-bind="foreach:children" style="height:100%;width:100%">\
-					<div data-bind="wse_view:$data" class="wse-container-item"></div>\
+	template : '<div data-bind="foreach:children" class="wse-children">\
+					<div data-bind="wse_view:$data"></div>\
 				</div>',
 
 	// add child component
@@ -34,7 +32,12 @@ return {
 	children : function(){
 		return this.children()
 	},
+	// resize when width or height is changed
 	afterResize : function(){
+		// stretch the children
+		if( this.height() ){
+			this.$el.children(".wse-children").height( this.height() );	
+		}
 		// trigger the after resize event in post-order
 		_.each(this.children(), function(child){
 			child.afterResize();
@@ -60,9 +63,9 @@ return {
 
 Container.provideBinding = Base.provideBinding;
 
-// modify the wse_ui bindler
-var baseBindler = ko.bindingHandlers["wse_ui"];
-ko.bindingHandlers["wse_ui"] = {
+// modify the qpf bindler
+var baseBindler = ko.bindingHandlers["qpf"];
+ko.bindingHandlers["qpf"] = {
 
 	init : function(element, valueAccessor, allBindingsAccessor, viewModel){
 		

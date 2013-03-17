@@ -24,7 +24,7 @@ return {
 
 	css : 'vbox',
 
-	resize : function(){
+	resizeChildren : function(){
 
 		var flexSum = 0,
 			remainderHeight = this.$el.height(),

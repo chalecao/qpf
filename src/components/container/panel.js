@@ -21,8 +21,8 @@ return {
 					<div class="wse-panel-title" data-bind="html:title"></div>\
 					<div class="wse-panel-tools"></div>\
 				</div>\
-				<div class="wse-panel-body" data-bind="foreach:children">\
-					<div data-bind="wse_view:$data" class="wse-container-item"></div>\
+				<div class="wse-panel-body" data-bind="foreach:children" class="wse-children">\
+					<div data-bind="wse_view:$data"></div>\
 				</div>\
 				<div class="wse-panel-footer"></div>',
 	
@@ -35,8 +35,8 @@ return {
 	},
 
 	afterResize : function(){
-		// stretch the body
-		if( this._$body){		
+		// stretch the body when the panel's height is given
+		if( this._$body && this.height() ){
 			var headerHeight = this._$header.height();
 			var footerHeight = this._$footer.height();
 

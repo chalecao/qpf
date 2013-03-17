@@ -4,7 +4,7 @@
  		define(["exports"], factory);
  	// No module loader
  	}else{
- 		factory( window["wse_ui"] = {} );
+ 		factory( window["qpf"] = {} );
  	}
 
 })(function(_exports){

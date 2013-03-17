@@ -18,10 +18,12 @@ return {
 	initialize : function(){
 
 		this.children.subscribe(function(children){
-			this.resize();
-			_.each(children, function(child){
-				child.on('resize', this.afterResize, this);
-			}, this)
+			this.afterResize();
+			// resize after the child resize happens will cause recursive
+			// reszie problem
+			// _.each(children, function(child){
+			// 	child.on('resize', this.afterResize, this);
+			// }, this)
 		}, this);
 
 		this.$el.css("position", "relative");
@@ -41,6 +43,7 @@ return {
 	_resizeTimeout : 0,
 
 	afterResize : function(){
+
 		var self = this;
 		// put resize in next tick,
 		// if multiple child have triggered the resize event
@@ -49,10 +52,10 @@ return {
 			clearTimeout( this._resizeTimeout );
 		}
 		this._resizeTimeout = setTimeout(function(){
-			self.resize()
+			self.resizeChildren();
+			Container.prototype.afterResize.call(self);
 		});
 
-		Container.prototype.resize.call(this);
 	}
 
 })

@@ -1,7 +1,7 @@
 ({
 	baseUrl : "../",
 	paths : {
-		"wse_ui" : "src/wse_ui",
+		"qpf" : "src/qpf",
 		"core" : "src/core",
 		"components" : "src/components",
 		// libraries
@@ -13,7 +13,7 @@
 	name : "build/almond",
 	include : [ "src/main"],
 				
-	out:"./output/wse_ui.js",
+	out:"./output/qpf.js",
 	wrap : {
 		startFile : 'wrap/start.js',
 		endFile : 'wrap/end.js'

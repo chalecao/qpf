@@ -21,7 +21,7 @@ return {
 
 	css : 'hbox',
 
-	resize : function(){
+	resizeChildren : function(){
 
 		var flexSum = 0,
 			remainderWidth = this.$el.width(),

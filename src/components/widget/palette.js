@@ -42,21 +42,21 @@ var Palette = Widget.derive(function(){
 						</div>\
 						<div style="clear:both"></div>\
 						<div class="wse-palette-alpha">\
-							<div data-bind="wse_ui:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
+							<div data-bind="qpf:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
 						</div>\
 					</div>\
 					<div class="wse-right">\
 						<div class="wse-palette-rgb">\
-							<div data-bind="wse_ui:{type:\'label\', text:\'RGB\'}"></div>\
-							<div data-bind="wse_ui:{type:\'vector\', items:rgbVector}"></div>\
+							<div data-bind="qpf:{type:\'label\', text:\'RGB\'}"></div>\
+							<div data-bind="qpf:{type:\'vector\', items:rgbVector}"></div>\
 						</div>\
 						<div class="wse-palette-hsv">\
-							<div data-bind="wse_ui:{type:\'label\', text:\'HSV\'}"></div>\
-							<div data-bind="wse_ui:{type:\'vector\', items:hsvVector}"></div>\
+							<div data-bind="qpf:{type:\'label\', text:\'HSV\'}"></div>\
+							<div data-bind="qpf:{type:\'vector\', items:hsvVector}"></div>\
 						</div>\
 						<div class="wse-palette-hex">\
-							<div data-bind="wse_ui:{type:\'label\', text:\'#\'}"></div>\
-							<div data-bind="wse_ui:{type:\'textfield\',text:hexString}"></div>\
+							<div data-bind="qpf:{type:\'label\', text:\'#\'}"></div>\
+							<div data-bind="qpf:{type:\'textfield\',text:hexString}"></div>\
 						</div>\
 					</div>\
 				</div>\
@@ -67,8 +67,8 @@ var Palette = Widget.derive(function(){
 									click:$parent.hex.bind($parent, hex)"></li>\
 				</ul>\
 				<div class="wse-palette-buttons">\
-					<div data-bind="wse_ui:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel}"></div>\
-					<div data-bind="wse_ui:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply}"></div>\
+					<div data-bind="qpf:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel.bind($data)}"></div>\
+					<div data-bind="qpf:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply.bind($data)}"></div>\
 				</div>',
 
 	initialize : function(){
@@ -189,13 +189,13 @@ var Palette = Widget.derive(function(){
 	},
 
 	_apply : function(){
-		if( self._recent().length > self._recentMax){
-			self._recent.shift();
+		if( this._recent().length > this._recentMax){
+			this._recent.shift();
 		}
-		self._recent.push( {
-			rgbString : "rgb(" + self.rgb().join(",") + ")",
-			hexString : self.hexString(),
-			hex : self.hex()
+		this._recent.push( {
+			rgbString : "rgb(" + this.rgb().join(",") + ")",
+			hexString : this.hexString(),
+			hex : this.hex()
 		});
 		
 		this.trigger("apply", this.hex());

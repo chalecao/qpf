@@ -1,21 +1,10 @@
 <!Doctype html>
 <html>
-	<style type="text/css" media="screen">
-		body{
-			margin:0px;
-			padding:0px;
-			background-color: #B8B8B8;
-		}
-		#CurlNoise{
-			position: absolute;
-			right:100px;
-			top:10px;
-		}
-	</style>
 	<head>
 		<title>curl noise</title>
 		<meta charset="utf8" />
 		<link rel="stylesheet/less" type="text/css" href="../../src/components/less/base.less">
+		<link rel="stylesheet/less" type="text/css" href="main.less">
 		<script type="text/javascript" src="../../thirdparty/jquery.js"></script>
 		<script type="text/javascript" src="../../thirdparty/less.js"></script>
 		<script type="text/javascript" src="../../thirdparty/require.js"></script>
@@ -26,11 +15,11 @@
 	</head>
 	<body>
 		<canvas id="Viewport"></canvas>
-
+		
 		<script type="text/javascript">
 			requirejs.config({
 				paths : {
-					"wse_ui" : "../../build/output/wse_ui",
+					"qpf" : "../../build/output/qpf",
 					"knockout" : "../../thirdparty/knockout",
 					"ko.mapping" : "../../thirdparty/ko.mapping",
 					"goo" : "../../thirdparty/goo",
@@ -38,7 +27,7 @@
 					"main" : '../../examples/curlnoise/index'
 				},
 				shim : {
-					"main" : ['knockout', "wse_ui", "./shaders"]
+					"main" : ['knockout', "qpf", "./shaders"]
 				}
 			})
 

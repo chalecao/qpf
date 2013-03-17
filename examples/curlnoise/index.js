@@ -1,9 +1,9 @@
 define(function(require){
 	
-	var wse_ui = require("wse_ui");
-	var XMLParser = wse_ui.use("core/xmlparser");
+	var qpf = require("qpf");
+	var XMLParser = qpf.use("core/xmlparser");
 	var shaders =  require("./shaders");
-	var ko = wse_ui.use("knockout");
+	var ko = qpf.use("knockout");
 	
 	var viewportWidth = window.innerWidth;
 	var viewportHeight = window.innerHeight;
@@ -11,7 +11,7 @@ define(function(require){
 	//----------------------------------------
 	// create viewmodels
 	var viewModel = {
-		particleNumber : ko.observable(1024),
+		particleNumber : ko.observable(128),
 
 		_isPlay : ko.observable(true),
 		// events
@@ -27,8 +27,10 @@ define(function(require){
 
 		persistence : ko.observable(0.707),
 
-		// spawnPP parameters
-		spawnSize : ko.observable(0.576)
+		// particle instances
+		particles : ko.observableArray(),
+
+		newSpawn : newSpawn
 	};
 
 	viewModel.status = ko.computed({
@@ -58,35 +60,33 @@ define(function(require){
 	camera.position.z = 0.6;
 
 	CurlNoise.setShaderStrings( shaders );
-	var spawns = [];
+
 
 	var turbulence = createBindableVector2(viewModel.turbulence);
+	var spawns = [];
 
-	for(var i = 0; i < 1; i++){
+	function makeParticleViewModel() {
+		return {
+			spawnSize : ko.observable(0.2)
+		}
+	}
+	function newSpawn(){
+
+		var particleViewModel = makeParticleViewModel();
+
 		var spawn = CurlNoise.spawn({
 			size : viewModel.particleNumber(),
 			position : new THREE.Vector3(Math.random()*3-2, Math.random()*3-2, 0),
 		});
 		spawn.noisePP.updateParameter("turbulence", turbulence);
 		bindingParameter(spawn.noisePP, "persistence", viewModel.persistence);
-		bindingParameter(spawn.spawnPP, "spawnSize", viewModel.spawnSize);
+		bindingParameter(spawn.spawnPP, "spawnSize", particleViewModel.spawnSize);
 
 		spawns.push(spawn);
+		scene.add(spawn.particleSystem);
 	}
 
-	spawns.forEach(function(spawn){
-		scene.add(spawn.particleSystem);
-	})
-
-	viewModel.particleNumber.subscribe(function(newValue){
-		spawns.forEach(function(spawn){
-			scene.remove(spawn.particleSystem);
-			spawn.createParticleSystem();
-			scene.add(spawn.particleSystem);
-			spawn.updateParticleNumber(newValue);
-		})
-	})
-
+	newSpawn();
 
 	function run(){
 

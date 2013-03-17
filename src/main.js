@@ -19,6 +19,8 @@ define(["core/xmlparser",
 		"components/container/tab",
 		"components/container/vbox",
 		"components/container/hbox",
+		"components/container/inline",
+		"components/container/application",
 		"components/widget/vector",
 		"components/widget/widget",
 		"components/widget/palette"], function(){
@@ -55,7 +57,9 @@ define(["core/xmlparser",
 				window : require('components/container/window'),
 				tab : require("components/container/tab"),
 				vbox : require("components/container/vbox"),
-				hbox : require("components/container/hbox")
+				hbox : require("components/container/hbox"),
+				inline : require("components/container/inline"),
+				application : require("components/container/application")
 			},
 			widget : {
 				widget : require("components/widget/widget"),
