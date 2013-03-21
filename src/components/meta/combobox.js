@@ -47,16 +47,16 @@ return {
 
 	},
 
-	template : '<div class="wse-combobox-selected wse-common-button" data-bind="html:selectedText,click:_toggle"></div>\
-				<ul class="wse-combobox-items" data-bind="foreach:items">\
-					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
+	template : '<div class="qpf-combobox-selected qpf-common-button" data-bind="html:selectedText,click:_toggle"></div>\
+				<ul class="qpf-combobox-items" data-bind="foreach:items">\
+					<li data-bind="html:text,attr:{\'data-qpf-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
 				</ul>',
 
 	afterRender : function(){
 
 		var self = this;
-		this._$selected = this.$el.find(".wse-combobox-selected");
-		this._$items = this.$el.find(".wse-combobox-items");
+		this._$selected = this.$el.find(".qpf-combobox-selected");
+		this._$items = this.$el.find(".qpf-combobox-items");
 
 		this.$el.blur(function(){
 			self._blur();

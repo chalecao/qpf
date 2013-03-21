@@ -90,8 +90,8 @@ add : function( elem, handle ){
 		var $handle = $(handle);
 	}
 
-	$elem.attr( "data-wse-draggable", id )
-		.addClass("wse-draggable");
+	$elem.attr( "data-qpf-draggable", id )
+		.addClass("qpf-draggable");
 	
 	(handle ? $(handle) : $elem)
 		.bind("mousedown", {context:this}, this._mouseDown);
@@ -115,7 +115,7 @@ remove : function( elem ){
 			id = item.id;
 	}else{
 		var $elem = $(elem),
-			id = $elem.attr("data-wse-draggable");
+			id = $elem.attr("data-qpf-draggable");
 		
 		if( id  ){
 			var item = this.items[id];
@@ -124,8 +124,8 @@ remove : function( elem ){
 	delete this.items[ id ];
 
 	
-	$elem.removeAttr("data-wse-draggable")
-		.removeClass("wse-draggable");
+	$elem.removeAttr("data-qpf-draggable")
+		.removeClass("qpf-draggable");
 	// remove the events binded to it
 	(item.handle ? $(item.handle) : $elem)
 		.unbind("mousedown", this._mouseDown);
@@ -208,7 +208,7 @@ _mouseDown : function(e){
 			
 			var $elem = $(item.target);
 
-			$elem.addClass("wse-draggable-dragging");
+			$elem.addClass("qpf-draggable-dragging");
 
 			$elem.css({
 				"position" : "absolute",
@@ -348,7 +348,7 @@ _mouseUp : function(e){
 
 			var $elem = $(item.target);
 
-			$elem.removeClass("wse-draggable-dragging");
+			$elem.removeClass("qpf-draggable-dragging");
 
 		}, self)
 	}

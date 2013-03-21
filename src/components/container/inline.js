@@ -11,8 +11,8 @@ var Inline = Container.derive({
 
 	css : "inline",
 
-	template : '<div data-bind="foreach:children" class="wse-children">\
-					<div data-bind="wse_view:$data"></div>\
+	template : '<div data-bind="foreach:children" class="qpf-children">\
+					<div data-bind="qpf_view:$data"></div>\
 				</div>\
 				<div style="clear:both"></div>'
 })

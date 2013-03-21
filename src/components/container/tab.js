@@ -48,29 +48,29 @@ var Tab = Panel.derive(function(){
 		}, this);
 	},
 
-	template : '<div class="wse-tab-header">\
-					<ul class="wse-tab-tabs" data-bind="foreach:children">\
+	template : '<div class="qpf-tab-header">\
+					<ul class="qpf-tab-tabs" data-bind="foreach:children">\
 						<li data-bind="click:$parent.actived.bind($data, $index())">\
 							<a data-bind="html:title"></a>\
 						</li>\
 					</ul>\
-					<div class="wse-tab-tools"></div>\
+					<div class="qpf-tab-tools"></div>\
 				</div>\
-				<div class="wse-tab-body">\
-					<div class="wse-tab-views" data-bind="foreach:children" class="wse-children">\
-						<div data-bind="wse_view:$data"></div>\
+				<div class="qpf-tab-body">\
+					<div class="qpf-tab-views" data-bind="foreach:children" class="qpf-children">\
+						<div data-bind="qpf_view:$data"></div>\
 					</div>\
 				</div>\
-				<div class="wse-tab-footer"></div>',
+				<div class="qpf-tab-footer"></div>',
 
 	afterRender : function(){
 		this._updateTabSize();
 		// cache the $element will be used
 		var $el = this.$el;
-		this._$header = $el.children(".wse-tab-header");
-		this._$tools = this._$header.children(".wse-tab-tools");
-		this._$body = $el.children(".wse-tab-body");
-		this._$footer = $el.children('.wse-tab-footer');
+		this._$header = $el.children(".qpf-tab-header");
+		this._$tools = this._$header.children(".qpf-tab-tools");
+		this._$body = $el.children(".qpf-tab-body");
+		this._$footer = $el.children('.qpf-tab-footer');
 
 		this._active( this.actived() );
 	},
@@ -93,7 +93,7 @@ var Tab = Panel.derive(function(){
 		// clamp
 		tabSize = Math.min(this.maxTabWidth, Math.max(this.minTabWidth, tabSize) );
 
-		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
+		this.$el.find(".qpf-tab-header>.qpf-tab-tabs>li").width(tabSize);
 	},
 
 	_adjustCurrentSize : function(){
@@ -129,7 +129,7 @@ var Tab = Panel.derive(function(){
 			this.trigger('change', idx, current);
 		}
 
-		this.$el.find(".wse-tab-header>.wse-tab-tabs>li")
+		this.$el.find(".qpf-tab-header>.qpf-tab-tabs>li")
 				.removeClass("actived")
 				.eq(idx).addClass("actived");
 	}

@@ -17,21 +17,21 @@ return {
 
 	css : 'panel',
 
-	template : '<div class="wse-panel-header">\
-					<div class="wse-panel-title" data-bind="html:title"></div>\
-					<div class="wse-panel-tools"></div>\
+	template : '<div class="qpf-panel-header">\
+					<div class="qpf-panel-title" data-bind="html:title"></div>\
+					<div class="qpf-panel-tools"></div>\
 				</div>\
-				<div class="wse-panel-body" data-bind="foreach:children" class="wse-children">\
-					<div data-bind="wse_view:$data"></div>\
+				<div class="qpf-panel-body" data-bind="foreach:children" class="qpf-children">\
+					<div data-bind="qpf_view:$data"></div>\
 				</div>\
-				<div class="wse-panel-footer"></div>',
+				<div class="qpf-panel-footer"></div>',
 	
 	afterRender : function(){
 		var $el = this.$el;
-		this._$header = $el.children(".wse-panel-header");
-		this._$tools = this._$header.children(".wse-panel-tools");
-		this._$body = $el.children(".wse-panel-body");
-		this._$footer = $el.children(".wse-panel-footer");
+		this._$header = $el.children(".qpf-panel-header");
+		this._$tools = this._$header.children(".qpf-panel-tools");
+		this._$body = $el.children(".qpf-panel-body");
+		this._$footer = $el.children(".qpf-panel-footer");
 	},
 
 	afterResize : function(){

@@ -43,7 +43,7 @@ return {
 	css : 'vector',
 
 	initialize : function(){
-		this.$el.attr("data-bind", 'css:{"wse-vector-constrain":constrainProportion}')
+		this.$el.attr("data-bind", 'css:{"qpf-vector-constrain":constrainProportion}')
 		// here has a problem that we cant be notified 
 		// if the object in the array is updated
 		this.items.subscribe(function(item){
@@ -63,18 +63,18 @@ return {
 
 	eventsProvided : _.union(Widget.prototype.eventsProvided, "change"),
 
-	template : '<div class="wse-left">\
-					<div class="wse-vector-link" data-bind="click:_toggleConstrain"></div>\
+	template : '<div class="qpf-left">\
+					<div class="qpf-vector-link" data-bind="click:_toggleConstrain"></div>\
 				</div>\
-				<div class="wse-right" >\
-					<ul class="wse-list" data-bind="foreach:items">\
+				<div class="qpf-right" >\
+					<ul class="qpf-list" data-bind="foreach:items">\
 						<li data-bind="qpf:$data"></li>\
 					</ul>\
 				</div>',
 
 	afterRender : function(){
 		// cache the list element
-		this._$list = this.$el.find(".wse-list");
+		this._$list = this.$el.find(".qpf-list");
 
 		this._cacheSubComponents();
 		this._updateConstraint();

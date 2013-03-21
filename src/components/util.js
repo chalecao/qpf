@@ -24,10 +24,10 @@ define(['knockout',
 					element.innerHTML = "";
 					element.appendChild( component.$el[0] );
 					
-					$(element).addClass("wse-ui-wrapper");
+					$(element).addClass("qpf-wrapper");
 				}
 				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", component.__GUID__);
+				element.setAttribute("data-qpf-guid", component.__GUID__);
 			}else{
 				console.error("Unkown UI type, " + type);
 			}
@@ -70,9 +70,20 @@ define(['knockout',
 	// and update the value from source to target
 	// at first time
 	exports.bridge = function(target, source){
+		
+		target( source() );
+
+		var commonValue = target();
 		target.subscribe(function(newValue){
+	        // Knockout will always suppose the value is mutated each time is writted
+	        // if the value is not primitive type(like array)
+	        // So here will cause a recurse trigger if the value is not a primitive type
+	        // We use underscore deep compare function to evaluate if the value is changed
 			try{
-				source(newValue);
+				if( ! _.isEqual(commonValue, newValue) ){
+					commonValue = newValue;
+					source(newValue);
+				}
 			}catch(e){
 				// Normally when source is computed value
 				// and it don't have a write function  
@@ -81,7 +92,10 @@ define(['knockout',
 		})
 		source.subscribe(function(newValue){
 			try{
-				target(newValue);
+				if( ! _.isEqual(commonValue, newValue) ){
+					commonValue = newValue;
+					target(newValue);
+				}
 			}catch(e){
 				console.error(e.toString());
 			}

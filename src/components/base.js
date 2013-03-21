@@ -31,14 +31,15 @@ return {	// Public properties
 	// ui skin
 	skin : "",
 	// Class prefix
-	classPrefix : "wse-ui-",
+	classPrefix : "qpf-ui-",
 	// Skin prefix
-	skinPrefix : "wse-skin-",
+	skinPrefix : "qpf-skin-",
 
 	id : ko.observable(""),
 	width : ko.observable(),
 	class : ko.observable(),
 	height : ko.observable(),
+	visible : ko.observable(true),
 	disable : ko.observable(false),
 	style : ko.observable(""),
 	// events list inited at first time
@@ -75,13 +76,16 @@ return {	// Public properties
 		this.afterResize();
 	}, this);
 	this.disable.subscribe(function(newValue){
-		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
+		this.$el[newValue?"addClass":"removeClass"]("qpf-disable");
 	}, this);
 	this.id.subscribe(function(newValue){
 		this.$el.attr("id", newValue);
 	}, this);
 	this.class.subscribe(function(newValue){
 		this.$el.addClass( newValue );
+	}, this);
+	this.visible.subscribe(function(newValue){
+		newValue ? this.$el.show() : this.$el.hide();
 	}, this);
 	this.style.subscribe(function(newValue){
 		var valueSv = newValue;
@@ -100,7 +104,7 @@ return {	// Public properties
 		}catch(e){
 			console.error("Syntax Error of style: "+ valueSv);
 		}
-	}, this)
+	}, this);
 
 	// register the events before initialize
 	for( var name in this.events ){
@@ -253,7 +257,7 @@ Base.get = function(guid){
 	return repository[guid];
 }
 Base.getByDom = function(domNode){
-	var guid = domNode.getAttribute("data-wse-guid");
+	var guid = domNode.getAttribute("data-qpf-guid");
 	return Base.get(guid);
 }
 
@@ -266,7 +270,7 @@ Base.disposeDom = function(domNode, resursive){
 	}
 
 	function dispose(node){
-		var guid = node.getAttribute("data-wse-guid");
+		var guid = node.getAttribute("data-qpf-guid");
 		var component = Base.get(guid);
 		if( component ){
 			// do not recursive traverse the children of component
@@ -382,7 +386,7 @@ ko.bindingHandlers["qpf"] = {
 }
 
 // append the element of view in the binding
-ko.bindingHandlers["wse_view"] = {
+ko.bindingHandlers["qpf_view"] = {
 	init : function(element, valueAccessor){
 		var value = valueAccessor();
 

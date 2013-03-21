@@ -4368,10 +4368,10 @@ define('components/util',['knockout',
 					element.innerHTML = "";
 					element.appendChild( component.$el[0] );
 					
-					$(element).addClass("wse-ui-wrapper");
+					$(element).addClass("qpf-wrapper");
 				}
 				// save the guid in the element data attribute
-				element.setAttribute("data-wse-guid", component.__GUID__);
+				element.setAttribute("data-qpf-guid", component.__GUID__);
 			}else{
 				console.error("Unkown UI type, " + type);
 			}
@@ -4414,9 +4414,20 @@ define('components/util',['knockout',
 	// and update the value from source to target
 	// at first time
 	exports.bridge = function(target, source){
+		
+		target( source() );
+
+		var commonValue = target();
 		target.subscribe(function(newValue){
+	        // Knockout will always suppose the value is mutated each time is writted
+	        // if the value is not primitive type(like array)
+	        // So here will cause a recurse trigger if the value is not a primitive type
+	        // We use underscore deep compare function to evaluate if the value is changed
 			try{
-				source(newValue);
+				if( ! _.isEqual(commonValue, newValue) ){
+					commonValue = newValue;
+					source(newValue);
+				}
 			}catch(e){
 				// Normally when source is computed value
 				// and it don't have a write function  
@@ -4425,7 +4436,10 @@ define('components/util',['knockout',
 		})
 		source.subscribe(function(newValue){
 			try{
-				target(newValue);
+				if( ! _.isEqual(commonValue, newValue) ){
+					commonValue = newValue;
+					target(newValue);
+				}
 			}catch(e){
 				console.error(e.toString());
 			}
@@ -4466,9 +4480,9 @@ return {	// Public properties
 	// ui skin
 	skin : "",
 	// Class prefix
-	classPrefix : "wse-ui-",
+	classPrefix : "qpf-ui-",
 	// Skin prefix
-	skinPrefix : "wse-skin-",
+	skinPrefix : "qpf-skin-",
 
 	id : ko.observable(""),
 	width : ko.observable(),
@@ -4510,7 +4524,7 @@ return {	// Public properties
 		this.afterResize();
 	}, this);
 	this.disable.subscribe(function(newValue){
-		this.$el[newValue?"addClass":"removeClass"]("wse-disable");
+		this.$el[newValue?"addClass":"removeClass"]("qpf-disable");
 	}, this);
 	this.id.subscribe(function(newValue){
 		this.$el.attr("id", newValue);
@@ -4688,7 +4702,7 @@ Base.get = function(guid){
 	return repository[guid];
 }
 Base.getByDom = function(domNode){
-	var guid = domNode.getAttribute("data-wse-guid");
+	var guid = domNode.getAttribute("data-qpf-guid");
 	return Base.get(guid);
 }
 
@@ -4701,7 +4715,7 @@ Base.disposeDom = function(domNode, resursive){
 	}
 
 	function dispose(node){
-		var guid = node.getAttribute("data-wse-guid");
+		var guid = node.getAttribute("data-qpf-guid");
 		var component = Base.get(guid);
 		if( component ){
 			// do not recursive traverse the children of component
@@ -4817,7 +4831,7 @@ ko.bindingHandlers["qpf"] = {
 }
 
 // append the element of view in the binding
-ko.bindingHandlers["wse_view"] = {
+ko.bindingHandlers["qpf_view"] = {
 	init : function(element, valueAccessor){
 		var value = valueAccessor();
 
@@ -7589,16 +7603,16 @@ return {
 
 	},
 
-	template : '<div class="wse-combobox-selected wse-common-button" data-bind="html:selectedText,click:_toggle"></div>\
-				<ul class="wse-combobox-items" data-bind="foreach:items">\
-					<li data-bind="html:text,attr:{\'data-wse-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
+	template : '<div class="qpf-combobox-selected qpf-common-button" data-bind="html:selectedText,click:_toggle"></div>\
+				<ul class="qpf-combobox-items" data-bind="foreach:items">\
+					<li data-bind="html:text,attr:{\'data-qpf-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
 				</ul>',
 
 	afterRender : function(){
 
 		var self = this;
-		this._$selected = this.$el.find(".wse-combobox-selected");
-		this._$items = this.$el.find(".wse-combobox-items");
+		this._$selected = this.$el.find(".qpf-combobox-selected");
+		this._$items = this.$el.find(".qpf-combobox-items");
 
 		this.$el.blur(function(){
 			self._blur();
@@ -7784,8 +7798,8 @@ add : function( elem, handle ){
 		var $handle = $(handle);
 	}
 
-	$elem.attr( "data-wse-draggable", id )
-		.addClass("wse-draggable");
+	$elem.attr( "data-qpf-draggable", id )
+		.addClass("qpf-draggable");
 	
 	(handle ? $(handle) : $elem)
 		.bind("mousedown", {context:this}, this._mouseDown);
@@ -7809,7 +7823,7 @@ remove : function( elem ){
 			id = item.id;
 	}else{
 		var $elem = $(elem),
-			id = $elem.attr("data-wse-draggable");
+			id = $elem.attr("data-qpf-draggable");
 		
 		if( id  ){
 			var item = this.items[id];
@@ -7818,8 +7832,8 @@ remove : function( elem ){
 	delete this.items[ id ];
 
 	
-	$elem.removeAttr("data-wse-draggable")
-		.removeClass("wse-draggable");
+	$elem.removeAttr("data-qpf-draggable")
+		.removeClass("qpf-draggable");
 	// remove the events binded to it
 	(item.handle ? $(item.handle) : $elem)
 		.unbind("mousedown", this._mouseDown);
@@ -7902,7 +7916,7 @@ _mouseDown : function(e){
 			
 			var $elem = $(item.target);
 
-			$elem.addClass("wse-draggable-dragging");
+			$elem.addClass("qpf-draggable-dragging");
 
 			$elem.css({
 				"position" : "absolute",
@@ -8042,7 +8056,7 @@ _mouseUp : function(e){
 
 			var $elem = $(item.target);
 
-			$elem.removeClass("wse-draggable-dragging");
+			$elem.removeClass("qpf-draggable-dragging");
 
 		}, self)
 	}
@@ -8146,18 +8160,18 @@ var Range = Meta.derive(function(){
 
 	css : 'range',
 
-	template : '<div class="wse-range-groove-box">\
-					<div class="wse-range-groove-outer">\
-						<div class="wse-range-groove">\
-							<div class="wse-range-percentage"></div>\
+	template : '<div class="qpf-range-groove-box">\
+					<div class="qpf-range-groove-outer">\
+						<div class="qpf-range-groove">\
+							<div class="qpf-range-percentage"></div>\
 						</div>\
 					</div>\
 				</div>\
-				<div class="wse-range-min" data-bind="text:_format(min())"></div>\
-				<div class="wse-range-max" data-bind="text:_format(max())"></div>\
-				<div class="wse-range-slider">\
-					<div class="wse-range-slider-inner"></div>\
-					<div class="wse-range-value" data-bind="text:_format(value())"></div>\
+				<div class="qpf-range-min" data-bind="text:_format(min())"></div>\
+				<div class="qpf-range-max" data-bind="text:_format(max())"></div>\
+				<div class="qpf-range-slider">\
+					<div class="qpf-range-slider-inner"></div>\
+					<div class="qpf-range-value" data-bind="text:_format(value())"></div>\
 				</div>',
 
 	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
@@ -8184,11 +8198,11 @@ var Range = Meta.derive(function(){
 	afterRender : function(){
 
 		// cache the element;
-		this._$box = this.$el.find(".wse-range-groove-box");
-		this._$percentage = this.$el.find(".wse-range-percentage");
-		this._$slider = this.$el.find(".wse-range-slider");
+		this._$box = this.$el.find(".qpf-range-groove-box");
+		this._$percentage = this.$el.find(".qpf-range-percentage");
+		this._$slider = this.$el.find(".qpf-range-slider");
 
-		this.draggable.container = this.$el.find(".wse-range-groove-box");
+		this.draggable.container = this.$el.find(".qpf-range-groove-box");
 		var item = this.draggable.add( this._$slider );
 		
 		item.on("drag", this._dragHandler, this);
@@ -8356,23 +8370,23 @@ var Spinner = Meta.derive(function(){
 
 	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
 
-	template : '<div class="wse-left">\
-					<input type="text" class="wse-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
+	template : '<div class="qpf-left">\
+					<input type="text" class="qpf-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
 				</div>\
-				<div class="wse-right">\
-					<div class="wse-common-button wse-increase" data-bind="click:increase">\
+				<div class="qpf-right">\
+					<div class="qpf-common-button qpf-increase" data-bind="click:increase">\
 					+</div>\
-					<div class="wse-common-button wse-decrease" data-bind="click:decrease">\
+					<div class="qpf-common-button qpf-decrease" data-bind="click:decrease">\
 					-</div>\
 				</div>',
 
 	afterRender : function(){
 		var self = this;
 		// disable selection
-		this.$el.find('.wse-increase,.wse-decrease').mousedown(function(e){
+		this.$el.find('.qpf-increase,.qpf-decrease').mousedown(function(e){
 			e.preventDefault();
 		})
-		this._$value = this.$el.find(".wse-spinner-value")
+		this._$value = this.$el.find(".qpf-spinner-value")
 		// numeric input only
 		this._$value.keydown(function(event){
 			// Allow: backspace, delete, tab, escape and dot
@@ -8455,8 +8469,8 @@ var Container = Base.derive(function(){
 
 	css : 'container',
 	
-	template : '<div data-bind="foreach:children" class="wse-children">\
-					<div data-bind="wse_view:$data"></div>\
+	template : '<div data-bind="foreach:children" class="qpf-children">\
+					<div data-bind="qpf_view:$data"></div>\
 				</div>',
 
 	// add child component
@@ -8476,7 +8490,7 @@ var Container = Base.derive(function(){
 	afterResize : function(){
 		// stretch the children
 		if( this.height() ){
-			this.$el.children(".wse-children").height( this.height() );	
+			this.$el.children(".qpf-children").height( this.height() );	
 		}
 		// trigger the after resize event in post-order
 		_.each(this.children(), function(child){
@@ -8584,21 +8598,21 @@ return {
 
 	css : 'panel',
 
-	template : '<div class="wse-panel-header">\
-					<div class="wse-panel-title" data-bind="html:title"></div>\
-					<div class="wse-panel-tools"></div>\
+	template : '<div class="qpf-panel-header">\
+					<div class="qpf-panel-title" data-bind="html:title"></div>\
+					<div class="qpf-panel-tools"></div>\
 				</div>\
-				<div class="wse-panel-body" data-bind="foreach:children" class="wse-children">\
-					<div data-bind="wse_view:$data"></div>\
+				<div class="qpf-panel-body" data-bind="foreach:children" class="qpf-children">\
+					<div data-bind="qpf_view:$data"></div>\
 				</div>\
-				<div class="wse-panel-footer"></div>',
+				<div class="qpf-panel-footer"></div>',
 	
 	afterRender : function(){
 		var $el = this.$el;
-		this._$header = $el.children(".wse-panel-header");
-		this._$tools = this._$header.children(".wse-panel-tools");
-		this._$body = $el.children(".wse-panel-body");
-		this._$footer = $el.children(".wse-panel-footer");
+		this._$header = $el.children(".qpf-panel-header");
+		this._$tools = this._$header.children(".qpf-panel-tools");
+		this._$body = $el.children(".qpf-panel-body");
+		this._$footer = $el.children(".qpf-panel-footer");
 	},
 
 	afterResize : function(){
@@ -8730,29 +8744,29 @@ var Tab = Panel.derive(function(){
 		}, this);
 	},
 
-	template : '<div class="wse-tab-header">\
-					<ul class="wse-tab-tabs" data-bind="foreach:children">\
+	template : '<div class="qpf-tab-header">\
+					<ul class="qpf-tab-tabs" data-bind="foreach:children">\
 						<li data-bind="click:$parent.actived.bind($data, $index())">\
 							<a data-bind="html:title"></a>\
 						</li>\
 					</ul>\
-					<div class="wse-tab-tools"></div>\
+					<div class="qpf-tab-tools"></div>\
 				</div>\
-				<div class="wse-tab-body">\
-					<div class="wse-tab-views" data-bind="foreach:children" class="wse-children">\
-						<div data-bind="wse_view:$data"></div>\
+				<div class="qpf-tab-body">\
+					<div class="qpf-tab-views" data-bind="foreach:children" class="qpf-children">\
+						<div data-bind="qpf_view:$data"></div>\
 					</div>\
 				</div>\
-				<div class="wse-tab-footer"></div>',
+				<div class="qpf-tab-footer"></div>',
 
 	afterRender : function(){
 		this._updateTabSize();
 		// cache the $element will be used
 		var $el = this.$el;
-		this._$header = $el.children(".wse-tab-header");
-		this._$tools = this._$header.children(".wse-tab-tools");
-		this._$body = $el.children(".wse-tab-body");
-		this._$footer = $el.children('.wse-tab-footer');
+		this._$header = $el.children(".qpf-tab-header");
+		this._$tools = this._$header.children(".qpf-tab-tools");
+		this._$body = $el.children(".qpf-tab-body");
+		this._$footer = $el.children('.qpf-tab-footer');
 
 		this._active( this.actived() );
 	},
@@ -8775,7 +8789,7 @@ var Tab = Panel.derive(function(){
 		// clamp
 		tabSize = Math.min(this.maxTabWidth, Math.max(this.minTabWidth, tabSize) );
 
-		this.$el.find(".wse-tab-header>.wse-tab-tabs>li").width(tabSize);
+		this.$el.find(".qpf-tab-header>.qpf-tab-tabs>li").width(tabSize);
 	},
 
 	_adjustCurrentSize : function(){
@@ -8811,7 +8825,7 @@ var Tab = Panel.derive(function(){
 			this.trigger('change', idx, current);
 		}
 
-		this.$el.find(".wse-tab-header>.wse-tab-tabs>li")
+		this.$el.find(".qpf-tab-header>.qpf-tab-tabs>li")
 				.removeClass("actived")
 				.eq(idx).addClass("actived");
 	}
@@ -9079,8 +9093,8 @@ var Inline = Container.derive({
 
 	css : "inline",
 
-	template : '<div data-bind="foreach:children" class="wse-children">\
-					<div data-bind="wse_view:$data"></div>\
+	template : '<div data-bind="foreach:children" class="qpf-children">\
+					<div data-bind="qpf_view:$data"></div>\
 				</div>\
 				<div style="clear:both"></div>'
 })
@@ -9198,7 +9212,7 @@ return {
 	css : 'vector',
 
 	initialize : function(){
-		this.$el.attr("data-bind", 'css:{"wse-vector-constrain":constrainProportion}')
+		this.$el.attr("data-bind", 'css:{"qpf-vector-constrain":constrainProportion}')
 		// here has a problem that we cant be notified 
 		// if the object in the array is updated
 		this.items.subscribe(function(item){
@@ -9218,18 +9232,18 @@ return {
 
 	eventsProvided : _.union(Widget.prototype.eventsProvided, "change"),
 
-	template : '<div class="wse-left">\
-					<div class="wse-vector-link" data-bind="click:_toggleConstrain"></div>\
+	template : '<div class="qpf-left">\
+					<div class="qpf-vector-link" data-bind="click:_toggleConstrain"></div>\
 				</div>\
-				<div class="wse-right" >\
-					<ul class="wse-list" data-bind="foreach:items">\
+				<div class="qpf-right" >\
+					<ul class="qpf-list" data-bind="foreach:items">\
 						<li data-bind="qpf:$data"></li>\
 					</ul>\
 				</div>',
 
 	afterRender : function(){
 		// cache the list element
-		this._$list = this.$el.find(".wse-list");
+		this._$list = this.$el.find(".qpf-list");
 
 		this._cacheSubComponents();
 		this._updateConstraint();
@@ -9578,44 +9592,44 @@ var Palette = Widget.derive(function(){
 
 	eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply']),
 
-	template : 	'<div class="wse-palette-adjuster">\
-					<div class="wse-left">\
-						<div class="wse-palette-picksv" data-bind="style:{backgroundColor:hueRGB}">\
-							<div class="wse-palette-saturation">\
-								<div class="wse-palette-value"></div>\
+	template : 	'<div class="qpf-palette-adjuster">\
+					<div class="qpf-left">\
+						<div class="qpf-palette-picksv" data-bind="style:{backgroundColor:hueRGB}">\
+							<div class="qpf-palette-saturation">\
+								<div class="qpf-palette-value"></div>\
 							</div>\
-							<div class="wse-palette-picker"></div>\
+							<div class="qpf-palette-picker"></div>\
 						</div>\
-						<div class="wse-palette-pickh">\
-							<div class="wse-palette-picker"></div>\
+						<div class="qpf-palette-pickh">\
+							<div class="qpf-palette-picker"></div>\
 						</div>\
 						<div style="clear:both"></div>\
-						<div class="wse-palette-alpha">\
+						<div class="qpf-palette-alpha">\
 							<div data-bind="qpf:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
 						</div>\
 					</div>\
-					<div class="wse-right">\
-						<div class="wse-palette-rgb">\
+					<div class="qpf-right">\
+						<div class="qpf-palette-rgb">\
 							<div data-bind="qpf:{type:\'label\', text:\'RGB\'}"></div>\
 							<div data-bind="qpf:{type:\'vector\', items:rgbVector}"></div>\
 						</div>\
-						<div class="wse-palette-hsv">\
+						<div class="qpf-palette-hsv">\
 							<div data-bind="qpf:{type:\'label\', text:\'HSV\'}"></div>\
 							<div data-bind="qpf:{type:\'vector\', items:hsvVector}"></div>\
 						</div>\
-						<div class="wse-palette-hex">\
+						<div class="qpf-palette-hex">\
 							<div data-bind="qpf:{type:\'label\', text:\'#\'}"></div>\
 							<div data-bind="qpf:{type:\'textfield\',text:hexString}"></div>\
 						</div>\
 					</div>\
 				</div>\
 				<div style="clear:both"></div>\
-				<ul class="wse-palette-recent" data-bind="foreach:_recent">\
+				<ul class="qpf-palette-recent" data-bind="foreach:_recent">\
 					<li data-bind="style:{backgroundColor:rgbString},\
 									attr:{title:hexString},\
 									click:$parent.hex.bind($parent, hex)"></li>\
 				</ul>\
-				<div class="wse-palette-buttons">\
+				<div class="qpf-palette-buttons">\
 					<div data-bind="qpf:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel.bind($data)}"></div>\
 					<div data-bind="qpf:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply.bind($data)}"></div>\
 				</div>',
@@ -9630,10 +9644,10 @@ var Palette = Widget.derive(function(){
 		this._h.subscribe(this._setPickerPosition, this);
 	},
 	afterRender : function(){
-		this._$svSpace = $('.wse-palette-picksv');
-		this._$hSpace = $('.wse-palette-pickh');
-		this._$svPicker = this._$svSpace.children('.wse-palette-picker');
-		this._$hPicker = this._$hSpace.children('.wse-palette-picker');
+		this._$svSpace = $('.qpf-palette-picksv');
+		this._$hSpace = $('.qpf-palette-pickh');
+		this._$svPicker = this._$svSpace.children('.qpf-palette-picker');
+		this._$hPicker = this._$hSpace.children('.qpf-palette-picker');
 
 		this._svSize = this._$svSpace.height();
 		this._hSize = this._$hSpace.height();
@@ -9786,7 +9800,7 @@ define('src/main',["core/xmlparser",
 		"components/widget/widget",
 		"components/widget/palette"], function(){
 
-	console.log("wse ui is loaded");
+	console.log("qpf is loaded");
 
 	return {
 		core : {

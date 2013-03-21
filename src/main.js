@@ -25,7 +25,7 @@ define(["core/xmlparser",
 		"components/widget/widget",
 		"components/widget/palette"], function(){
 
-	console.log("wse ui is loaded");
+	console.log("qpf is loaded");
 
 	return {
 		core : {

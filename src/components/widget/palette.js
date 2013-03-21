@@ -29,44 +29,44 @@ var Palette = Widget.derive(function(){
 
 	eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply']),
 
-	template : 	'<div class="wse-palette-adjuster">\
-					<div class="wse-left">\
-						<div class="wse-palette-picksv" data-bind="style:{backgroundColor:hueRGB}">\
-							<div class="wse-palette-saturation">\
-								<div class="wse-palette-value"></div>\
+	template : 	'<div class="qpf-palette-adjuster">\
+					<div class="qpf-left">\
+						<div class="qpf-palette-picksv" data-bind="style:{backgroundColor:hueRGB}">\
+							<div class="qpf-palette-saturation">\
+								<div class="qpf-palette-value"></div>\
 							</div>\
-							<div class="wse-palette-picker"></div>\
+							<div class="qpf-palette-picker"></div>\
 						</div>\
-						<div class="wse-palette-pickh">\
-							<div class="wse-palette-picker"></div>\
+						<div class="qpf-palette-pickh">\
+							<div class="qpf-palette-picker"></div>\
 						</div>\
 						<div style="clear:both"></div>\
-						<div class="wse-palette-alpha">\
+						<div class="qpf-palette-alpha">\
 							<div data-bind="qpf:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
 						</div>\
 					</div>\
-					<div class="wse-right">\
-						<div class="wse-palette-rgb">\
+					<div class="qpf-right">\
+						<div class="qpf-palette-rgb">\
 							<div data-bind="qpf:{type:\'label\', text:\'RGB\'}"></div>\
 							<div data-bind="qpf:{type:\'vector\', items:rgbVector}"></div>\
 						</div>\
-						<div class="wse-palette-hsv">\
+						<div class="qpf-palette-hsv">\
 							<div data-bind="qpf:{type:\'label\', text:\'HSV\'}"></div>\
 							<div data-bind="qpf:{type:\'vector\', items:hsvVector}"></div>\
 						</div>\
-						<div class="wse-palette-hex">\
+						<div class="qpf-palette-hex">\
 							<div data-bind="qpf:{type:\'label\', text:\'#\'}"></div>\
 							<div data-bind="qpf:{type:\'textfield\',text:hexString}"></div>\
 						</div>\
 					</div>\
 				</div>\
 				<div style="clear:both"></div>\
-				<ul class="wse-palette-recent" data-bind="foreach:_recent">\
+				<ul class="qpf-palette-recent" data-bind="foreach:_recent">\
 					<li data-bind="style:{backgroundColor:rgbString},\
 									attr:{title:hexString},\
 									click:$parent.hex.bind($parent, hex)"></li>\
 				</ul>\
-				<div class="wse-palette-buttons">\
+				<div class="qpf-palette-buttons">\
 					<div data-bind="qpf:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel.bind($data)}"></div>\
 					<div data-bind="qpf:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply.bind($data)}"></div>\
 				</div>',
@@ -81,10 +81,10 @@ var Palette = Widget.derive(function(){
 		this._h.subscribe(this._setPickerPosition, this);
 	},
 	afterRender : function(){
-		this._$svSpace = $('.wse-palette-picksv');
-		this._$hSpace = $('.wse-palette-pickh');
-		this._$svPicker = this._$svSpace.children('.wse-palette-picker');
-		this._$hPicker = this._$hSpace.children('.wse-palette-picker');
+		this._$svSpace = $('.qpf-palette-picksv');
+		this._$hSpace = $('.qpf-palette-pickh');
+		this._$svPicker = this._$svSpace.children('.qpf-palette-picker');
+		this._$hPicker = this._$hSpace.children('.qpf-palette-picker');
 
 		this._svSize = this._$svSpace.height();
 		this._hSize = this._$hSpace.height();

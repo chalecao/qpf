@@ -15,8 +15,8 @@ var Container = Base.derive(function(){
 
 	css : 'container',
 	
-	template : '<div data-bind="foreach:children" class="wse-children">\
-					<div data-bind="wse_view:$data"></div>\
+	template : '<div data-bind="foreach:children" class="qpf-children">\
+					<div data-bind="qpf_view:$data"></div>\
 				</div>',
 
 	// add child component
@@ -36,7 +36,7 @@ var Container = Base.derive(function(){
 	afterResize : function(){
 		// stretch the children
 		if( this.height() ){
-			this.$el.children(".wse-children").height( this.height() );	
+			this.$el.children(".qpf-children").height( this.height() );	
 		}
 		// trigger the after resize event in post-order
 		_.each(this.children(), function(child){

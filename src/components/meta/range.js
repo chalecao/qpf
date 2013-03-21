@@ -59,18 +59,18 @@ var Range = Meta.derive(function(){
 
 	css : 'range',
 
-	template : '<div class="wse-range-groove-box">\
-					<div class="wse-range-groove-outer">\
-						<div class="wse-range-groove">\
-							<div class="wse-range-percentage"></div>\
+	template : '<div class="qpf-range-groove-box">\
+					<div class="qpf-range-groove-outer">\
+						<div class="qpf-range-groove">\
+							<div class="qpf-range-percentage"></div>\
 						</div>\
 					</div>\
 				</div>\
-				<div class="wse-range-min" data-bind="text:_format(min())"></div>\
-				<div class="wse-range-max" data-bind="text:_format(max())"></div>\
-				<div class="wse-range-slider">\
-					<div class="wse-range-slider-inner"></div>\
-					<div class="wse-range-value" data-bind="text:_format(value())"></div>\
+				<div class="qpf-range-min" data-bind="text:_format(min())"></div>\
+				<div class="qpf-range-max" data-bind="text:_format(max())"></div>\
+				<div class="qpf-range-slider">\
+					<div class="qpf-range-slider-inner"></div>\
+					<div class="qpf-range-value" data-bind="text:_format(value())"></div>\
 				</div>',
 
 	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
@@ -97,11 +97,11 @@ var Range = Meta.derive(function(){
 	afterRender : function(){
 
 		// cache the element;
-		this._$box = this.$el.find(".wse-range-groove-box");
-		this._$percentage = this.$el.find(".wse-range-percentage");
-		this._$slider = this.$el.find(".wse-range-slider");
+		this._$box = this.$el.find(".qpf-range-groove-box");
+		this._$percentage = this.$el.find(".qpf-range-percentage");
+		this._$slider = this.$el.find(".qpf-range-slider");
 
-		this.draggable.container = this.$el.find(".wse-range-groove-box");
+		this.draggable.container = this.$el.find(".qpf-range-groove-box");
 		var item = this.draggable.add( this._$slider );
 		
 		item.on("drag", this._dragHandler, this);

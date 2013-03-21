@@ -52,23 +52,23 @@ var Spinner = Meta.derive(function(){
 
 	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
 
-	template : '<div class="wse-left">\
-					<input type="text" class="wse-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
+	template : '<div class="qpf-left">\
+					<input type="text" class="qpf-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
 				</div>\
-				<div class="wse-right">\
-					<div class="wse-common-button wse-increase" data-bind="click:increase">\
+				<div class="qpf-right">\
+					<div class="qpf-common-button qpf-increase" data-bind="click:increase">\
 					+</div>\
-					<div class="wse-common-button wse-decrease" data-bind="click:decrease">\
+					<div class="qpf-common-button qpf-decrease" data-bind="click:decrease">\
 					-</div>\
 				</div>',
 
 	afterRender : function(){
 		var self = this;
 		// disable selection
-		this.$el.find('.wse-increase,.wse-decrease').mousedown(function(e){
+		this.$el.find('.qpf-increase,.qpf-decrease').mousedown(function(e){
 			e.preventDefault();
 		})
-		this._$value = this.$el.find(".wse-spinner-value")
+		this._$value = this.$el.find(".qpf-spinner-value")
 		// numeric input only
 		this._$value.keydown(function(event){
 			// Allow: backspace, delete, tab, escape and dot
