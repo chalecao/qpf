@@ -47,7 +47,12 @@ return {
 
 	},
 
-	template : '<div class="qpf-combobox-selected qpf-common-button" data-bind="html:selectedText,click:_toggle"></div>\
+	template : '<div class="qpf-combobox-selected" data-bind="click:_toggle">\
+					<div class="qpf-left" data-bind="html:selectedText"></div>\
+					<div class="qpf-right qpf-common-button">\
+						<div class="qpf-icon"></div>\
+					</div>\
+				</div>\
 				<ul class="qpf-combobox-items" data-bind="foreach:items">\
 					<li data-bind="html:text,attr:{\'data-qpf-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
 				</ul>',

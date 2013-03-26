@@ -468,33 +468,38 @@ define('core/xmlparser',['require','exports','module'],function(require, exports
 	}
 
 	function parseXMLNode(xmlNode){
-		if( xmlNode.nodeType !== 1){
+		if( xmlNode.nodeType === 1){
+			
+			var bindingResults = {
+				type : xmlNode.tagName.toLowerCase()
+			} 
+
+			var convertedAttr = convertAttributes( xmlNode.attributes );
+			var customParser = customParsers[bindingResults.type];
+			if( customParser ){
+				var result = customParser(xmlNode);
+				if( result &&
+					typeof(result) !="object"){
+					console.error("Parser must return an object converted from attributes")
+				}else{
+					// data in the attributes has higher priority than
+					// the data from the children
+					_.extend(convertedAttr, result);
+				}
+			}
+
+			var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
+
+			var domNode = document.createElement('div');
+			domNode.setAttribute('data-bind',  "qpf:"+bindingString);
+
+			return domNode;
+		}else if( xmlNode.nodeType === 8){// comment node, offer for virtual binding in knockout
+			// return xmlNode;
+			return;
+		}else{
 			return;
 		}
-		var bindingResults = {
-			type : xmlNode.tagName.toLowerCase()
-		} 
-
-		var convertedAttr = convertAttributes( xmlNode.attributes );
-		var customParser = customParsers[bindingResults.type];
-		if( customParser ){
-			var result = customParser(xmlNode);
-			if( result &&
-				typeof(result) !="object"){
-				console.error("Parser must return an object converted from attributes")
-			}else{
-				// data in the attributes has higher priority than
-				// the data from the children
-				_.extend(convertedAttr, result);
-			}
-		}
-
-		var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
-
-		var domNode = document.createElement('div');
-		domNode.setAttribute('data-bind',  "qpf:"+bindingString);
-
-		return domNode;
 	}
 
 	function convertAttributes(attributes){
@@ -733,7 +738,7 @@ return{
 
 	off : function( target, handler ){
 		
-		var handlers = this.__handlers__ || {};
+		var handlers = this.__handlers__ || ( this.__handlers__={} );
 
 		if( handlers[target] ){
 			if( handler ){
@@ -4342,119 +4347,13 @@ ko.exportSymbol('nativeTemplateEngine', ko.nativeTemplateEngine);
 });
 })(window,document,navigator,window["jQuery"]);
 })();
-//==========================
-// Util.js
-// provide util function to operate
-// the components
-//===========================
-define('components/util',['knockout',
-		'exports'], function(ko, exports){
-
-	var unwrap = ko.utils.unwrapObservable;
-
-	exports.createComponentFromDataBinding = function( element, valueAccessor, availableBindings ){
-		
-		var value = valueAccessor();
-		
-		var options = unwrap(value) || {},
-			type = unwrap(options.type);
-
-		if( type ){
-			var Constructor = availableBindings[type];
-
-			if( Constructor ){
-				var component = exports.createComponentFromJSON( options, Constructor)
-				if( component ){
-					element.innerHTML = "";
-					element.appendChild( component.$el[0] );
-					
-					$(element).addClass("qpf-wrapper");
-				}
-				// save the guid in the element data attribute
-				element.setAttribute("data-qpf-guid", component.__GUID__);
-			}else{
-				console.error("Unkown UI type, " + type);
-			}
-		}else{
-			console.error("UI type is needed");
-		}
-
-		return component;
-	}
-
-	exports.createComponentFromJSON = function(options, Constructor){
-
-		var type = unwrap(options.type),
-			name = unwrap(options.name),
-			attr = _.omit(options, "type", "name");
-
-		var events = {};
-
-		// Find which property is event
-		_.each(attr, function(value, key){
-			if( key.indexOf("on") == 0 &&
-				Constructor.prototype.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
-				typeof(value) == "function"){
-				delete attr[key];
-				events[key.substr("on".length)] = value;
-			}
-		})
-
-		var component = new Constructor({
-			name : name || "",
-			attributes : attr,
-			events : events
-		});
-
-		return component;
-	
-	}
-
-	// build a bridge of twe observables
-	// and update the value from source to target
-	// at first time
-	exports.bridge = function(target, source){
-		
-		target( source() );
-
-		var commonValue = target();
-		target.subscribe(function(newValue){
-	        // Knockout will always suppose the value is mutated each time is writted
-	        // if the value is not primitive type(like array)
-	        // So here will cause a recurse trigger if the value is not a primitive type
-	        // We use underscore deep compare function to evaluate if the value is changed
-			try{
-				if( ! _.isEqual(commonValue, newValue) ){
-					commonValue = newValue;
-					source(newValue);
-				}
-			}catch(e){
-				// Normally when source is computed value
-				// and it don't have a write function  
-				console.error(e.toString());
-			}
-		})
-		source.subscribe(function(newValue){
-			try{
-				if( ! _.isEqual(commonValue, newValue) ){
-					commonValue = newValue;
-					target(newValue);
-				}
-			}catch(e){
-				console.error(e.toString());
-			}
-		})
-	}
-})
-;
 //=====================================
 // Base class of all components
 // it also provides some util methods like
 //=====================================
 define('components/base',["core/clazz",
 		"core/mixin/event",
-		"./util",
-		"knockout"], function(Clazz, Event, Util, ko){
+		"knockout"], function(Clazz, Event, ko){
 
 var repository = {};	//repository to store all the component instance
 
@@ -4488,15 +4387,24 @@ return {	// Public properties
 	width : ko.observable(),
 	class : ko.observable(),
 	height : ko.observable(),
+	visible : ko.observable(true),
 	disable : ko.observable(false),
 	style : ko.observable(""),
+
+	// If the temporary is set true,
+	// It will not be stored in the repository and 
+	// will be destroyed when there are no reference any more
+	// Maybe a ugly solution to prevent memory leak 
+	temporary : false,
 	// events list inited at first time
 	events : {}
 }}, function(){	//constructor
 
 	this.__GUID__ = genGUID();
 	// add to repository
-	repository[this.__GUID__] = this;
+	if( ! this.temporary ){
+		repository[this.__GUID__] = this;
+	}
 
 	if( ! this.$el){
 		this.$el = $(document.createElement(this.tag));
@@ -4532,6 +4440,9 @@ return {	// Public properties
 	this.class.subscribe(function(newValue){
 		this.$el.addClass( newValue );
 	}, this);
+	this.visible.subscribe(function(newValue){
+		newValue ? this.$el.show() : this.$el.hide();
+	}, this);
 	this.style.subscribe(function(newValue){
 		var valueSv = newValue;
 		var styleRegex = /(\S*?)\s*:\s*(.*)/g;
@@ -4549,7 +4460,7 @@ return {	// Public properties
 		}catch(e){
 			console.error("Syntax Error of style: "+ valueSv);
 		}
-	}, this)
+	}, this);
 
 	// register the events before initialize
 	for( var name in this.events ){
@@ -4671,7 +4582,7 @@ return {	// Public properties
 			}
 			if( ! onlyUpdate){
 				if( ko.isObservable(attr) ){
-					Util.bridge(propInVM, attr);
+					bridge(propInVM, attr);
 				}
 			}
 		}	
@@ -4683,9 +4594,8 @@ var proxyEvents = ["click", "mousedown", "mouseup", "mousemove"];
 Base.prototype.on = function(eventName){
 	// lazy register events
 	if( proxyEvents.indexOf(eventName) >= 0 ){
-		this.$el.bind(eventName, {
-			context : this
-		}, proxyHandler);
+		this.$el.unbind(eventName, proxyHandler)
+		.bind(eventName, {context : this}, proxyHandler);
 	}
 	Event.on.apply(this, arguments);
 }
@@ -4799,10 +4709,12 @@ ko.extenders.clamp = function(target, options){
 
 //-------------------------------------------
 // Handle bingings in the knockout template
+
 var bindings = {};
 Base.provideBinding = function(name, Component ){
 	bindings[name] = Component;
 }
+
 // provide bindings to knockout
 ko.bindingHandlers["qpf"] = {
 
@@ -4812,7 +4724,7 @@ ko.bindingHandlers["qpf"] = {
 		if( prevComponent ){
 			prevComponent.dispose();
 		}
-		var component = Util.createComponentFromDataBinding( element, valueAccessor, bindings );
+		var component = createComponentFromDataBinding( element, valueAccessor, bindings );
 		return component;
 	},
 
@@ -4843,17 +4755,147 @@ ko.bindingHandlers["qpf_view"] = {
 		// PENDING
 		// handle disposal (if KO removes by the template binding)
         // ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
-            // subView.dispose();
+        //     subView.dispose();
         // });
 
 		return { 'controlsDescendantBindings': true };
 	}
 }
 
+//------------------------------------
+// Util functions
+var unwrap = ko.utils.unwrapObservable;
+
+function createComponentFromDataBinding(element, valueAccessor){
+
+	var value = valueAccessor();
+	
+	var options = unwrap(value) || {},
+		type = unwrap(options.type);
+
+	if( type ){
+		var Constructor = bindings[type];
+
+		if( Constructor ){
+			var component = createComponentFromJSON( options, Constructor)
+			if( component ){
+				element.innerHTML = "";
+				element.appendChild( component.$el[0] );
+				
+				$(element).addClass("qpf-wrapper");
+			}
+			// save the guid in the element data attribute
+			element.setAttribute("data-qpf-guid", component.__GUID__);
+		}else{
+			console.error("Unkown UI type, " + type);
+		}
+	}else{
+		console.error("UI type is needed");
+	}
+	return component;
+}
+
+function createComponentFromJSON(options, Constructor){
+
+	var type = unwrap(options.type),
+		name = unwrap(options.name),
+		attr = _.omit(options, "type", "name");
+
+	var events = {};
+
+	// Find which property is event
+	_.each(attr, function(value, key){
+		if( key.indexOf("on") == 0 &&
+			Constructor.prototype.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
+			typeof(value) == "function"){
+			delete attr[key];
+			events[key.substr("on".length)] = value;
+		}
+	})
+
+	var component = new Constructor({
+		name : name || "",
+		attributes : attr,
+		events : events
+	});
+
+	return component;
+}
+
+// build a bridge of twe observables
+// and update the value from source to target
+// at first time
+function bridge(target, source){
+	
+	target( source() );
+
+	// Save the previous value use clone method in underscore
+	// In case the notification is triggered by push methods of
+	// Observable Array and the commonValue instance is same with new value
+	// instance
+	// Reference : `set` method in backbone
+	var commonValue = _.clone( target() );
+	target.subscribe(function(newValue){
+        // Knockout will always suppose the value is mutated each time it is writted
+        // the value which is not primitive type(like array)
+        // So here will cause a recurse trigger if the value is not a primitive type
+        // We use underscore deep compare function to evaluate if the value is changed
+		// PENDING : use shallow compare function?
+		try{
+			if( ! _.isEqual(commonValue, newValue) ){
+				commonValue = _.clone( newValue );
+				source(newValue);
+			}
+		}catch(e){
+			// Normally when source is computed value
+			// and it don't have a write function  
+			console.error(e.toString());
+		}
+	})
+	source.subscribe(function(newValue){
+		try{
+			if( ! _.isEqual(commonValue, newValue) ){
+				commonValue = _.clone( newValue );
+				target(newValue);
+			}
+		}catch(e){
+			console.error(e.toString());
+		}
+	})
+}
+
 // export the interface
 return Base;
 
 });
+//==========================
+// Util.js
+// provide util function to operate
+// the components
+//===========================
+define('components/util',['knockout',
+		'core/xmlparser',
+		'./base',
+		'exports'], function(ko, XMLParser, Base, exports){
+
+	// Return an array of components created from XML
+	exports.createComponentsFromXML = function(XMLString, viewModel){
+
+		var dom = XMLParser.parse(XMLString);
+		ko.applyBindings(viewModel || {}, dom);
+		var ret = [];
+		var node = dom.firstChild;
+		while(node){
+			var component = Base.getByDom(node);
+			if( component ){
+				ret.push(component);
+			}
+			node = node.nextSibling;
+		}
+		return ret;
+	}
+})
+;
 /// Knockout Mapping plugin v2.3.5
 /// (c) 2012 Steven Sanderson, Roy Jacobs - http://knockoutjs.com/
 /// License: MIT (http://www.opensource.org/licenses/mit-license.php)
@@ -7603,7 +7645,12 @@ return {
 
 	},
 
-	template : '<div class="qpf-combobox-selected qpf-common-button" data-bind="html:selectedText,click:_toggle"></div>\
+	template : '<div class="qpf-combobox-selected" data-bind="click:_toggle">\
+					<div class="qpf-left" data-bind="html:selectedText"></div>\
+					<div class="qpf-right qpf-common-button">\
+						<div class="qpf-icon"></div>\
+					</div>\
+				</div>\
 				<ul class="qpf-combobox-items" data-bind="foreach:items">\
 					<li data-bind="html:text,attr:{\'data-qpf-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
 				</ul>',
@@ -7802,6 +7849,7 @@ add : function( elem, handle ){
 		.addClass("qpf-draggable");
 	
 	(handle ? $(handle) : $elem)
+		.unbind("mousedown", this._mouseDown)
 		.bind("mousedown", {context:this}, this._mouseDown);
 
 	var newItem = new DraggableItem({
@@ -7942,8 +7990,12 @@ _mouseDown : function(e){
 		})
 	}
 
-	$(document.body).bind("mousemove", {context:self}, self._mouseMove )
+	$(document.body)
+		.unbind("mousemove", self._mouseMove)
+		.bind("mousemove", {context:self}, self._mouseMove )
+		.unbind("mouseout", self._mouseOut)
 		.bind("mouseout", {context:self}, self._mouseOut )
+		.unbind('mouseup', self._mouseUp)
 		.bind("mouseup", {context:self}, self._mouseUp );
 
 	self._mouseStart = {
@@ -8446,11 +8498,17 @@ return {
 
 	css : 'textfield',
 
-	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
+	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>',
+
+	afterResize : function(){
+		this.$el.find("input").width( this.width() );
+		Meta.prototype.afterResize.call(this);
+	}
 })
 
 Meta.provideBinding("textfield", TextField);
 
+return TextField;
 });
 //============================================
 // Base class of all container component
@@ -8479,12 +8537,28 @@ var Container = Base.derive(function(){
 		this.children.push( sub );
 	},
 	// remove child component
-	remove : function(){
+	remove : function( sub ){
 		sub.parent = null;
 		this.children.remove( sub );
 	},
+	removeAll : function(){
+		_.each(this.children(), function(child){
+			this.remove(child);
+		}, this);
+	},
 	children : function(){
 		return this.children()
+	},
+	doRender : function(){
+		// do render in the hierarchy from parent to child
+		// traverse tree in pre-order
+		
+		Base.prototype.doRender.call(this);
+
+		_.each(this.children(), function(child){
+			child.render();
+		})
+
 	},
 	// resize when width or height is changed
 	afterResize : function(){
@@ -8553,17 +8627,8 @@ ko.bindingHandlers["qpf"] = {
 			}
 		}
 		if( ! viewModel['__deferredrender__']){
-			// do render in the hierarchy from parent to child
-			// traverse tree in pre-order
-			function render(node){
-				node.render();
-				if( node.instanceof(Container) ){
-					_.each(node.children(), function(child){
-						render(child);
-					})
-				}
-			}
-			render( component );
+			
+			component.render();
 		}
 
 		return { 'controlsDescendantBindings': true };

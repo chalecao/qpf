@@ -5,7 +5,7 @@
 @import "./css-vendor.less";
 
 body{
-	font-family: "Helvetica", "Arial";
+	font-family: "Helvetica", "Arial", "黑体";
 	font-size: 14px;
 }
 //-------------------------------------
@@ -329,15 +329,52 @@ body{
 	border: 1px solid #141414;
 	position: relative;
 
-	.qpf-common-button{
-		box-shadow: none;
-		text-align: left;
-		padding: 0px 10px;
+	.qpf-combobox-selected{
+		
+		position: relative;
 
-		&:active{
-			background-color: #757575;
-			border-top: 1px solid #848484;
-			color:#232323;
+		.qpf-left{
+			box-shadow: none;
+			text-align: left;
+			padding: 0px 10px;
+			border-radius:3px 0px 0px 3px;
+			border-right: 1px solid #616161;
+			.linear-gradient-top(#3f3f3f, rgba(255,255,255,0.1), 0%, rgba(255,255,255,0.0), 99%);
+			color:#aeaeae;
+			border-top: 1px solid #626262;
+			overflow: hidden;
+
+			height:30px;
+			line-height: 30px;
+
+			margin-right: 21px;
+		}
+		.qpf-right{
+			float:right;
+			width:20px;
+			height:30px;
+			position: absolute;
+			right:0px;
+			top: 0px;
+
+			padding:0px;
+			border-radius: 0px 3px 3px 0px;
+			box-shadow: none;
+			border-left: 1px solid #272727;
+
+			&:active{
+				background-color: #757575;
+				border-top: 1px solid #848484;
+				color:#232323;
+			}
+			.qpf-icon{
+				background-size: 10px 10px;
+				width:20px;
+				height:30px;
+				background-position: 50% 50%;
+				background-image: url(images/arrow-down.svg);
+				background-repeat: no-repeat;
+			}
 		}
 	}
 
@@ -381,21 +418,41 @@ body{
 
 	&.active{
 		border-radius: 3px 3px 0px 0px;
-		.qpf-common-button{
-			border-bottom: 1px solid #292929;
-			border-radius: 3px 3px 0px 0px;
-			color:#b5b5b5;
+		
+		.qpf-combobox-selected{
+			.qpf-left{
+				border-bottom: 1px solid #292929;
+				border-radius: 3px 0px 0px 0px;
+			}
+			.qpf-right{
+				border-bottom: 1px solid #292929;
+				border-radius: 0px 3px 0px 0px;
+				.qpf-icon{
+					background-image: url(images/arrow-up.svg);
+				}
+			}
 		}
+
 		ul.qpf-combobox-items{
 			display: block;
 		}
 	}
 
 	&.small{
-		.qpf-common-button{
-			line-height: 20px;
-			padding: 0px 10px;
-			font-size: 12px;
+		.qpf-combobox-selected{
+
+			.qpf-left{
+				line-height: 20px;
+				height:20px;
+				padding: 0px 10px;
+				font-size: 12px;
+			}
+			.qpf-right{
+				height:20px;
+				.qpf-icon{
+					height:20px;
+				}
+			}
 		}
 		ul.qpf-combobox-items{
 			top:22px;

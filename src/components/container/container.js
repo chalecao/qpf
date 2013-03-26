@@ -25,12 +25,28 @@ var Container = Base.derive(function(){
 		this.children.push( sub );
 	},
 	// remove child component
-	remove : function(){
+	remove : function( sub ){
 		sub.parent = null;
 		this.children.remove( sub );
 	},
+	removeAll : function(){
+		_.each(this.children(), function(child){
+			this.remove(child);
+		}, this);
+	},
 	children : function(){
 		return this.children()
+	},
+	doRender : function(){
+		// do render in the hierarchy from parent to child
+		// traverse tree in pre-order
+		
+		Base.prototype.doRender.call(this);
+
+		_.each(this.children(), function(child){
+			child.render();
+		})
+
 	},
 	// resize when width or height is changed
 	afterResize : function(){
@@ -99,17 +115,8 @@ ko.bindingHandlers["qpf"] = {
 			}
 		}
 		if( ! viewModel['__deferredrender__']){
-			// do render in the hierarchy from parent to child
-			// traverse tree in pre-order
-			function render(node){
-				node.render();
-				if( node.instanceof(Container) ){
-					_.each(node.children(), function(child){
-						render(child);
-					})
-				}
-			}
-			render( component );
+			
+			component.render();
 		}
 
 		return { 'controlsDescendantBindings': true };

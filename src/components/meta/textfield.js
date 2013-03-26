@@ -23,9 +23,15 @@ return {
 
 	css : 'textfield',
 
-	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>'
+	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>',
+
+	afterResize : function(){
+		this.$el.find("input").width( this.width() );
+		Meta.prototype.afterResize.call(this);
+	}
 })
 
 Meta.provideBinding("textfield", TextField);
 
+return TextField;
 })

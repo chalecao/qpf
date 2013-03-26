@@ -94,6 +94,7 @@ add : function( elem, handle ){
 		.addClass("qpf-draggable");
 	
 	(handle ? $(handle) : $elem)
+		.unbind("mousedown", this._mouseDown)
 		.bind("mousedown", {context:this}, this._mouseDown);
 
 	var newItem = new DraggableItem({
@@ -234,8 +235,12 @@ _mouseDown : function(e){
 		})
 	}
 
-	$(document.body).bind("mousemove", {context:self}, self._mouseMove )
+	$(document.body)
+		.unbind("mousemove", self._mouseMove)
+		.bind("mousemove", {context:self}, self._mouseMove )
+		.unbind("mouseout", self._mouseOut)
 		.bind("mouseout", {context:self}, self._mouseOut )
+		.unbind('mouseup', self._mouseUp)
 		.bind("mouseup", {context:self}, self._mouseUp );
 
 	self._mouseStart = {

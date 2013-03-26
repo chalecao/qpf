@@ -4,8 +4,7 @@
 //=====================================
 define(["core/clazz",
 		"core/mixin/event",
-		"./util",
-		"knockout"], function(Clazz, Event, Util, ko){
+		"knockout"], function(Clazz, Event, ko){
 
 var repository = {};	//repository to store all the component instance
 
@@ -42,13 +41,21 @@ return {	// Public properties
 	visible : ko.observable(true),
 	disable : ko.observable(false),
 	style : ko.observable(""),
+
+	// If the temporary is set true,
+	// It will not be stored in the repository and 
+	// will be destroyed when there are no reference any more
+	// Maybe a ugly solution to prevent memory leak 
+	temporary : false,
 	// events list inited at first time
 	events : {}
 }}, function(){	//constructor
 
 	this.__GUID__ = genGUID();
 	// add to repository
-	repository[this.__GUID__] = this;
+	if( ! this.temporary ){
+		repository[this.__GUID__] = this;
+	}
 
 	if( ! this.$el){
 		this.$el = $(document.createElement(this.tag));
@@ -226,7 +233,7 @@ return {	// Public properties
 			}
 			if( ! onlyUpdate){
 				if( ko.isObservable(attr) ){
-					Util.bridge(propInVM, attr);
+					bridge(propInVM, attr);
 				}
 			}
 		}	
@@ -238,9 +245,8 @@ var proxyEvents = ["click", "mousedown", "mouseup", "mousemove"];
 Base.prototype.on = function(eventName){
 	// lazy register events
 	if( proxyEvents.indexOf(eventName) >= 0 ){
-		this.$el.bind(eventName, {
-			context : this
-		}, proxyHandler);
+		this.$el.unbind(eventName, proxyHandler)
+		.bind(eventName, {context : this}, proxyHandler);
 	}
 	Event.on.apply(this, arguments);
 }
@@ -354,10 +360,12 @@ ko.extenders.clamp = function(target, options){
 
 //-------------------------------------------
 // Handle bingings in the knockout template
+
 var bindings = {};
 Base.provideBinding = function(name, Component ){
 	bindings[name] = Component;
 }
+
 // provide bindings to knockout
 ko.bindingHandlers["qpf"] = {
 
@@ -367,7 +375,7 @@ ko.bindingHandlers["qpf"] = {
 		if( prevComponent ){
 			prevComponent.dispose();
 		}
-		var component = Util.createComponentFromDataBinding( element, valueAccessor, bindings );
+		var component = createComponentFromDataBinding( element, valueAccessor, bindings );
 		return component;
 	},
 
@@ -398,11 +406,113 @@ ko.bindingHandlers["qpf_view"] = {
 		// PENDING
 		// handle disposal (if KO removes by the template binding)
         // ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
-            // subView.dispose();
+        //     subView.dispose();
         // });
 
 		return { 'controlsDescendantBindings': true };
 	}
+}
+
+//------------------------------------
+// Util functions
+var unwrap = ko.utils.unwrapObservable;
+
+function createComponentFromDataBinding(element, valueAccessor){
+
+	var value = valueAccessor();
+	
+	var options = unwrap(value) || {},
+		type = unwrap(options.type);
+
+	if( type ){
+		var Constructor = bindings[type];
+
+		if( Constructor ){
+			var component = createComponentFromJSON( options, Constructor)
+			if( component ){
+				element.innerHTML = "";
+				element.appendChild( component.$el[0] );
+				
+				$(element).addClass("qpf-wrapper");
+			}
+			// save the guid in the element data attribute
+			element.setAttribute("data-qpf-guid", component.__GUID__);
+		}else{
+			console.error("Unkown UI type, " + type);
+		}
+	}else{
+		console.error("UI type is needed");
+	}
+	return component;
+}
+
+function createComponentFromJSON(options, Constructor){
+
+	var type = unwrap(options.type),
+		name = unwrap(options.name),
+		attr = _.omit(options, "type", "name");
+
+	var events = {};
+
+	// Find which property is event
+	_.each(attr, function(value, key){
+		if( key.indexOf("on") == 0 &&
+			Constructor.prototype.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
+			typeof(value) == "function"){
+			delete attr[key];
+			events[key.substr("on".length)] = value;
+		}
+	})
+
+	var component = new Constructor({
+		name : name || "",
+		attributes : attr,
+		events : events
+	});
+
+	return component;
+}
+
+// build a bridge of twe observables
+// and update the value from source to target
+// at first time
+function bridge(target, source){
+	
+	target( source() );
+
+	// Save the previous value use clone method in underscore
+	// In case the notification is triggered by push methods of
+	// Observable Array and the commonValue instance is same with new value
+	// instance
+	// Reference : `set` method in backbone
+	var commonValue = _.clone( target() );
+	target.subscribe(function(newValue){
+        // Knockout will always suppose the value is mutated each time it is writted
+        // the value which is not primitive type(like array)
+        // So here will cause a recurse trigger if the value is not a primitive type
+        // We use underscore deep compare function to evaluate if the value is changed
+		// PENDING : use shallow compare function?
+		try{
+			if( ! _.isEqual(commonValue, newValue) ){
+				commonValue = _.clone( newValue );
+				source(newValue);
+			}
+		}catch(e){
+			// Normally when source is computed value
+			// and it don't have a write function  
+			console.error(e.toString());
+		}
+	})
+	source.subscribe(function(newValue){
+		try{
+			if( ! _.isEqual(commonValue, newValue) ){
+				commonValue = _.clone( newValue );
+				target(newValue);
+			}
+		}catch(e){
+			console.error(e.toString());
+		}
+	})
 }
 
 // export the interface

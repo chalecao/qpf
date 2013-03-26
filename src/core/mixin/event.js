@@ -45,7 +45,7 @@ return{
 
 	off : function( target, handler ){
 		
-		var handlers = this.__handlers__ || {};
+		var handlers = this.__handlers__ || ( this.__handlers__={} );
 
 		if( handlers[target] ){
 			if( handler ){

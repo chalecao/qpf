@@ -49,33 +49,38 @@ define(function(require, exports, module){
 	}
 
 	function parseXMLNode(xmlNode){
-		if( xmlNode.nodeType !== 1){
+		if( xmlNode.nodeType === 1){
+			
+			var bindingResults = {
+				type : xmlNode.tagName.toLowerCase()
+			} 
+
+			var convertedAttr = convertAttributes( xmlNode.attributes );
+			var customParser = customParsers[bindingResults.type];
+			if( customParser ){
+				var result = customParser(xmlNode);
+				if( result &&
+					typeof(result) !="object"){
+					console.error("Parser must return an object converted from attributes")
+				}else{
+					// data in the attributes has higher priority than
+					// the data from the children
+					_.extend(convertedAttr, result);
+				}
+			}
+
+			var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
+
+			var domNode = document.createElement('div');
+			domNode.setAttribute('data-bind',  "qpf:"+bindingString);
+
+			return domNode;
+		}else if( xmlNode.nodeType === 8){// comment node, offer for virtual binding in knockout
+			// return xmlNode;
+			return;
+		}else{
 			return;
 		}
-		var bindingResults = {
-			type : xmlNode.tagName.toLowerCase()
-		} 
-
-		var convertedAttr = convertAttributes( xmlNode.attributes );
-		var customParser = customParsers[bindingResults.type];
-		if( customParser ){
-			var result = customParser(xmlNode);
-			if( result &&
-				typeof(result) !="object"){
-				console.error("Parser must return an object converted from attributes")
-			}else{
-				// data in the attributes has higher priority than
-				// the data from the children
-				_.extend(convertedAttr, result);
-			}
-		}
-
-		var bindingString = objectToDataBindingFormat( convertedAttr, bindingResults );
-
-		var domNode = document.createElement('div');
-		domNode.setAttribute('data-bind',  "qpf:"+bindingString);
-
-		return domNode;
 	}
 
 	function convertAttributes(attributes){

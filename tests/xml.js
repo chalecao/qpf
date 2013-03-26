@@ -15,6 +15,8 @@ define(["knockout",
 		},
 		info : ko.observable("Im a label~"),
 
+		visible : ko.observable(true),
+
 		drawCanvas : drawCanvas
 	}
 
