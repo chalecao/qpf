@@ -28,7 +28,7 @@ return {
 
 		this.$el.css("position", "relative");
 
-		var self = this;
+		Container.prototype.initialize.call(this);
 	},
 
 	_getMargin : function($el){

@@ -28,7 +28,15 @@ var Tree = Meta.derive(function(){
 
 		draggable : ko.observable(false),
 
-		renamble : ko.observable(false)
+		renamble : ko.observable(false),
+
+		indent : ko.observable(20),
+
+		// the depth of node, root is 0;
+		__depth__ : 0,
+		__nodeIndex__ : 0,
+
+		__root__ : this
 	}
 }, {
 
@@ -37,20 +45,60 @@ var Tree = Meta.derive(function(){
 	css : 'tree',
 
 	template : '<ul data-bind="foreach:items">\
-					<li data-bind="qpf_tree_itemview:"></div>\
+					<li data-bind="qpf_tree_itemview:$data"></li>\
 				</ul>'
 })
 
 var itemTemplate = '<li class="qpf-tree-item">\
-						<div class="qpf-tree-item-title">\
-							<span class="qpf-tree-item-icon"></span>\
-							<a class="qpf-tree-item-caption" data-bind="text:title"></span>\
+						<div class="qpf-tree-item-title"\
+								data-bind="style:{paddingLeft:_paddingLeftPx}">\
+							<!--ko if:items-->\
+							<span class="qpf-tree-unfold"></span>\
+							<!--/ko-->\
+							<span class="qpf-tree-icon" data-bind="css:css"></span>\
+							<a class="qpf-tree-item-caption" data-bind="text:title"></a>\
 						</div>\
-						<ul class="qpf-tree-subitems" data-bind="if:items"></ul>\
+						<!--ko if:items-->\
+						<ul class="qpf-tree-subitems" data-bind="foreach:items">\
+							<li data-bind="qpf_tree_itemview:$data"></li>\
+						</ul>\
+						<!--/ko-->\
 					</li>';
 
 ko.bindingHandlers["qpf_tree_itemview"] = {
+	init : function(element, valueAccessor, allBindingAccessor, viewModel, bindingContext){
+		var data = bindingContext.$data,
+			parent = bindingContext.$parent,
+			root = parent.__root__,
 
+			$itemEl = $(itemTemplate);
+
+		// Default properties
+		// In case there is no items property in data
+		if( ! data.items){	
+			data.items = null;
+		}
+		if( ! data.css){
+			data.css = data.items ? "qpf-tree-folder" : "qpf-tree-file";
+		}
+		// private data
+		data.__root__ = root;
+		data.__depth__ = parent.__depth__+1;
+
+		data._paddingLeftPx = ko.computed(function(){
+			return data.__depth__ * ko.utils.unwrapObservable( root.indent ) + "px";
+		});
+		data
+
+		element.parentNode.replaceChild($itemEl[0], element);
+		ko.applyBindings(data, $itemEl[0]);
+
+		return { 'controlsDescendantBindings': true };
+
+	}
 }
 
+Meta.provideBinding("tree", Tree);
+
+return Tree;
 })

@@ -1,0 +1,59 @@
+<html>
+<head>
+	<title></title>
+	<link rel="stylesheet/less" type="text/css" href="../src/components/less/base.less">
+	<script type="text/javascript" src="../thirdparty/less.js"></script>
+	<script type="text/javascript" src="../thirdparty/jquery.js"></script>
+	<script type="text/javascript" src="../thirdparty/underscore.js"></script>
+	<script type="text/javascript" src="../thirdparty/require.js"></script>
+
+</head>
+<body>
+	<script type="text/javascript">
+		requirejs.config({
+			paths : {
+				"core" : "../src/core",
+				"components" : "../src/components",
+				"knockout" : "../thirdparty/knockout",
+				"ko.mapping" : "../thirdparty/ko.mapping",
+				"goo" : "../thirdparty/goo"
+			}
+		})
+
+		require(['components/meta/tree',
+				'knockout'], function(Tree, ko){
+			window.indent = ko.observable(20);
+			var tree = new Tree({
+				attributes : {
+					width:300,
+					items : [{
+						title : "root",
+						items : [{
+							title : "folder1",
+							items : [{
+								title : "file1"
+							},{
+								title : "file1"
+							},{
+								title : "file1"
+							},{
+								title : "file1"
+							},{
+								title : "file1"
+							},]
+						},{
+							title : "folder2",
+							items : [{
+								title : "file2"
+							}]
+						}]
+					}],
+					indent : indent
+				}
+			})
+			tree.render();
+			document.body.appendChild(tree.$el[0]);
+		})
+	</script>
+</body>
+</html>

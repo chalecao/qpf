@@ -39,6 +39,8 @@ return {
 
 	initialize : function(){
 		Draggable.applyTo( this );
+		
+		Panel.prototype.initialize.call( this );
 	},
 
 	afterRender : function(){

@@ -46,6 +46,8 @@ var Tab = Panel.derive(function(){
 		this.children.subscribe(function(){
 			this._updateTabSize();
 		}, this);
+
+		Panel.prototype.initialize.call(this);
 	},
 
 	template : '<div class="qpf-tab-header">\

@@ -8530,7 +8530,24 @@ var Container = Base.derive(function(){
 	template : '<div data-bind="foreach:children" class="qpf-children">\
 					<div data-bind="qpf_view:$data"></div>\
 				</div>',
-
+	initialize : function(){
+		var self = this,
+			oldArray = this.children().slice();
+		this.children.subscribe(function(newArray){
+			var differences = ko.utils.compareArrays( oldArray, newArray );
+			_.each(differences, function(item){
+				// In case the dispose operation is launched by the child component
+				if( item.status == "added"){
+					item.value.on("dispose", _onItemDispose, item.value);
+				}else if(item.status == "deleted"){
+					item.value.off("dispose", _onItemDispose);
+				}
+			}, this);
+		});
+		function _onItemDispose(){
+			self.remove( item );
+		}
+	},
 	// add child component
 	add : function( sub ){
 		sub.parent = this;
@@ -8743,6 +8760,8 @@ return {
 
 	initialize : function(){
 		Draggable.applyTo( this );
+		
+		Panel.prototype.initialize.call( this );
 	},
 
 	afterRender : function(){
@@ -8807,6 +8826,8 @@ var Tab = Panel.derive(function(){
 		this.children.subscribe(function(){
 			this._updateTabSize();
 		}, this);
+
+		Panel.prototype.initialize.call(this);
 	},
 
 	template : '<div class="qpf-tab-header">\
@@ -8932,7 +8953,7 @@ return {
 
 		this.$el.css("position", "relative");
 
-		var self = this;
+		Container.prototype.initialize.call(this);
 	},
 
 	_getMargin : function($el){
