@@ -4409,6 +4409,7 @@ return {	// Public properties
 	if( ! this.$el){
 		this.$el = $(document.createElement(this.tag));
 	}
+	this.$el[0].setAttribute("data-qpf-guid", this.__GUID__);
 
 	this.$el.attr(this.attr);
 	if( this.skin ){
@@ -4503,7 +4504,7 @@ return {	// Public properties
 		}else{
 			source = key;
 		};
-		this._mappingAttributesToViewModel( source, true );
+		this._mappingAttributes( source, true );
 	},
 	// Call to refresh the component
 	// Will trigger beforeRender and afterRender hooks
@@ -4522,8 +4523,9 @@ return {	// Public properties
 	},
 	// Default render method
 	doRender : function(){
-		
-		Base.disposeDom( this.$el[0] );
+		this.$el.children().each(function(){
+			Base.disposeDom( this );
+		})
 
 		this.$el.html(this.template);
 		ko.applyBindings( this, this.$el[0] );
@@ -4574,6 +4576,7 @@ return {	// Public properties
 				}else{
 					this[name] = ko.observable(value);
 				}
+				propInVM = this[name];
 			}
 			else if( ko.isObservable(propInVM) ){
 				propInVM(ko.utils.unwrapObservable(attr) );
@@ -4759,6 +4762,35 @@ ko.bindingHandlers["qpf_view"] = {
         // });
 
 		return { 'controlsDescendantBindings': true };
+	}
+}
+
+//-----------------------------------
+// Provide plugins to jquery
+$.fn.qpf = function( op, viewModel ){
+	op = op || "get";
+	if( op === "get"){
+		if( this.length === 1){
+			return Base.getByDom(this[0]);
+		}else if( this.length > 1){
+			var result = [];
+			this.each(function(){
+				var item = Base.getByDom(this);
+				if( item ){
+					result.push(item);
+				}
+			})
+			return result;
+		}
+	}else if( op === "init"){
+		this.each(function(){
+			ko.applyBindings(viewModel, this);
+		});
+		return this.qpf("get");
+	}else if(op === "dispose"){
+		this.each(function(){
+			Base.disposeDom(this);
+		})
 	}
 }
 
@@ -8545,7 +8577,7 @@ var Container = Base.derive(function(){
 			}, this);
 		});
 		function _onItemDispose(){
-			self.remove( item );
+			self.remove( this );
 		}
 	},
 	// add child component

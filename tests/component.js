@@ -12,13 +12,10 @@ define(["knockout",
 	var viewModel = {
 		title : ko.observable("window"),
 		clickHandler : function(){
-			viewModel.info("button is clicked");
+			$el.qpf("dispose");
 		},
 		info : ko.observable("Im a label~")
 	}
-
-	ko.applyBindings(viewModel, $el[0]);
-
-	var item = Base.getByDom($el[0]);
+	$el.qpf("init", viewModel);
 
 })

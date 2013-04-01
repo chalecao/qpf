@@ -33,7 +33,7 @@ var Container = Base.derive(function(){
 			}, this);
 		});
 		function _onItemDispose(){
-			self.remove( item );
+			self.remove( this );
 		}
 	},
 	// add child component
