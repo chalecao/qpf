@@ -1,10 +1,10 @@
  (function(factory){
  	// AMD
  	if( typeof define !== "undefined" && define["amd"] ){
- 		define(["exports"], factory);
+ 		define(["exports", "knockout"], factory);
  	// No module loader
  	}else{
- 		factory( window["qpf"] = {} );
+ 		factory( window["qpf"] = {}, ko );
  	}
 
-})(function(_exports){
+})(function(_exports, ko){

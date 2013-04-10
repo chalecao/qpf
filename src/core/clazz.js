@@ -1,9 +1,11 @@
-define(['./mixin/derive',
-		'./mixin/event'], function(Derive, Event){
+define(function(require){
 
-var Clazz = new Function();
-_.extend(Clazz, Derive);
-_.extend(Clazz.prototype, Event);
+	var deriveMixin = require("./mixin/derive"),
+		eventMixin = require("./mixin/event")
 
-return Clazz;
+	var Clazz = new Function();
+	_.extend(Clazz, deriveMixin);
+	_.extend(Clazz.prototype, eventMixin);
+
+	return Clazz;
 })

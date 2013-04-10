@@ -55,8 +55,5 @@
 				<panel title="third" flex="2" style="margin:5px;"></panel>
 			</hbox>
 		</panel>
-		<panel title="Canvas">
-			<canvas width="1000" height="400" oninitialize="@binding[drawCanvas]"></canvas>
-		</panel>
 	</tab>
 </application>

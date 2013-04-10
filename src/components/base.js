@@ -421,18 +421,14 @@ ko.bindingHandlers["qpf_view"] = {
 $.fn.qpf = function( op, viewModel ){
 	op = op || "get";
 	if( op === "get"){
-		if( this.length === 1){
-			return Base.getByDom(this[0]);
-		}else if( this.length > 1){
-			var result = [];
-			this.each(function(){
-				var item = Base.getByDom(this);
-				if( item ){
-					result.push(item);
-				}
-			})
-			return result;
-		}
+		var result = [];
+		this.each(function(){
+			var item = Base.getByDom(this);
+			if( item ){
+				result.push(item);
+			}
+		})
+		return result;
 	}else if( op === "init"){
 		this.each(function(){
 			ko.applyBindings(viewModel, this);

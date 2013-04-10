@@ -4,8 +4,7 @@
 // that has no children
 //==================================
 define(['../base',
-		'knockout',
-		'ko.mapping'], function(Base, ko, koMapping){
+		'knockout'], function(Base, ko){
 
 var Meta = Base.derive(
 {

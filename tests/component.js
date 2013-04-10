@@ -1,5 +1,5 @@
 define(["knockout",
-		"../src/main"], function(ko){
+		"../src/qpf"], function(ko){
 
 	var Base = require("components/base");
 	var Draggable = require("components/mixin/draggable");

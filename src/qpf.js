@@ -1,29 +1,5 @@
 // portal for all the components
-define(["core/xmlparser",
-		"core/mixin/derive",
-		"core/mixin/event",
-		"components/base",
-		"components/util",
-		"components/meta/button",
-		"components/meta/canvas",
-		"components/meta/checkbox",
-		"components/meta/combobox",
-		"components/meta/label",
-		"components/meta/meta",
-		"components/meta/range",
-		"components/meta/spinner",
-		"components/meta/textfield",
-		"components/container/container",
-		"components/container/panel",
-		"components/container/window",
-		"components/container/tab",
-		"components/container/vbox",
-		"components/container/hbox",
-		"components/container/inline",
-		"components/container/application",
-		"components/widget/vector",
-		"components/widget/widget",
-		"components/widget/palette"], function(){
+define(function(require){
 
 	console.log("qpf is loaded");
 
@@ -49,7 +25,7 @@ define(["core/xmlparser",
 				range : require('components/meta/range'),
 				spinner : require('components/meta/spinner'),
 				textfield : require('components/meta/textfield'),
-				canvas : require("components/meta/canvas")
+				// canvas : require("components/meta/canvas")
 			},
 			container : {
 				container : require('components/container/container'),

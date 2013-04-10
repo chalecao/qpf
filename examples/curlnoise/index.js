@@ -11,7 +11,7 @@ define(function(require){
 	//----------------------------------------
 	// create viewmodels
 	var viewModel = {
-		particleNumber : ko.observable(128),
+		particleNumber : ko.observable(256),
 
 		_isPlay : ko.observable(true),
 		// events
@@ -76,7 +76,7 @@ define(function(require){
 
 		var spawn = CurlNoise.spawn({
 			size : viewModel.particleNumber(),
-			position : new THREE.Vector3(Math.random()*3-2, Math.random()*3-2, 0),
+			position : new THREE.Vector3(Math.random()*3-3, Math.random()*3-3, 0),
 		});
 		spawn.noisePP.updateParameter("turbulence", turbulence);
 		bindingParameter(spawn.noisePP, "persistence", viewModel.persistence);
@@ -104,7 +104,7 @@ define(function(require){
 				spawns.forEach(function(spawn){
 					spawn.update(renderer, delta);
 				})
-				renderer.render(scene, camera);
+				// renderer.render(scene, camera);
 			}
 		}
 

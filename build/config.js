@@ -9,13 +9,13 @@
 		"ko.mapping": "thirdparty/ko.mapping",
 		"goo" : "thirdparty/goo"
 	},
-	// excludeShallow : ['knockout', 'ko.mapping', 'goo'],
-	name : "build/almond",
-	include : [ "src/main"],
+	excludeShallow : ['knockout', 'goo'],
+	// name : "build/almond",
+	include : [ "src/qpf"],
 				
 	out:"./output/qpf.js",
 	wrap : {
-		startFile : 'wrap/start.js',
+		startFile : ['wrap/start.js', "almond.js", "wrap/knockout.js"],
 		endFile : 'wrap/end.js'
 	},
 	optimize:"none"

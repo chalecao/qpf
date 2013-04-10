@@ -6,8 +6,7 @@
 define(['../base',
 		'../meta/meta',
 		'../container/container',
-		'knockout',
-		'ko.mapping'], function(Base, Meta, Container, ko, koMapping){
+		'knockout'], function(Base, Meta, Container, ko){
 
 var Widget = Base.derive(
 {

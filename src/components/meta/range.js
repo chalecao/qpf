@@ -192,7 +192,7 @@ var Range = Meta.derive(function(){
 			max = this.max(),
 			value = this.value(),
 			percentage = ( value - min ) / ( max - min ),
-
+		
 			size = (this._boxSize-this._sliderSize)*percentage;
 		
 		if( this._boxSize > 0 ){

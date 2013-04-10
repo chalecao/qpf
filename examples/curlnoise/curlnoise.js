@@ -140,7 +140,7 @@ var CurlNoise = (function(){
 		this.particlePP.setOutputPin( this.particleTextureTarget);
 
 		this.spawnPP.render(renderer);
-		this.noisePP.render(renderer);
+		this.noisePP.render(renderer, true);
 		this.particlePP.render(renderer);
 
 		this.particleSystem.material.
