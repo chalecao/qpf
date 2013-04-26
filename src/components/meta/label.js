@@ -2,21 +2,21 @@
 // Label component
 //======================================
 define(['./meta',
-		'core/xmlparser',
-		'knockout'], function(Meta, XMLParser, ko){
+        'core/xmlparser',
+        'knockout'], function(Meta, XMLParser, ko){
 
 var Label = Meta.derive(function(){
 return {
-	// value of the Label
-	text : ko.observable('Label')
-	
+    // value of the Label
+    text : ko.observable('Label')
+    
 } }, {
 
-	template : '<Label data-bind="html:text"></Label>',
+    template : '<Label data-bind="html:text"></Label>',
 
-	type : 'LABEL',
+    type : 'LABEL',
 
-	css : 'label'
+    css : 'label'
 });
 
 Meta.provideBinding("label", Label);
@@ -24,12 +24,12 @@ Meta.provideBinding("label", Label);
 // provide parser when do xmlparsing
 XMLParser.provideParser("label", function(xmlNode){
 
-	var text = XMLParser.util.getTextContent(xmlNode);
-	if(text){
-		return {
-			text : text
-		}
-	}
+    var text = XMLParser.util.getTextContent(xmlNode);
+    if(text){
+        return {
+            text : text
+        }
+    }
 })
 
 return Label;

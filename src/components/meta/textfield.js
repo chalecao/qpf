@@ -6,29 +6,29 @@
 //
 //===================================
 define(['./meta',
-		'knockout'], function(Meta, ko){
+        'knockout'], function(Meta, ko){
 
 var TextField = Meta.derive(function(){
 return {
-	
-	tag : "div",
+    
+    tag : "div",
 
-	text : ko.observable(""),
-		
-	placeholder : ko.observable("")
+    text : ko.observable(""),
+        
+    placeholder : ko.observable("")
 
 }}, {
-	
-	type : "TEXTFIELD",
+    
+    type : "TEXTFIELD",
 
-	css : 'textfield',
+    css : 'textfield',
 
-	template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>',
+    template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>',
 
-	afterResize : function(){
-		this.$el.find("input").width( this.width() );
-		Meta.prototype.afterResize.call(this);
-	}
+    afterResize : function(){
+        this.$el.find("input").width( this.width() );
+        Meta.prototype.afterResize.call(this);
+    }
 })
 
 Meta.provideBinding("textfield", TextField);

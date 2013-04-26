@@ -3,63 +3,63 @@
 // Use Goo.js as drawing library 
 //==============================
 define(["goo",
-		"knockout",
-		"./meta"], function(Goo, ko, Meta){
+        "knockout",
+        "./meta"], function(Goo, ko, Meta){
 
 var Canvas = Meta.derive(function(){
 
 return {
 
-	tag : "canvas",
-		
-	framerate : ko.observable(0),
+    tag : "canvas",
+        
+    framerate : ko.observable(0),
 
-	stage : null
+    stage : null
 }}, {
 
-	type : 'CANVAS',
+    type : 'CANVAS',
 
-	css : 'canvas',
+    css : 'canvas',
 
-	initialize : function(){
+    initialize : function(){
 
-		this.stage = Goo.create(this.$el[0]);
+        this.stage = Goo.create(this.$el[0]);
 
-		this.framerate.subscribe(function(newValue){
-			newValue ?
-				this.run( newValue ) :
-				this.stop();
-		});
+        this.framerate.subscribe(function(newValue){
+            newValue ?
+                this.run( newValue ) :
+                this.stop();
+        });
 
-		this.afterResize();
-	},
+        this.afterResize();
+    },
 
-	_runInstance : 0,
-	run : function( fps ){
-		if( this._runInstance ){
-			clearTimeout( this._runInstance)
-		}
-		this._runInstance = setTimeout( this.render.bind(this), 1000 / fps)
-	},
-	stop : function(){
-		clearTimeout( this._runInstance );
-		this._runInstance = 0;
-	},
+    _runInstance : 0,
+    run : function( fps ){
+        if( this._runInstance ){
+            clearTimeout( this._runInstance)
+        }
+        this._runInstance = setTimeout( this.render.bind(this), 1000 / fps)
+    },
+    stop : function(){
+        clearTimeout( this._runInstance );
+        this._runInstance = 0;
+    },
 
-	doRender : function(){
-		this.stage.render();
-	},
+    doRender : function(){
+        this.stage.render();
+    },
 
-	afterResize : function(){
-		if( this.stage ){
-			var width = this.width(),
-				height = this.height();
-			if( width && height ){
-				this.stage.resize( width, height );
-			}
-			this.doRender();
-		}
-	}
+    afterResize : function(){
+        if( this.stage ){
+            var width = this.width(),
+                height = this.height();
+            if( width && height ){
+                this.stage.resize( width, height );
+            }
+            this.doRender();
+        }
+    }
 });
 
 Meta.provideBinding("canvas", Canvas);

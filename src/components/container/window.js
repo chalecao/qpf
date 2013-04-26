@@ -4,52 +4,52 @@
 // and close
 //===================================
 define(["./container",
-		"./panel",
-		'../mixin/draggable',
-		"knockout"], function(Container, Panel, Draggable, ko){
+        "./panel",
+        '../mixin/draggable',
+        "knockout"], function(Container, Panel, Draggable, ko){
 
 var Window = Panel.derive(function(){
 
 return {
 
-	$el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
+    $el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
 
-	children : ko.observableArray(),
-	title : ko.observable("Window"),
+    children : ko.observableArray(),
+    title : ko.observable("Window"),
 
-	left : ko.observable(0),
-	top : ko.observable(0),
+    left : ko.observable(0),
+    top : ko.observable(0),
 
-	_leftPx : ko.computed(function(){
-		return this.left()+"px";
-	}, this, {
-		deferEvaluation : true
-	}),
-	_topPx : ko.computed(function(){
-		return this.top()+"px";
-	}, this, {
-		deferEvaluation : true
-	})
-	
+    _leftPx : ko.computed(function(){
+        return this.left()+"px";
+    }, this, {
+        deferEvaluation : true
+    }),
+    _topPx : ko.computed(function(){
+        return this.top()+"px";
+    }, this, {
+        deferEvaluation : true
+    })
+    
 }}, {
 
-	type : 'WINDOW',
+    type : 'WINDOW',
 
-	css : _.union('window', Panel.prototype.css),
+    css : _.union('window', Panel.prototype.css),
 
-	initialize : function(){
-		Draggable.applyTo( this );
-		
-		Panel.prototype.initialize.call( this );
-	},
+    initialize : function(){
+        Draggable.applyTo( this );
+        
+        Panel.prototype.initialize.call( this );
+    },
 
-	afterRender : function(){
-		
-		Panel.prototype.afterRender.call( this );
+    afterRender : function(){
+        
+        Panel.prototype.afterRender.call( this );
 
-		this.draggable.add( this.$el, this._$header);
-		
-	}
+        this.draggable.add( this.$el, this._$header);
+        
+    }
 })
 
 Container.provideBinding("window", Window);

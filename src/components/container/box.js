@@ -3,7 +3,7 @@
 //===============================================
 
 define(['./container',
-		'knockout'], function(Container, ko){
+        'knockout'], function(Container, ko){
 
 var Box = Container.derive(function(){
 
@@ -11,52 +11,52 @@ return {
 
 }}, {
 
-	type : 'BOX',
+    type : 'BOX',
 
-	css : 'box',
+    css : 'box',
 
-	initialize : function(){
+    initialize : function(){
 
-		this.children.subscribe(function(children){
-			this.afterResize();
-			// resize after the child resize happens will cause recursive
-			// reszie problem
-			// _.each(children, function(child){
-			// 	child.on('resize', this.afterResize, this);
-			// }, this)
-		}, this);
+        this.children.subscribe(function(children){
+            this.afterResize();
+            // resize after the child resize happens will cause recursive
+            // reszie problem
+            // _.each(children, function(child){
+            //  child.on('resize', this.afterResize, this);
+            // }, this)
+        }, this);
 
-		this.$el.css("position", "relative");
+        this.$el.css("position", "relative");
 
-		Container.prototype.initialize.call(this);
-	},
+        Container.prototype.initialize.call(this);
+    },
 
-	_getMargin : function($el){
-		return {
-			left : parseInt($el.css("marginLeft")) || 0,
-			top : parseInt($el.css("marginTop")) || 0,
-			bottom : parseInt($el.css("marginBottom")) || 0,
-			right : parseInt($el.css("marginRight")) || 0,
-		}
-	},
+    _getMargin : function($el){
+        return {
+            left : parseInt($el.css("marginLeft")) || 0,
+            top : parseInt($el.css("marginTop")) || 0,
+            bottom : parseInt($el.css("marginBottom")) || 0,
+            right : parseInt($el.css("marginRight")) || 0,
+        }
+    },
 
-	_resizeTimeout : 0,
+    _resizeTimeout : 0,
 
-	afterResize : function(){
+    afterResize : function(){
 
-		var self = this;
-		// put resize in next tick,
-		// if multiple child have triggered the resize event
-		// it will do only once;
-		if( this._resizeTimeout ){
-			clearTimeout( this._resizeTimeout );
-		}
-		this._resizeTimeout = setTimeout(function(){
-			self.resizeChildren();
-			Container.prototype.afterResize.call(self);
-		});
+        var self = this;
+        // put resize in next tick,
+        // if multiple child have triggered the resize event
+        // it will do only once;
+        if( this._resizeTimeout ){
+            clearTimeout( this._resizeTimeout );
+        }
+        this._resizeTimeout = setTimeout(function(){
+            self.resizeChildren();
+            Container.prototype.afterResize.call(self);
+        });
 
-	}
+    }
 
 })
 

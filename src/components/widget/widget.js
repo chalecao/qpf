@@ -4,17 +4,17 @@
 // ,containers and other HTMLDOMElenents
 //====================================
 define(['../base',
-		'../meta/meta',
-		'../container/container',
-		'knockout'], function(Base, Meta, Container, ko){
+        '../meta/meta',
+        '../container/container',
+        'knockout'], function(Base, Meta, Container, ko){
 
 var Widget = Base.derive(
 {
 
 }, {
-	type : "WIDGET",
+    type : "WIDGET",
 
-	css : 'widget'
+    css : 'widget'
 
 })
 

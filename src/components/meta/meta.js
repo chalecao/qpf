@@ -4,14 +4,14 @@
 // that has no children
 //==================================
 define(['../base',
-		'knockout'], function(Base, ko){
+        'knockout'], function(Base, ko){
 
 var Meta = Base.derive(
 {
 }, {
-	type : "META",
+    type : "META",
 
-	css : 'meta'
+    css : 'meta'
 })
 
 // Inherit the static methods

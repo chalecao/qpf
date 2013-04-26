@@ -6,29 +6,29 @@
 //=============================================================
 
 define(["./container",
-		"knockout"], function(Container, ko){
-	
-	var Application = Container.derive(function(){
+        "knockout"], function(Container, ko){
+    
+    var Application = Container.derive(function(){
 
-	}, {
+    }, {
 
-		type : "APPLICATION",
-		
-		css : "application",
+        type : "APPLICATION",
+        
+        css : "application",
 
-		initialize : function(){
+        initialize : function(){
 
-			$(window).resize( this._resize.bind(this) );
-			this._resize();
-		},
+            $(window).resize( this._resize.bind(this) );
+            this._resize();
+        },
 
-		_resize : function(){
-			this.width( $(window).width() );
-			this.height( $(window).height() );
-		}
-	})
+        _resize : function(){
+            this.width( $(window).width() );
+            this.height( $(window).height() );
+        }
+    })
 
-	Container.provideBinding("application", Application);
+    Container.provideBinding("application", Application);
 
-	return Application;
+    return Application;
 })
