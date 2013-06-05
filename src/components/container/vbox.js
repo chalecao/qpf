@@ -10,15 +10,19 @@
 //      padding ????
 //===============================================
 
-define(['./container',
-        './box',
-        'knockout'], function(Container, Box, ko){
+define(function(require){
+
+var Container = require("./container");
+var Box = require("./box");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
 
 var vBox = Box.derive(function(){
 
-return {
-
-}}, {
+    return {
+    }
+}, {
 
     type : 'VBOX',
 

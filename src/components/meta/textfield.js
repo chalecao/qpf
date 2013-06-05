@@ -5,8 +5,11 @@
 // @VMProp placeholder
 //
 //===================================
-define(['./meta',
-        'knockout'], function(Meta, ko){
+define(function(require){
+
+var Meta = require('./meta');
+var ko = require("knockout");
+var _ = require("_");
 
 var TextField = Meta.derive(function(){
 return {

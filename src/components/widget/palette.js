@@ -6,6 +6,8 @@ define(function(require){
 var Widget = require("./widget");
 var ko = require("knockout");
 var Color = require("./color_vm");
+var $ = require("$");
+var _ = require("_");
 
 // component will be used in the widget
 require("components/widget/vector");

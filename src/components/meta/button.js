@@ -1,9 +1,13 @@
 //======================================
 // Button component
 //======================================
-define(['./meta',
-        'core/xmlparser',
-        'knockout'], function(Meta, XMLParser, ko){
+define(function(require){
+
+var Meta = require("./meta");
+var XMLParser = require("core/xmlparser");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
 
 var Button = Meta.derive(function(){
 return {

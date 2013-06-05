@@ -2,10 +2,13 @@
 // Tab Container
 // Children of tab container must be a panel
 //============================================
-define(["./panel",
-        "./container",
-        "../base",
-        "knockout"], function(Panel, Container, Base, ko){
+define(function(require){
+
+var Container = require("./container");
+var Panel = require("./panel");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
 
 var Tab = Panel.derive(function(){
 

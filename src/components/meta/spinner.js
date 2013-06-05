@@ -7,8 +7,12 @@
 //
 // @event change newValue prevValue self[Range]
 //===================================
-define(['./meta',
-		'knockout'], function(Meta, ko){
+define(function(require){
+
+var Meta = require('./meta');
+var ko = require("knockout");
+var $ = require('$');
+var _ = require("_");
 
 function increase(){
 	this.value( parseFloat(this.value()) + parseFloat(this.step()) );

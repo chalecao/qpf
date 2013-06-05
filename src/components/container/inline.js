@@ -1,8 +1,11 @@
 //=============================================
 // Inline Layout
 //=============================================
-define(["./container",
-        "knockout"], function(Container, ko){
+define(function(require){
+
+var Container = require("./container");
+var ko = require("knockout");
+var $ = require("$");
 
 var Inline = Container.derive({
 }, {

@@ -46,18 +46,27 @@
 	<div data-bind="qpf:{type:'vector', name:'position', items:[{type:'range', value:0},{type:'range', value:10},{type:'range', value:10}] }"></div>
 </div>
 	</script>
-	<script type="text/javascript" src="../thirdparty/jquery.js"></script>
 	<script type="text/javascript" src="../thirdparty/require.js"></script>
-	<script type="text/javascript" src="../thirdparty/underscore.js"></script>
 	<script type="text/javascript">
 		requirejs.config({
-			paths : {
-				"core" : "../src/core",
-				"components" : "../src/components",
-				"knockout" : "../thirdparty/knockout",
-				"ko.mapping" : "../thirdparty/ko.mapping",
-				"goo" : "../thirdparty/goo"
-			}
+		    paths : {
+		        "qpf" : "../src/qpf",
+		        "core" : "../src/core",
+		        "components" : "../src/components",
+		        // libraries
+		        "knockout" : "../thirdparty/knockout",
+		        // Use jquery temporary, zepto's bind does not support context
+		        "$" : "../thirdparty/jquery",
+		        "_" : "../thirdparty/lodash.compat"
+		    },
+		    shim : {
+		        '$' : {
+		            exports : "$"
+		        },
+		        '_' : {
+		            exports : "_"
+		        }
+		    },
 		})
 
 		require(['../tests/component'], function(){

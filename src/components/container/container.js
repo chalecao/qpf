@@ -1,8 +1,12 @@
 //============================================
 // Base class of all container component
 //============================================
-define(["../base",
-        "knockout"], function(Base, ko){
+define(function(require){
+
+var Base = require("../base");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
 
 var Container = Base.derive(function(){
     return {

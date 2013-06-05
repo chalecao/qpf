@@ -5,30 +5,34 @@
 // event of Window and resize all the component in the app
 //=============================================================
 
-define(["./container",
-        "knockout"], function(Container, ko){
+define(function(require){
+
+var Container = require("./container");
+var ko = require("knockout");
+var $ = require("$");
+
+var Application = Container.derive(function(){
+
+}, {
+
+    type : "APPLICATION",
     
-    var Application = Container.derive(function(){
+    css : "application",
 
-    }, {
+    initialize : function(){
 
-        type : "APPLICATION",
-        
-        css : "application",
+        $(window).resize( this._resize.bind(this) );
+        this._resize();
+    },
 
-        initialize : function(){
+    _resize : function(){
+        this.width( $(window).width() );
+        this.height( $(window).height() );
+    }
+})
 
-            $(window).resize( this._resize.bind(this) );
-            this._resize();
-        },
+Container.provideBinding("application", Application);
 
-        _resize : function(){
-            this.width( $(window).width() );
-            this.height( $(window).height() );
-        }
-    })
+return Application;
 
-    Container.provideBinding("application", Application);
-
-    return Application;
 })

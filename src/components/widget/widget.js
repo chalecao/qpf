@@ -3,10 +3,13 @@
 // Widget is component mixed with meta 
 // ,containers and other HTMLDOMElenents
 //====================================
-define(['../base',
-        '../meta/meta',
-        '../container/container',
-        'knockout'], function(Base, Meta, Container, ko){
+define(function(require){
+
+var Base = require("../base");
+var Meta = require("../meta/meta");
+var Container = require("../container/container");
+var ko = require("knockout");
+var _ = require("_");
 
 var Widget = Base.derive(
 {

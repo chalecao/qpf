@@ -1,8 +1,12 @@
 //======================================
 // Checkbox component
 //======================================
-define(['./meta',
-        'knockout'], function(Meta, ko){
+define(function(require){
+
+var Meta = require("./meta");
+var ko = require('knockout');
+var $ = require("$");
+var _ = require("_");
 
 var Checkbox = Meta.derive(function(){
 return {

@@ -6,10 +6,13 @@
 //          @property   value
 //          @property   text
 //===================================
+define(function(require){
 
-define(['./meta',
-        'core/xmlparser',
-        'knockout'], function(Meta, XMLParser, ko){
+var Meta = require("./meta");
+var XMLParser = require("core/xmlparser");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
 
 var Combobox = Meta.derive(function(){
 return {

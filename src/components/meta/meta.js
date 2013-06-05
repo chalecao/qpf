@@ -3,8 +3,10 @@
 // Meta component is the ui component
 // that has no children
 //==================================
-define(['../base',
-        'knockout'], function(Base, ko){
+define(function(require){
+
+var Base = require("../base");
+var ko = require("knockout");
 
 var Meta = Base.derive(
 {

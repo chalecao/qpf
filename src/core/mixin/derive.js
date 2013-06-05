@@ -1,4 +1,6 @@
-define(function(){
+define(function(require){
+
+var _ = require("_");
 
 /**
  * derive a sub class from base class

@@ -6,12 +6,16 @@
 // @VMProp  constrainType
 // @VMProp  constrainRatio
 //===================================
-define(['./widget',
-        '../base',
-        'core/xmlparser',
-        'knockout',
-        '../meta/spinner',
-        '../meta/range'], function(Widget, Base, XMLParser, ko){
+define(function(require){
+
+var Widget = require("./widget");
+var Base = require("../base");
+var XMLParser = require("core/xmlparser");
+var ko = require("knockout");
+var $ = require("$");
+var Spinner = require("../meta/spinner");
+var Range = require("../meta/range");
+var _ = require("_");
 
 var Vector = Widget.derive(function(){
 return {
@@ -173,7 +177,7 @@ Widget.provideBinding("vector", Vector);
 XMLParser.provideParser("vector", function(xmlNode){
     var items = [];
     var children = XMLParser.util.getChildren(xmlNode);
-    _.chain(children).filter(function(child){
+    _(children).filter(function(child){
         var tagName = child.tagName && child.tagName.toLowerCase();
         return tagName && (tagName === "spinner" ||
                             tagName === "range");

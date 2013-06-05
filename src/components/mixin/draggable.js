@@ -9,16 +9,20 @@
 // @method      remove( target )
 //=================================
 
-define(["core/mixin/derive",
-        "core/mixin/event",
-        "knockout"], function(Derive, Event, ko){
+define(function(require){
 
-var clazz = new Function();
-_.extend(clazz, Derive);
-_.extend(clazz.prototype, Event);
+var Derive = require("core/mixin/derive");
+var Event = require("core/mixin/event");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
+
+var Clazz = new Function();
+_.extend(Clazz, Derive);
+_.extend(Clazz.prototype, Event);
 
 //---------------------------------
-var DraggableItem = clazz.derive(function(){
+var DraggableItem = Clazz.derive(function(){
 return {
 
     id : 0,
@@ -60,28 +64,28 @@ return {
 });
 
 //--------------------------------
-var Draggable = clazz.derive(function(){
-    
-return {
+var Draggable = Clazz.derive(function(){
+    return {
 
-    items : {}, 
+        items : {}, 
 
-    axis : null,
+        axis : null,
 
-    // the container where draggable item is limited
-    // can be an array of boundingbox or HTMLDomElement or jquery selector
-    container : null,
+        // the container where draggable item is limited
+        // can be an array of boundingbox or HTMLDomElement or jquery selector
+        container : null,
 
-    helper : null,
+        helper : null,
 
-    //private properties
-    // boundingbox of container compatible with getBoundingClientRect method
-    _boundingBox : null,
+        //private properties
+        // boundingbox of container compatible with getBoundingClientRect method
+        _boundingBox : null,
 
-    _mouseStart : {},
-    _$helper : null
+        _mouseStart : {},
+        _$helper : null
 
-}}, {
+    }
+}, {
 
 add : function( elem, handle ){
     
@@ -387,12 +391,7 @@ var genGUID = (function(){
 
 return {
     applyTo : function(target, options){
-
-        // define a namespace for draggable mixin
-        target.draggable = target.draggable || {};
-
-        _.extend( target.draggable, new Draggable(options) );
-        
+        target.draggable = new Draggable(options);        
     }
 }
 

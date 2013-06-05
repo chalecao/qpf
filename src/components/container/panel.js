@@ -2,16 +2,17 @@
 // Panel
 // Container has title and content
 //===================================
-define(["./container",
-        "knockout"], function(Container, ko){
+define(function(require){
+
+var Container = require("./container");
+var ko = require("knockout");
+var $ = require("$");
 
 var Panel = Container.derive(function(){
-
-return {
-
-    title : ko.observable("")
-    
-}}, {
+    return {
+        title : ko.observable("")
+    }
+}, {
 
     type : 'PANEL',
 

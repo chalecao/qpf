@@ -12,9 +12,13 @@
 // @method updatePosition   update the slider position manually
 // @event change newValue prevValue self[Range]
 //===================================
-define(['./meta',
-        '../mixin/draggable',
-        'knockout'], function(Meta, Draggable, ko){
+define(function(require){
+
+var Meta = require("./meta");
+var Draggable = require("../mixin/draggable");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
 
 var Range = Meta.derive(function(){
 
@@ -32,7 +36,7 @@ var Range = Meta.derive(function(){
 
         orientation : ko.observable("horizontal"),// horizontal | vertical
 
-        precision : ko.observable(0),
+        precision : ko.observable(2),
 
         format : "{{value}}",
 

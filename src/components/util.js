@@ -3,25 +3,30 @@
 // provide util function to operate
 // the components
 //===========================
-define(['knockout',
-        'core/xmlparser',
-        './base',
-        'exports'], function(ko, XMLParser, Base, exports){
+define(function(require){
 
-    // Return an array of components created from XML
-    exports.createComponentsFromXML = function(XMLString, viewModel){
+var ko = require("knockout");
+var XMLParser = require("core/xmlparser");
+var Base = require("./base");
+var exports = {};
 
-        var dom = XMLParser.parse(XMLString);
-        ko.applyBindings(viewModel || {}, dom);
-        var ret = [];
-        var node = dom.firstChild;
-        while(node){
-            var component = Base.getByDom(node);
-            if( component ){
-                ret.push(component);
-            }
-            node = node.nextSibling;
+// Return an array of components created from XML
+exports.createComponentsFromXML = function(XMLString, viewModel){
+
+    var dom = XMLParser.parse(XMLString);
+    ko.applyBindings(viewModel || {}, dom);
+    var ret = [];
+    var node = dom.firstChild;
+    while(node){
+        var component = Base.getByDom(node);
+        if( component ){
+            ret.push(component);
         }
-        return ret;
+        node = node.nextSibling;
     }
+    return ret;
+}
+
+return exports;
+
 })

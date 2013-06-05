@@ -2,8 +2,12 @@
 // base class of vbox and hbox
 //===============================================
 
-define(['./container',
-        'knockout'], function(Container, ko){
+define(function(require){
+
+var Container = require("./container");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
 
 var Box = Container.derive(function(){
 

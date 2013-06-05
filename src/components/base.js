@@ -2,9 +2,13 @@
 // Base class of all components
 // it also provides some util methods like
 //=====================================
-define(["core/clazz",
-        "core/mixin/event",
-        "knockout"], function(Clazz, Event, ko){
+define(function(require){
+
+var Clazz = require("core/clazz");
+var Event = require("core/mixin/event");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
 
 var repository = {};    //repository to store all the component instance
 
@@ -99,7 +103,7 @@ return {    // Public properties
         var valueSv = newValue;
         var styleRegex = /(\S*?)\s*:\s*(.*)/g;
         // preprocess the style string
-        newValue = "{" + _.chain(newValue.split(";"))
+        newValue = "{" + _(newValue.split(";"))
                         .map(function(item){
                             return item.replace(/(^\s*)|(\s*$)/g, "") //trim
                                         .replace(styleRegex, '"$1":"$2"');
@@ -508,7 +512,7 @@ function bridge(target, source){
     
     target( source() );
 
-    // Save the previous value use clone method in underscore
+    // Save the previous value with clone method in underscore
     // In case the notification is triggered by push methods of
     // Observable Array and the commonValue instance is same with new value
     // instance
@@ -527,7 +531,7 @@ function bridge(target, source){
             }
         }catch(e){
             // Normally when source is computed value
-            // and it don't have a write function  
+            // and it don't have a write function
             console.error(e.toString());
         }
     })

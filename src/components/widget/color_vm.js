@@ -5,8 +5,9 @@
 //============================
 define(function(require){
 
-var ko = require("knockout"),
-    Clazz = require("core/clazz");
+var ko = require("knockout");
+var Clazz = require("core/clazz");
+var _ = require("_");
 
 
 function rgbToHsv(r, g, b){

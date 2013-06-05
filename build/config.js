@@ -6,16 +6,24 @@
         "components" : "src/components",
         // libraries
         "knockout" : "thirdparty/knockout",
-        "ko.mapping": "thirdparty/ko.mapping",
-        "goo" : "thirdparty/goo"
+        "$" : "empty:",
+        "_" : "empty:"
     },
-    excludeShallow : ['knockout', 'goo'],
+    shim : {
+        '$' : {
+            exports : "$"
+        },
+        '_' : {
+            exports : "_"
+        }
+    },
+    excludeShallow : ['knockout', '$', "_"],
     // name : "build/almond",
     include : [ "src/qpf"],
                 
-    out:"./output/qpf.js",
+    out : "../dist/qpf.js",
     wrap : {
-        startFile : ['wrap/start.js', "almond.js", "wrap/knockout.js"],
+        startFile : ['wrap/start.js', "almond.js", "wrap/knockout.js", "wrap/jquery.js"],
         endFile : 'wrap/end.js'
     },
     optimize:"none"

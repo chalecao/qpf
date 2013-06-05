@@ -6,6 +6,8 @@
 //===================================================
 define(function(require, exports, module){
     
+    var _ = require("_");
+    
     // return document fragment converted from the xml
     var parse = function( xmlString, dom ){
         

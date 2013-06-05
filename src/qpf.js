@@ -13,6 +13,7 @@ define(function(require){
         },
         components : {
             base : require('components/base'),
+            util : require("components/util"),
             mixin : {
                 draggable : require('components/mixin/draggable')
             },
@@ -24,8 +25,7 @@ define(function(require){
                 label : require('components/meta/label'),
                 range : require('components/meta/range'),
                 spinner : require('components/meta/spinner'),
-                textfield : require('components/meta/textfield'),
-                // canvas : require("components/meta/canvas")
+                textfield : require('components/meta/textfield')
             },
             container : {
                 container : require('components/container/container'),
