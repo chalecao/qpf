@@ -5,9 +5,9 @@
         "core" : "src/core",
         "components" : "src/components",
         // libraries
-        "knockout" : "thirdparty/knockout",
+        "knockout" : "empty:",
         "$" : "empty:",
-        "_" : "empty:"
+        "_" : "thirdparty/underscore"
     },
     shim : {
         '$' : {
@@ -17,13 +17,13 @@
             exports : "_"
         }
     },
-    excludeShallow : ['knockout', '$', "_"],
+    exclude : ['knockout', '$', "_"],
     // name : "build/almond",
     include : [ "src/qpf"],
                 
     out : "../dist/qpf.js",
     wrap : {
-        startFile : ['wrap/start.js', "almond.js", "wrap/knockout.js", "wrap/jquery.js"],
+        startFile : ['wrap/start.js', "almond.js", "wrap/config.js"],
         endFile : 'wrap/end.js'
     },
     optimize:"none"

@@ -12,7 +12,7 @@ var _ = require("_");
 // component will be used in the widget
 require("components/widget/vector");
 require("components/meta/textfield");
-require("components/meta/range");
+require("components/meta/slider");
 
 var Palette = Widget.derive(function(){
     var ret = new Color;
@@ -44,7 +44,7 @@ var Palette = Widget.derive(function(){
                         </div>\
                         <div style="clear:both"></div>\
                         <div class="qpf-palette-alpha">\
-                            <div data-bind="qpf:{type:\'range\', min:0, max:1, value:alpha, precision:2}"></div>\
+                            <div data-bind="qpf:{type:\'slider\', min:0, max:1, value:alpha, precision:2}"></div>\
                         </div>\
                     </div>\
                     <div class="qpf-right">\

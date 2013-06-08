@@ -103,7 +103,7 @@ return {    // Public properties
         var valueSv = newValue;
         var styleRegex = /(\S*?)\s*:\s*(.*)/g;
         // preprocess the style string
-        newValue = "{" + _(newValue.split(";"))
+        newValue = "{" + _.chain(newValue.split(";"))
                         .map(function(item){
                             return item.replace(/(^\s*)|(\s*$)/g, "") //trim
                                         .replace(styleRegex, '"$1":"$2"');

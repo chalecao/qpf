@@ -37,13 +37,13 @@
 	<div data-bind="qpf:{type:'checkbox', name:'checkbox', checked:true,label:'im a checkbox'}"></div>
 	<div data-bind="qpf:{type:'textfield', name:'textfield', text:'Hi'}"></div>
 	<div data-bind="qpf:{type:'spinner', name:'spinner', value:20  }"></div>
-	<div data-bind="qpf:{type:'range', name:'range',  min:0,max:100,value:10,format:'{{value}}%' }"></div>
-	<div data-bind="qpf:{type:'range', name:'rangeVertical', precision:2, min:0, max:1, value:0.1, orientation:'vertical', height:100 }"></div>
+	<div data-bind="qpf:{type:'slider', name:'slider',  min:0,max:100,value:10,format:'{{value}}%' }"></div>
+	<div data-bind="qpf:{type:'slider', name:'sliderVertical', precision:2, min:0, max:1, value:0.1, orientation:'vertical', height:100 }"></div>
 	<div data-bind="qpf:{type:'combobox', name:'combobox', value:1, items:[{value:1, text:'first'},{value:2,text:'second'}]}"></div>
 
 	<div data-bind="qpf:{type:'vector', name:'resolution', constrainType:'ratio', items:[{type:'spinner', value:512},{type:'spinner', value:728}] }"></div>
 
-	<div data-bind="qpf:{type:'vector', name:'position', items:[{type:'range', value:0},{type:'range', value:10},{type:'range', value:10}] }"></div>
+	<div data-bind="qpf:{type:'vector', name:'position', items:[{type:'slider', value:0},{type:'slider', value:10},{type:'slider', value:10}] }"></div>
 </div>
 	</script>
 	<script type="text/javascript" src="../thirdparty/require.js"></script>
@@ -57,7 +57,7 @@
 		        "knockout" : "../thirdparty/knockout",
 		        // Use jquery temporary, zepto's bind does not support context
 		        "$" : "../thirdparty/jquery",
-		        "_" : "../thirdparty/lodash.compat"
+		        "_" : "../thirdparty/underscore"
 		    },
 		    shim : {
 		        '$' : {

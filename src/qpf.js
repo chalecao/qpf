@@ -23,7 +23,7 @@ define(function(require){
                 checkbox : require('components/meta/checkbox'),
                 combobox : require('components/meta/combobox'),
                 label : require('components/meta/label'),
-                range : require('components/meta/range'),
+                slider : require('components/meta/slider'),
                 spinner : require('components/meta/spinner'),
                 textfield : require('components/meta/textfield')
             },

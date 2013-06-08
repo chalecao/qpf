@@ -14,15 +14,15 @@ var XMLParser = require("core/xmlparser");
 var ko = require("knockout");
 var $ = require("$");
 var Spinner = require("../meta/spinner");
-var Range = require("../meta/range");
+var Slider = require("../meta/slider");
 var _ = require("_");
 
 var Vector = Widget.derive(function(){
 return {
 
     // data source of item can be spinner type
-    // or range type, distinguish with type field
-    // @field type  spinner | range
+    // or slider type, distinguish with type field
+    // @field type  spinner | slider
     items : ko.observableArray(),
 
     // set true if you want to constrain the proportions
@@ -38,7 +38,7 @@ return {
     _constrainRatio : [],
     // Constrain diff is only uese when constrain type is diff
     _constrainDiff : [],
-    // cache all sub spinner or range components
+    // cache all sub spinner or slider components
     _sub : []
 }}, {
 
@@ -177,10 +177,11 @@ Widget.provideBinding("vector", Vector);
 XMLParser.provideParser("vector", function(xmlNode){
     var items = [];
     var children = XMLParser.util.getChildren(xmlNode);
-    _(children).filter(function(child){
+    
+    _.chain(children).filter(function(child){
         var tagName = child.tagName && child.tagName.toLowerCase();
         return tagName && (tagName === "spinner" ||
-                            tagName === "range");
+                            tagName === "slider");
     }).each(function(child){
         var attributes = XMLParser.util.convertAttributes(child.attributes);
         attributes.type = child.tagName.toLowerCase();

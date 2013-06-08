@@ -10,6 +10,7 @@ var Panel = require("./panel");
 var Draggable = require("../mixin/draggable");
 var ko = require("knockout");
 var $ = require("$");
+var _ = require("_");
 
 var Window = Panel.derive(function(){
     return {

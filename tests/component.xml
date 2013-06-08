@@ -33,11 +33,11 @@
 				<spinner value="@binding[vector.y]"></spinner>
 			</vector>
 			<label>
-				Range
+				Slider
 			</label>
 			<vector>
-				<range value="100"></range>
-				<range value="10"></range>
+				<slider value="100"></slider>
+				<slider value="10"></slider>
 			</vector>
 			<palette></palette>
 		</panel>

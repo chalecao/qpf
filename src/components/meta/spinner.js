@@ -5,7 +5,7 @@
 // @VMProp value
 // @VMProp precision
 //
-// @event change newValue prevValue self[Range]
+// @event change newValue prevValue self[Spinner]
 //===================================
 define(function(require){
 
