@@ -27,13 +27,15 @@ body{
 	padding: 0px 20px;
 	cursor: pointer;
 
-	&:hover{
+	&:hover,
+	&.hover{
 		background-color: #757575;
 		border-top: 1px solid #848484;
 		color:#232323;
 	}
 
-	&:active{
+	&:active,
+	&.active{
 		.linear-gradient-top(#000000, rgba(255,255,255,0.0), 0%, rgba(255,255,255,0.1), 99%);
 		border-bottom: 1px solid #2b2b2b;
 		box-shadow: inset 0px 1px 3px black;
@@ -531,7 +533,7 @@ body{
 // widget : palette
 //-------------------------------------
 .qpf-ui-palette{
-	width:350px;
+	width:360px;
 
 	.qpf-palette-adjuster{
 
@@ -541,7 +543,7 @@ body{
 		}
 		&>.qpf-right{
 			float:left;
-			width:100px;
+			width:110px;
 			margin-left: 20px;
 
 			.qpf-ui-spinner{
@@ -736,7 +738,6 @@ body{
 				float: left;
 				text-align: center;
 				border-bottom: 1px solid #222;
-				margin-right: 1px;
 
 				overflow: hidden;
 

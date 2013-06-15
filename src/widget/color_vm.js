@@ -144,7 +144,7 @@ var Color = Clazz.derive({
     this.hexString = ko.computed({
         read : function(){
             var string = this.hex().toString(16),
-                fill = []
+                fill = [];
             for(var i = 0; i < 6-string.length; i++){
                 fill.push('0');
             }

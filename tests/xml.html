@@ -1,7 +1,7 @@
 <html>
 <head>
 	<title></title>
-	<link rel="stylesheet/less" type="text/css" href="../src/components/less/base.less">
+	<link rel="stylesheet/less" type="text/css" href="../src/style/base.less">
 	<script type="text/javascript" src="../thirdparty/less.js"></script>
 	<script type="text/javascript" src="../thirdparty/require.js"></script>
 	<style type="text/css">
@@ -24,10 +24,8 @@
 <body>
 	<script type="text/javascript">
 		requirejs.config({
+			baseUrl : "../src",
 		    paths : {
-		        "qpf" : "../src/qpf",
-		        "core" : "../src/core",
-		        "components" : "../src/components",
 		        // libraries
 		        "knockout" : "../thirdparty/knockout",
 		        // Use jquery temporary, zepto's bind does not support context

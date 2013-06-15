@@ -377,6 +377,8 @@ _triggerProxy : function(){
     _.each(this.items, function(item){
         item.trigger.apply(item, args);
     });
+
+    this.trigger.apply(this, args);
 }
 
 });
@@ -389,10 +391,9 @@ var genGUID = (function(){
     }
 }) ();
 
-return {
-    applyTo : function(target, options){
-        target.draggable = new Draggable(options);        
-    }
+Draggable.applyTo = function(target, options){
+    target.draggable = new Draggable(options);        
 }
+return Draggable;
 
 })

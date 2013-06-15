@@ -80,10 +80,10 @@ var Tab = Panel.derive(function(){
         this._active( this.actived() );
     },
 
-    afterResize : function(){
+    onResize : function(){
         this._adjustCurrentSize();
         this._updateTabSize();
-        Container.prototype.afterResize.call(this);
+        Container.prototype.onResize.call(this);
     },
 
     _unActiveAll : function(){
@@ -129,7 +129,7 @@ var Tab = Panel.derive(function(){
             // so the children may not be properly layouted, We need to force the
             // children do layout again when panel is visible;
             this._adjustCurrentSize();
-            current.afterResize();
+            current.onResize();
 
             this.trigger('change', idx, current);
         }

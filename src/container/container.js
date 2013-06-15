@@ -36,7 +36,7 @@ var Container = Base.derive(function(){
                 }
             }, this);
         });
-        function _onItemDispose(){
+        function _onItemDispose(){  
             self.remove( this );
         }
     },
@@ -44,6 +44,8 @@ var Container = Base.derive(function(){
     add : function( sub ){
         sub.parent = this;
         this.children.push( sub );
+        // Resize the child to fit the parent
+        sub.onResize();
     },
     // remove child component
     remove : function( sub ){
@@ -52,8 +54,9 @@ var Container = Base.derive(function(){
     },
     removeAll : function(){
         _.each(this.children(), function(child){
-            this.remove(child);
+            child.parent = null;
         }, this);
+        this.children([]);
     },
     children : function(){
         return this.children()
@@ -70,16 +73,16 @@ var Container = Base.derive(function(){
 
     },
     // resize when width or height is changed
-    afterResize : function(){
+    onResize : function(){
         // stretch the children
         if( this.height() ){
             this.$el.children(".qpf-children").height( this.height() ); 
         }
         // trigger the after resize event in post-order
         _.each(this.children(), function(child){
-            child.afterResize();
+            child.onResize();
         }, this);
-        Base.prototype.afterResize.call(this);
+        Base.prototype.onResize.call(this);
     },
     dispose : function(){
         

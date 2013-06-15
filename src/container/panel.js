@@ -35,7 +35,7 @@ var Panel = Container.derive(function(){
         this._$footer = $el.children(".qpf-panel-footer");
     },
 
-    afterResize : function(){
+    onResize : function(){
         // stretch the body when the panel's height is given
         if( this._$body && this.height() ){
             var headerHeight = this._$header.height();
@@ -46,7 +46,7 @@ var Panel = Container.derive(function(){
             this._$body.height( this.$el.height() - headerHeight - footerHeight );
     
         }
-        Container.prototype.afterResize.call(this);
+        Container.prototype.onResize.call(this);
     }
 })
 

@@ -1,5 +1,5 @@
 
-var qpf = require("src/qpf");
+var qpf = require("qpf");
 
 // only export the use method 
 _exports.use = function(path){

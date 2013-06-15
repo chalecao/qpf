@@ -1,13 +1,10 @@
 ({
-    baseUrl : "../",
+    baseUrl : "../src",
     paths : {
-        "qpf" : "src/qpf",
-        "core" : "src/core",
-        "components" : "src/components",
         // libraries
         "knockout" : "empty:",
         "$" : "empty:",
-        "_" : "thirdparty/underscore"
+        "_" : "empty:"
     },
     shim : {
         '$' : {
@@ -19,7 +16,7 @@
     },
     exclude : ['knockout', '$', "_"],
     // name : "build/almond",
-    include : [ "src/qpf"],
+    include : [ "qpf"],
                 
     out : "../dist/qpf.js",
     wrap : {

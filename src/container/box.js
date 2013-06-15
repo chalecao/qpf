@@ -22,11 +22,11 @@ return {
     initialize : function(){
 
         this.children.subscribe(function(children){
-            this.afterResize();
+            this.onResize();
             // resize after the child resize happens will cause recursive
             // reszie problem
             // _.each(children, function(child){
-            //  child.on('resize', this.afterResize, this);
+            //  child.on('resize', this.onResize, this);
             // }, this)
         }, this);
 
@@ -46,7 +46,7 @@ return {
 
     _resizeTimeout : 0,
 
-    afterResize : function(){
+    onResize : function(){
 
         var self = this;
         // put resize in next tick,
@@ -57,7 +57,7 @@ return {
         }
         this._resizeTimeout = setTimeout(function(){
             self.resizeChildren();
-            Container.prototype.afterResize.call(self);
+            Container.prototype.onResize.call(self);
         });
 
     }

@@ -10,9 +10,9 @@ var $ = require("$");
 var _ = require("_");
 
 // component will be used in the widget
-require("components/widget/vector");
-require("components/meta/textfield");
-require("components/meta/slider");
+require("widget/vector");
+require("meta/textfield");
+require("meta/slider");
 
 var Palette = Widget.derive(function(){
     var ret = new Color;
@@ -44,7 +44,7 @@ var Palette = Widget.derive(function(){
                         </div>\
                         <div style="clear:both"></div>\
                         <div class="qpf-palette-alpha">\
-                            <div data-bind="qpf:{type:\'slider\', min:0, max:1, value:alpha, precision:2}"></div>\
+                            <div class="qpf-palette-alpha-slider" data-bind="qpf:{type:\'slider\', min:0, max:1, value:alpha, precision:2}"></div>\
                         </div>\
                     </div>\
                     <div class="qpf-right">\
@@ -94,6 +94,14 @@ var Palette = Widget.derive(function(){
         this._setPickerPosition();
         this._setupSvDragHandler();
         this._setupHDragHandler();
+    },
+    onResize : function(){
+        var $slider = this.$el.find(".qpf-palette-alpha-slider");
+        if($slider.length){
+            $slider.qpf("get")[0].onResize();
+        }
+
+        Widget.prototype.onResize.call(this);
     },
 
     _setupSvDragHandler : function(){
@@ -179,6 +187,7 @@ var Palette = Widget.derive(function(){
                 hue = hsv[0],
                 saturation = hsv[1],
                 value = hsv[2];
+
             // set position relitave to space
             this._$svPicker.css({
                 left : Math.round( saturation/100 * this._svSize ) + "px",
@@ -204,7 +213,7 @@ var Palette = Widget.derive(function(){
     },
 
     _cancel : function(){
-
+        this.trigger("cancel")
     }
 })
 

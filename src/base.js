@@ -81,11 +81,11 @@ return {    // Public properties
 
     this.width.subscribe(function(newValue){
         this.$el.width(newValue);
-        this.afterResize();
+        this.onResize();
     }, this);
     this.height.subscribe(function(newValue){
         this.$el.height(newValue);
-        this.afterResize();
+        this.onResize();
     }, this);
     this.disable.subscribe(function(newValue){
         this.$el[newValue?"addClass":"removeClass"]("qpf-disable");
@@ -174,7 +174,7 @@ return {    // Public properties
 
         this.trigger("render");
         // trigger the resize events
-        this.afterResize();
+        this.onResize();
     },
     // Default render method
     doRender : function(){
@@ -204,7 +204,7 @@ return {    // Public properties
             this.height( height );
         }
     },
-    afterResize : function(){
+    onResize : function(){
         this.trigger('resize');
     },
     withPrefix : function(className, prefix){
@@ -222,7 +222,7 @@ return {    // Public properties
             var attr = attributes[name];
             var propInVM = this[name];
             // create new attribute when property is not existed, even if it will not be used
-            if( ! propInVM ){
+            if( typeof(propInVM) === "undefined" ){
                 var value = ko.utils.unwrapObservable(attr);
                 // is observableArray or plain array
                 if( (ko.isObservable(attr) && attr.push) ||
@@ -239,6 +239,7 @@ return {    // Public properties
                 this[name] = ko.utils.unwrapObservable(attr);
             }
             if( ! onlyUpdate){
+                // Two-way data binding if the attribute is an observable
                 if( ko.isObservable(attr) ){
                     bridge(propInVM, attr);
                 }
@@ -305,6 +306,7 @@ Base.disposeDom = function(domNode, resursive){
 
     dispose(domNode);
 }
+
 // util function of generate a unique id
 var genGUID = (function(){
     var id = 0;
@@ -373,6 +375,13 @@ Base.provideBinding = function(name, Component ){
     bindings[name] = Component;
 }
 
+Base.create = function(name, config){
+    var Constructor = bindings[name];
+    if(Constructor){
+        return new Constructor(config);
+    }
+}
+
 // provide bindings to knockout
 ko.bindingHandlers["qpf"] = {
 
@@ -395,9 +404,7 @@ ko.bindingHandlers["qpf"] = {
         return { 'controlsDescendantBindings': true };
     },
 
-    update : function( element, valueAccessor ){
-
-    }
+    update : function( element, valueAccessor ){}
 }
 
 // append the element of view in the binding
@@ -417,6 +424,9 @@ ko.bindingHandlers["qpf_view"] = {
         // });
 
         return { 'controlsDescendantBindings': true };
+    },
+
+    update : function(element, valueAccessor){
     }
 }
 

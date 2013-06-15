@@ -118,10 +118,10 @@ var Slider = Meta.derive(function(){
         });
     },
 
-    afterResize : function(){
+    onResize : function(){
 
         this.updatePosition();
-        Meta.prototype.afterResize.call(this);
+        Meta.prototype.onResize.call(this);
     },
 
     _dragHandler : function(){

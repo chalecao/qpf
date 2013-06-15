@@ -84,11 +84,11 @@ return {
         this._updateConstraint();
     },
 
-    afterResize : function(){
+    onResize : function(){
         _.each( this._sub, function(item){
-            item.afterResize();
+            item.onResize();
         } )
-        Widget.prototype.afterResize.call(this);
+        Widget.prototype.onResize.call(this);
     },
 
     dispose : function(){
