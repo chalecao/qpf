@@ -297,8 +297,6 @@ _mouseMove : function(e){
 
     var self = e.data.context;
 
-    self._triggerProxy("drag", e);
-
     var offset = {
         x : e.pageX - self._mouseStart.x,
         y : e.pageY - self._mouseStart.y
@@ -338,7 +336,9 @@ _mouseMove : function(e){
             "left" : e.pageX,
             "top" : e.pageY
         })
-    }   
+    };
+
+    self._triggerProxy("drag", e);
 },
 
 _mouseUp : function(e){

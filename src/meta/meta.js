@@ -14,10 +14,12 @@ var Meta = Base.derive(
     type : "META",
 
     css : 'meta'
-})
+});
 
 // Inherit the static methods
 Meta.provideBinding = Base.provideBinding;
+
+Meta.provideBinding("meta", Meta);
 
 return Meta;
 
