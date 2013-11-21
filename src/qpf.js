@@ -1,46 +1,49 @@
-// portal for all the components
 define(function(require){
-
-    var qpf = {
-        core : {
-            XMLParser : require('core/xmlparser'),
-            mixin : {
-                derive : require('core/mixin/derive'),
-                event : require('core/mixin/event')
-            },
-            Clazz : require("core/clazz")
-        },
-        Base : require('base'),
-        util : require("util"),
-        mixin : {
-            Draggable : require('mixin/draggable')
-        },
-        meta : {
-            Meta : require('meta/meta'),
-            Button : require('meta/button'),
-            Checkbox : require('meta/checkbox'),
-            Combobox : require('meta/combobox'),
-            Label : require('meta/label'),
-            Slider : require('meta/slider'),
-            Spinner : require('meta/spinner'),
-            Textfield : require('meta/textfield')
-        },
-        container : {
-            Container : require('container/container'),
-            Panel : require('container/panel'),
-            Window : require('container/window'),
-            Tab : require("container/tab"),
-            VBox : require("container/vbox"),
-            HBox : require("container/hbox"),
-            Inline : require("container/inline"),
-            Application : require("container/application")
-        },
-        widget : {
-            Widget : require("widget/widget"),
-            Vector : require("widget/vector"),
-            Palette : require("widget/palette")
-        }
-    }
+    
+    var qpf =  {
+	"Base": require('Base'),
+	"container": {
+		"Accordian": require('container/Accordian'),
+		"Application": require('container/Application'),
+		"Box": require('container/Box'),
+		"Container": require('container/Container'),
+		"HBox": require('container/HBox'),
+		"Inline": require('container/Inline'),
+		"Panel": require('container/Panel'),
+		"Tab": require('container/Tab'),
+		"VBox": require('container/VBox'),
+		"Window": require('container/Window')
+	},
+	"core": {
+		"Clazz": require('core/Clazz'),
+		"XMLParser": require('core/XMLParser'),
+		"mixin": {
+			"derive": require('core/mixin/derive'),
+			"notifier": require('core/mixin/notifier')
+		}
+	},
+	"meta": {
+		"Button": require('meta/Button'),
+		"CheckBox": require('meta/CheckBox'),
+		"ComboBox": require('meta/ComboBox'),
+		"Label": require('meta/Label'),
+		"Meta": require('meta/Meta'),
+		"Slider": require('meta/Slider'),
+		"Spinner": require('meta/Spinner'),
+		"TextField": require('meta/TextField'),
+		"Tree": require('meta/Tree')
+	},
+	"mixin": {
+		"Draggable": require('mixin/Draggable')
+	},
+	"util": require('util'),
+	"widget": {
+		"Color": require('widget/Color'),
+		"Palette": require('widget/Palette'),
+		"Vector": require('widget/Vector'),
+		"Widget": require('widget/Widget')
+	}
+};
 
     qpf.create = qpf.Base.create;
 

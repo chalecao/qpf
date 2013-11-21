@@ -28,7 +28,7 @@
 			<label>
 				Spinner
 			</label>
-			<vector>
+			<vector constrainType="ratio">
 				<spinner value="@binding[vector.x]"></spinner>
 				<spinner value="@binding[vector.y]"></spinner>
 			</vector>

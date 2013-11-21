@@ -1,6 +1,4 @@
-define(function(require){
-
-var _ = require("_");
+define(function(require) {
 
 /**
  * derive a sub class from base class
@@ -9,57 +7,43 @@ var _ = require("_");
  * @initialize [Function](optional) initialize after the sub class is instantiated
  * @proto [Object](optional) prototype methods/property of the sub class
  *
+ * @export{object}
  */
-function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
+function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/) {
 
-    if( typeof initialize == "object"){
+    if (typeof initialize == "object") {
         proto = initialize;
         initialize = null;
     }
 
-    // extend default prototype method
-    var extendedProto = {
-        // instanceof operator cannot work well,
-        // so we write a method to simulate it
-        'instanceof' : function(constructor){
-            var selfConstructor = sub;
-            while(selfConstructor){
-                if( selfConstructor === constructor ){
-                    return true;
-                }
-                selfConstructor = selfConstructor.__super__;
-            }
-        }
-    }
-
     var _super = this;
 
-    var sub = function(options){
+    var sub = function(options) {
 
         // call super constructor
-        _super.call( this );
+        _super.call(this);
 
         // call defaultOpt generate function each time
         // if it is a function, So we can make sure each 
         // property in the object is fresh
-        _.extend( this, typeof makeDefaultOpt == "function" ?
-                        makeDefaultOpt.call(this) : makeDefaultOpt );
+        extend(this, typeof makeDefaultOpt == "function" ?
+                        makeDefaultOpt.call(this) : makeDefaultOpt);
 
-        _.extend( this, options );
+        extend(this, options);
 
-        if( this.constructor == sub){
+        if (this.constructor === sub) {
             // find the base class, and the initialize function will be called 
             // in the order of inherit
-            var base = sub,
-                initializeChain = [initialize];
-            while(base.__super__){
-                base = base.__super__;
-                initializeChain.unshift( base.__initialize__ );
-            }
-            for(var i = 0; i < initializeChain.length; i++){
-                if( initializeChain[i] ){
-                    initializeChain[i].call( this );
+            var base = sub;
+            var initializeChain = [];
+            while (base) {
+                if (base.__initialize__) {
+                    initializeChain.push(base.__initialize__);
                 }
+                base = base.__super__;
+            }
+            for (var i = initializeChain.length - 1; i >= 0; i--) {
+                initializeChain[i].call(this);
             }
         }
     };
@@ -68,20 +52,28 @@ function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/){
     // initialize function will be called after all the super constructor is called
     sub.__initialize__ = initialize;
 
-    // extend prototype function
-    _.extend( sub.prototype, _super.prototype, extendedProto, proto);
-
+    var Ghost = function() {};
+    Ghost.prototype = _super.prototype;
+    sub.prototype = new Ghost();
     sub.prototype.constructor = sub;
+    extend(sub.prototype, proto);
     
     // extend the derive method as a static method;
     sub.derive = _super.derive;
 
-
     return sub;
+}
+
+function extend(target, source) {
+    for (var name in source) {
+        if (source.hasOwnProperty(name)) {
+            target[name] = source[name];
+        }
+    }
 }
 
 return {
     derive : derive
 }
 
-})
+});

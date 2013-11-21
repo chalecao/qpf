@@ -18,7 +18,7 @@
     // name : "build/almond",
     include : [ "qpf"],
                 
-    out : "../dist/qpf.js",
+    out : "../dist/js/qpf.js",
     wrap : {
         startFile : ['wrap/start.js', "almond.js", "wrap/config.js"],
         endFile : 'wrap/end.js'

@@ -1,7 +1,7 @@
 define(["knockout",
-		"../src/qpf"], function(ko){
+		"../src/qpf"], function(ko, qpf){
 
-	var XMLParser = require("core/xmlparser");
+	var XMLParser = qpf.core.XMLParser;
 
 	var viewModel = {
 		title : ko.observable("window"),

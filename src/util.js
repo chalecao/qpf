@@ -1,13 +1,13 @@
-//==========================
-// Util.js
-// provide util function to operate
-// the components
-//===========================
+/**
+ * Util.js
+ * provide util function to operate
+ * the components
+ */
 define(function(require){
 
 var ko = require("knockout");
-var XMLParser = require("core/xmlparser");
-var Base = require("./base");
+var XMLParser = require("core/XMLParser");
+var Base = require("./Base");
 var exports = {};
 
 // Return an array of components created from XML
