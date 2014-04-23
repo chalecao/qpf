@@ -126,7 +126,7 @@ define(function(require) {
                     var item = this.items[id];
                 }
             }   
-            delete this.items[ id ];
+            delete this.items[id];
 
             
             $elem.removeAttr("data-qpf-draggable")
@@ -200,7 +200,7 @@ define(function(require) {
 
             var self = e.data.context;
 
-            if (this.updateDomPosition) {
+            if (self.updateDomPosition) {
                 self._save();
             }
 
@@ -214,7 +214,7 @@ define(function(require) {
 
                     $elem.addClass("qpf-draggable-dragging");
 
-                    if (this.updateDomPosition) {
+                    if (self.updateDomPosition) {
                         $elem.css({
                             position: "absolute",
                             left: (item.originPosition.left)+"px",
@@ -297,7 +297,7 @@ define(function(require) {
 
             var self = e.data.context;
 
-            if (!this.updateDomPosition) {
+            if (!self.updateDomPosition) {
                 self._triggerProxy("drag", e);
                 return;
             }
@@ -368,7 +368,7 @@ define(function(require) {
                 }, self);
             }
 
-            if (this.updateDomPosition) {
+            if (self.updateDomPosition) {
                 self._restore();
             }
 

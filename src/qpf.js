@@ -23,6 +23,10 @@ define(function(require){
 			"notifier": require('core/mixin/notifier')
 		}
 	},
+	"helper": {
+		"Draggable": require('helper/Draggable'),
+		"Resizable": require('helper/Resizable')
+	},
 	"meta": {
 		"Button": require('meta/Button'),
 		"CheckBox": require('meta/CheckBox'),
@@ -35,10 +39,6 @@ define(function(require){
 		"Spinner": require('meta/Spinner'),
 		"TextField": require('meta/TextField'),
 		"Tree": require('meta/Tree')
-	},
-	"helper": {
-		"Draggable": require('helper/Draggable'),
-		"Resizable": require('helper/Resizable')
 	},
 	"util": require('util'),
 	"widget": {

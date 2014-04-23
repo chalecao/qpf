@@ -108,7 +108,7 @@ define(function(require) {
                 if(child) {
                     child.$el.removeClass("selected")
                 }
-            }, this)
+            }, this);
         }
 
     });

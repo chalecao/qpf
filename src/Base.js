@@ -226,8 +226,7 @@ define(function(require) {
                 if (typeof(propInVM) === "undefined") {
                     var value = ko.utils.unwrapObservable(attr);
                     // is observableArray or plain array
-                    if ((ko.isObservable(attr) && attr.push) ||
-                        attr.constructor == Array) {
+                    if ((ko.isObservable(attr) && attr.push) || attr instanceof Array) {
                         this[name] = ko.observableArray(value);
                     } else {
                         this[name] = ko.observable(value);
@@ -530,7 +529,7 @@ define(function(require) {
         // Reference : `set` method in backbone
         var commonValue = _.clone(target());
         target.subscribe(function(newValue) {
-            // Knockout will always suppose the value is mutated each time it is writted
+            // Knockout will always suppose the value is mutated each time it is written
             // the value which is not primitive type(like array)
             // So here will cause a recurse trigger if the value is not a primitive type
             // We use underscore deep compare function to evaluate if the value is changed

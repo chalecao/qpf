@@ -453,7 +453,7 @@ function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/) {
     var _super = this;
 
     var propList;
-    if (! (makeDefaultOpt instanceof Function)) {
+    if (!(makeDefaultOpt instanceof Function)) {
         // Optimize the property iterate if it have been fixed
         propList = [];
         for (var propName in makeDefaultOpt) {
@@ -466,40 +466,41 @@ function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/) {
     var sub = function(options) {
 
         // call super constructor
-        _super.call(this);
+        _super.apply(this, arguments);
 
         if (makeDefaultOpt instanceof Function) {
             // call defaultOpt generate function each time
             // if it is a function, So we can make sure each 
-            // property in the object is fresh
+            // property in the object is not shared by mutiple instances
             extend(this, makeDefaultOpt.call(this));
         } else {
             extendWithPropList(this, makeDefaultOpt, propList);
         }
         
-        if (options) {
-            extend(this, options);
-        }
-
         if (this.constructor === sub) {
-            // initialize function will be called in the order of inherit
+            // PENDING
+            if (options) {
+                extend(this, options);
+            }
+
+            // Initialize function will be called in the order of inherit
             var base = sub;
-            var initializers = sub.__initializer__;
+            var initializers = sub.__initializers__;
             for (var i = 0; i < initializers.length; i++) {
-                initializers[i].call(this);
+                initializers[i].apply(this, arguments);
             }
         }
     };
     // save super constructor
     sub.__super__ = _super;
     // initialize function will be called after all the super constructor is called
-    if (!_super.__initializer__) {
-        sub.__initializer__ = [];
+    if (!_super.__initializers__) {
+        sub.__initializers__ = [];
     } else {
-        sub.__initializer__ = _super.__initializer__.slice();
+        sub.__initializers__ = _super.__initializers__.slice();
     }
     if (initialize) {
-        sub.__initializer__.push(initialize);
+        sub.__initializers__.push(initialize);
     }
 
     var Ctor = function() {};
@@ -539,67 +540,146 @@ return {
 });
 define('core/mixin/notifier',[],function() {
 
-/**
- * Event interface
- * + on(eventName, handler[, context])
- * + trigger(eventName[, arg1[, arg2]])
- * + off(eventName[, handler])
- */
-return{
-    trigger : function() {
-        if (! this.__handlers__) {
-            return;
-        }
-        var name = arguments[0];
-        var params = Array.prototype.slice.call(arguments, 1);
-
-        var handlers = this.__handlers__[name];
-        if (handlers) {
-            for(var i = 0; i < handlers.length; i+=2) {
-                var handler = handlers[i],
-                    context = handlers[i+1];
-                handler.apply(context || this, params);
-            }
-        }
-    },
-    
-    on : function(target, handler, context/*optional*/) {
-
-        if (! target) {
-            return;
-        }
-        var handlers = this.__handlers__ || (this.__handlers__={});
-        if (! handlers[target]) {
-            handlers[target] = [];
-        }
-        if (handlers[target].indexOf(handler) == -1) {
-            // structure in list
-            // [handler,context,handler,context,handler,context..]
-            handlers[target].push(handler);
-            handlers[target].push(context);
-        }
-
-        return handler;
-    },
-
-    off : function(target, handler) {
-        
-        var handlers = this.__handlers__ || (this.__handlers__={});
-
-        if (handlers[target]) {
-            if (handler) {
-                var arr = handlers[target];
-                // remove handler and context
-                var idx = arr.indexOf(handler);
-                if (idx >= 0)
-                    arr.splice(idx, 2);
-            } else {
-                handlers[target] = [];
-            }
-        }
-
+    function Handler(action, context) {
+        this.action = action;
+        this.context = context;
     }
-}
+
+    return{
+        trigger : function(name) {
+            if (! this.hasOwnProperty('__handlers__')) {
+                return;
+            }
+            if (!this.__handlers__.hasOwnProperty(name)) {
+                return;
+            }
+
+            var hdls = this.__handlers__[name];
+            var l = hdls.length, i = -1, args = arguments;
+            // Optimize from backbone
+            switch (args.length) {
+                case 1: 
+                    while (++i < l)
+                        hdls[i].action.call(hdls[i].context);
+                    return;
+                case 2:
+                    while (++i < l)
+                        hdls[i].action.call(hdls[i].context, args[1]);
+                    return;
+                case 3:
+                    while (++i < l)
+                        hdls[i].action.call(hdls[i].context, args[1], args[2]);
+                    return;
+                case 4:
+                    while (++i < l)
+                        hdls[i].action.call(hdls[i].context, args[1], args[2], args[3]);
+                    return;
+                case 5:
+                    while (++i < l)
+                        hdls[i].action.call(hdls[i].context, args[1], args[2], args[3], args[4]);
+                    return;
+                default:
+                    while (++i < l)
+                        hdls[i].action.apply(hdls[i].context, Array.prototype.slice.call(args, 1));
+                    return;
+            }
+        },
+        
+        on : function(name, action, context/*optional*/) {
+            if (!name || !action) {
+                return;
+            }
+            var handlers = this.__handlers__ || (this.__handlers__={});
+            if (! handlers[name]) {
+                handlers[name] = [];
+            } else {
+                if (this.has(name, action)) {
+                    return;
+                }   
+            }
+            var handler = new Handler(action, context || this);
+            handlers[name].push(handler);
+
+            return handler;
+        },
+
+        once : function(name, action, context/*optional*/) {
+            if (!name || !action) {
+                return;
+            }
+            var self = this;
+            function wrapper() {
+                self.off(name, wrapper);
+                action.apply(this, arguments);
+            }
+            return this.on(name, wrapper, context);
+        },
+
+        // Alias of on('before')
+        before : function(name, action, context/*optional*/) {
+            if (!name || !action) {
+                return;
+            }
+            name = 'before' + name;
+            return this.on(name, action, context);
+        },
+
+        // Alias of on('after')
+        after : function(name, action, context/*optional*/) {
+            if (!name || !action) {
+                return;
+            }
+            name = 'after' + name;
+            return this.on(name, action, context);
+        },
+
+        // Alias of once('success')
+        success : function(action, context/*optional*/) {
+            return this.once('success', action, context);
+        },
+
+        // Alias of once('error')
+        error : function(action, context/*optional*/) {
+            return this.once('error', action, context);
+        },
+
+        off : function(name, action/*optional*/) {
+            
+            var handlers = this.__handlers__ || (this.__handlers__={});
+
+            if (!action) {
+                handlers[name] = [];
+                return;
+            }
+            if (handlers[name]) {
+                var hdls = handlers[name];
+                // Splice is evil!!
+                var retains = [];
+                for (var i = 0; i < hdls.length; i++) {
+                    if (action && hdls[i].action !== action) {
+                        retains.push(hdls[i]);
+                    }
+                }
+                handlers[name] = retains;
+            } 
+        },
+
+        has : function(name, action) {
+            var handlers = this.__handlers__;
+
+            if (! handlers ||
+                ! handlers[name]) {
+                return false;
+            }
+            var hdls = handlers[name];
+            for (var i = 0; i < hdls.length; i++) {
+                if (hdls[i].action === action) {
+                    return true;
+                }
+            }
+        }
+    }
+    
 });
 define('core/Clazz',['require','./mixin/derive','./mixin/notifier','_'],function(require){
 
@@ -619,721 +699,1434 @@ define('core/Clazz',['require','./mixin/derive','./mixin/notifier','_'],function
  */
 define('Base',['require','core/Clazz','core/mixin/notifier','knockout','$','_'],function(require) {
 
-var Clazz = require("core/Clazz");
-var notifier = require("core/mixin/notifier");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
-
-var repository = {};    //repository to store all the component instance
-
-var Base = Clazz.derive(function() {
-return {    // Public properties
-    // Name of component, will be used in the query of the component
-    name : "",
-    // Tag of wrapper element
-    tag : "div",
-    // Attribute of the wrapper element
-    attr : {},
-    // Jquery element as a wrapper
-    // It will be created in the constructor
-    $el : null,
-    // Attribute will be applied to self
-    // WARNING: It will be only used in the constructor
-    // So there is no need to re-assign a new viewModel when created an instance
-    // if property in the attribute is a observable
-    // it will be binded to the property in viewModel
-    attributes : {},
     
-    parent : null,
-    // ui skin
-    skin : "",
-    // Class prefix
-    classPrefix : "qpf-ui-",
-    // Skin prefix
-    skinPrefix : "qpf-skin-",
 
-    id : ko.observable(""),
-    width : ko.observable(),
-    class : ko.observable(),
-    height : ko.observable(),
-    visible : ko.observable(true),
-    disable : ko.observable(false),
-    style : ko.observable(""),
+    var Clazz = require("core/Clazz");
+    var notifier = require("core/mixin/notifier");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-    // If the temporary is set true,
-    // It will not be stored in the repository and 
-    // will be destroyed when there are no reference any more
-    // Maybe a ugly solution to prevent memory leak 
-    temporary : false,
-    // events list inited at first time
-    events : {}
-}}, function() { //constructor
+    var repository = {};    //repository to store all the component instance
 
-    this.__GUID__ = genGUID();
-    // add to repository
-    if (! this.temporary) {
-        repository[this.__GUID__] = this;
-    }
+    var Base = Clazz.derive(function() {
+        return {    // Public properties
+            // Name of component, will be used in the query of the component
+            name : "",
+            // Tag of wrapper element
+            tag : "div",
+            // Attribute of the wrapper element
+            attr : {},
+            // Jquery element as a wrapper
+            // It will be created in the constructor
+            $el : null,
+            // Attribute will be applied to self
+            // WARNING: It will be only used in the constructor
+            // So there is no need to re-assign a new viewModel when created an instance
+            // if property in the attribute is a observable
+            // it will be binded to the property in viewModel
+            attributes : {},
+            
+            parent : null,
+            // ui skin
+            skin : "",
+            // Class prefix
+            classPrefix : "qpf-ui-",
+            // Skin prefix
+            skinPrefix : "qpf-skin-",
 
-    if (!this.$el) {
-        this.$el = $(document.createElement(this.tag));
-    }
-    this.$el[0].setAttribute("data-qpf-guid", this.__GUID__);
+            id : ko.observable(""),
+            width : ko.observable(),
+            class : ko.observable(),
+            height : ko.observable(),
+            visible : ko.observable(true),
+            disable : ko.observable(false),
+            style : ko.observable(""),
 
-    this.$el.attr(this.attr);
-    if (this.skin) {
-        this.$el.addClass(this.withPrefix(this.skin, this.skinPrefix));
-    }
-
-    if (this.css) {
-        _.each(_.union(this.css), function(className) {
-            this.$el.addClass(this.withPrefix(className, this.classPrefix));
-        }, this)
-    }
-    this.width.subscribe(function(newValue) {
-        this.$el.width(newValue);
-        this.onResize();
-    }, this);
-    this.height.subscribe(function(newValue) {
-        this.$el.height(newValue);
-        this.onResize();
-    }, this);
-    this.disable.subscribe(function(newValue) {
-        this.$el[newValue?"addClass":"removeClass"]("qpf-disable");
-    }, this);
-    this.id.subscribe(function(newValue) {
-        this.$el.attr("id", newValue);
-    }, this);
-    var prevClass = this.class();
-    this.class.subscribe(function(newValue) {
-        if (prevClass) {
-            this.$el.removeClass(prevClass);
+            // If the temporary is set true,
+            // It will not be stored in the repository and 
+            // will be destroyed when there are no reference any more
+            // Maybe a ugly solution to prevent memory leak 
+            temporary : false,
+            // events list inited at first time
+            events : {}
         }
-        this.$el.addClass(newValue);
-        prevClass = newValue;
-    }, this);
-    this.visible.subscribe(function(newValue) {
-        newValue ? this.$el.show() : this.$el.hide();
-    }, this);
-    this.style.subscribe(function(newValue) {
-        var valueSv = newValue;
-        var styleRegex = /(\S*?)\s*:\s*(.*)/g;
-        var tmp = newValue.split(";");
-        tmp = _.map(tmp, function(item) {
-            return item.replace(/(^\s*)|(\s*$)/g, "") //trim
-                        .replace(styleRegex, '"$1":"$2"');
-        });
-        tmp = _.filter(tmp, function(item) {return item;});
-        // preprocess the style string
-        newValue = "{" + tmp.join(",") + "}";
-        try{
-            var obj = ko.utils.parseJson(newValue);
-            this.$el.css(obj);
-        }catch(e) {
-            throw new Error("Syntax Error of style: "+ valueSv);
+    }, function() { //constructor
+
+        this.__GUID__ = genGUID();
+        // add to repository
+        if (! this.temporary) {
+            repository[this.__GUID__] = this;
         }
-    }, this);
 
-    // register the events before initialize
-    for(var name in this.events) {
-        var handler = this.events[name];
-        if (typeof(handler) == "function") {
-            this.on(name, handler);
+        if (!this.$el) {
+            this.$el = $(document.createElement(this.tag));
         }
-    }
+        this.$el[0].setAttribute("data-qpf-guid", this.__GUID__);
 
-    // apply attribute 
-    this._mappingAttributes(this.attributes);
-
-    this.initialize();
-    this.trigger("initialize");
-    // Here we removed auto rendering at constructor
-    // to support deferred rendering after the $el is attached
-    // to the document
-    // this.render();
-
-}, {// Prototype
-    // Type of component. The className of the wrapper element is
-    // depend on the type
-    type : "BASE",
-    // Template of the component, will be applyed binging with viewModel
-    template : "",
-    // Declare the events that will be provided 
-    // Developers can use on method to subscribe these events
-    // It is used in the binding handlers to judge which parameter
-    // passed in is events
-    eventsProvided : ["click", "dblclick", "mousedown", "mouseup", "mousemove", "resize",
-                        "initialize", "beforerender", "render", "dispose"],
-
-    // Will be called after the component first created
-    initialize : function() {},
-    // set the attribute in the modelView
-    set : function(key, value) {
-        if (typeof(key) == "string") {
-            var source = {};
-            source[key] = value;
-        } else {
-            source = key;
-        };
-        this._mappingAttributes(source, true);
-    },
-    // Call to refresh the component
-    // Will trigger beforeRender and afterRender hooks
-    // beforeRender and afterRender hooks is mainly provide for
-    // the subclasses
-    render : function() {
-        this.beforeRender && this.beforeRender();
-        this.trigger("beforerender");
-
-        this.doRender();
-        this.afterRender && this.afterRender();
-
-        this.trigger("render");
-        // trigger the resize events
-        this.onResize();
-    },
-    // Default render method
-    doRender : function() {
-        this.$el.children().each(function() {
-            Base.disposeDom(this);
-        })
-
-        this.$el.html(this.template);
-        ko.applyBindings(this, this.$el[0]);
-    },
-    // Dispose the component instance
-    dispose : function() {
-        if (this.$el) {
-            // remove the dom element
-            this.$el.remove()
+        this.$el.attr(this.attr);
+        if (this.skin) {
+            this.$el.addClass(this._withPrefix(this.skin, this.skinPrefix));
         }
-        // remove from repository
-        repository[this.__GUID__] = null;
 
-        this.trigger("dispose");
-    },
-    resize : function(width, height) {
-        if (typeof(width) === "number") {
-            this.width(width);
+        if (this.css) {
+            _.each(_.union(this.css), function(className) {
+                this.$el.addClass(this._withPrefix(className, this.classPrefix));
+            }, this)
         }
-        if (typeof(height) == "number") {
-            this.height(height);
-        }
-    },
-    onResize : function() {
-        this.trigger('resize');
-    },
-    withPrefix : function(className, prefix) {
-        if (className.indexOf(prefix) != 0) {
-            return prefix + className;
-        }
-    },
-    withoutPrefix : function(className, prefix) {
-        if (className.indexOf(prefix) == 0) {
-            return className.substr(prefix.length);
-        }
-    },
-    _mappingAttributes : function(attributes, onlyUpdate) {
-        for(var name in attributes) {
-            var attr = attributes[name];
-            var propInVM = this[name];
-            // create new attribute when property is not existed, even if it will not be used
-            if (typeof(propInVM) === "undefined") {
-                var value = ko.utils.unwrapObservable(attr);
-                // is observableArray or plain array
-                if ((ko.isObservable(attr) && attr.push) ||
-                    attr.constructor == Array) {
-                    this[name] = ko.observableArray(value);
-                } else {
-                    this[name] = ko.observable(value);
-                }
-                propInVM = this[name];
+        this.width.subscribe(function(newValue) {
+            this.$el.width(newValue);
+            this.onResize();
+        }, this);
+        this.height.subscribe(function(newValue) {
+            this.$el.height(newValue);
+            this.onResize();
+        }, this);
+        this.disable.subscribe(function(newValue) {
+            this.$el[newValue?"addClass":"removeClass"]("qpf-disable");
+        }, this);
+        this.id.subscribe(function(newValue) {
+            this.$el.attr("id", newValue);
+        }, this);
+        var prevClass = this.class();
+        this.class.subscribe(function(newValue) {
+            if (prevClass) {
+                this.$el.removeClass(prevClass);
             }
-            else if (ko.isObservable(propInVM)) {
-                propInVM(ko.utils.unwrapObservable(attr));
+            this.$el.addClass(newValue);
+            prevClass = newValue;
+        }, this);
+        this.visible.subscribe(function(newValue) {
+            newValue ? this.$el.show() : this.$el.hide();
+        }, this);
+        this.style.subscribe(function(newValue) {
+            var valueSv = newValue;
+            var styleRegex = /(\S*?)\s*:\s*(.*)/g;
+            var tmp = newValue.split(";");
+            tmp = _.map(tmp, function(item) {
+                return item.replace(/(^\s*)|(\s*$)/g, "") //trim
+                            .replace(styleRegex, '"$1":"$2"');
+            });
+            tmp = _.filter(tmp, function(item) {return item;});
+            // preprocess the style string
+            newValue = "{" + tmp.join(",") + "}";
+            try{
+                var obj = ko.utils.parseJson(newValue);
+                this.$el.css(obj);
+            }catch(e) {
+                throw new Error("Syntax Error of style: "+ valueSv);
+            }
+        }, this);
+
+        // register the events before initialize
+        for(var name in this.events) {
+            var handler = this.events[name];
+            if (typeof(handler) == "function") {
+                this.on(name, handler);
+            }
+        }
+
+        // apply attribute 
+        this._mappingAttributes(this.attributes);
+
+        this.initialize();
+        this.trigger("initialize");
+        // Here we removed auto rendering at constructor
+        // to support deferred rendering after the $el is attached
+        // to the document
+        // this.render();
+
+    }, {// Prototype
+        // Type of component. The className of the wrapper element is
+        // depend on the type
+        type : "BASE",
+        // Template of the component, will be applyed binging with viewModel
+        template : "",
+        // Declare the events that will be provided 
+        // Developers can use on method to subscribe these events
+        // It is used in the binding handlers to judge which parameter
+        // passed in is events
+        eventsProvided : ["click", "dblclick", "mousedown", "mouseup", "mousemove", "resize",
+                            "initialize", "beforerender", "render", "dispose"],
+
+        // Will be called after the component first created
+        initialize : function() {},
+        // set the attribute in the modelView
+        set : function(key, value) {
+            if (typeof(key) == "string") {
+                var source = {};
+                source[key] = value;
             } else {
-                this[name] = ko.utils.unwrapObservable(attr);
+                source = key;
+            };
+            this._mappingAttributes(source, true);
+        },
+        // Call to refresh the component
+        // Will trigger beforeRender and afterRender hooks
+        // beforeRender and afterRender hooks is mainly provide for
+        // the subclasses
+        render : function() {
+            this.beforeRender && this.beforeRender();
+            this.trigger("beforerender");
+
+            this.doRender();
+            this.afterRender && this.afterRender();
+
+            this.trigger("render");
+            // trigger the resize events
+            this.onResize();
+        },
+        // Default render method
+        doRender : function() {
+            this.$el.children().each(function() {
+                Base.disposeDom(this);
+            })
+
+            this.$el.html(this.template);
+            ko.applyBindings(this, this.$el[0]);
+        },
+        // Dispose the component instance
+        dispose : function() {
+            if (this.$el) {
+                // remove the dom element
+                this.$el.remove()
             }
-            if (! onlyUpdate) {
-                // Two-way data binding if the attribute is an observable
-                if (ko.isObservable(attr)) {
-                    bridge(propInVM, attr);
+            // remove from repository
+            repository[this.__GUID__] = null;
+
+            this.trigger("dispose");
+        },
+        resize : function(width, height) {
+            this.width(+width);
+            this.height(+height);
+        },
+        onResize : function() {
+            this.trigger('resize');
+        },
+        _withPrefix : function(className, prefix) {
+            if (className.indexOf(prefix) != 0) {
+                return prefix + className;
+            }
+        },
+        _withoutPrefix : function(className, prefix) {
+            if (className.indexOf(prefix) == 0) {
+                return className.substr(prefix.length);
+            }
+        },
+        _mappingAttributes : function(attributes, onlyUpdate) {
+            for(var name in attributes) {
+                var attr = attributes[name];
+                var propInVM = this[name];
+                // create new attribute when property is not existed, even if it will not be used
+                if (typeof(propInVM) === "undefined") {
+                    var value = ko.utils.unwrapObservable(attr);
+                    // is observableArray or plain array
+                    if ((ko.isObservable(attr) && attr.push) || attr instanceof Array) {
+                        this[name] = ko.observableArray(value);
+                    } else {
+                        this[name] = ko.observable(value);
+                    }
+                    propInVM = this[name];
                 }
-            }
-        }   
+                else if (ko.isObservable(propInVM)) {
+                    propInVM(ko.utils.unwrapObservable(attr));
+                } else {
+                    this[name] = ko.utils.unwrapObservable(attr);
+                }
+                if (! onlyUpdate) {
+                    // Two-way data binding if the attribute is an observable
+                    if (ko.isObservable(attr)) {
+                        bridge(propInVM, attr);
+                    }
+                }
+            }   
+        }
+    })
+
+    // register proxy events of dom
+    var proxyEvents = ["click", "mousedown", "mouseup", "mousemove"];
+    Base.prototype.on = function(eventName) {
+        // lazy register events
+        if (proxyEvents.indexOf(eventName) >= 0) {
+            this.$el.unbind(eventName, proxyHandler)
+            .bind(eventName, {context : this}, proxyHandler);
+        }
+        notifier.on.apply(this, arguments);
     }
-})
+    function proxyHandler(e) {
+        var context = e.data.context;
+        var eventType = e.type;
 
-// register proxy events of dom
-var proxyEvents = ["click", "mousedown", "mouseup", "mousemove"];
-Base.prototype.on = function(eventName) {
-    // lazy register events
-    if (proxyEvents.indexOf(eventName) >= 0) {
-        this.$el.unbind(eventName, proxyHandler)
-        .bind(eventName, {context : this}, proxyHandler);
-    }
-    notifier.on.apply(this, arguments);
-}
-function proxyHandler(e) {
-    var context = e.data.context;
-    var eventType = e.type;
-
-    context.trigger(eventType);
-}
-
-
-// get a unique component by guid
-Base.get = function(guid) {
-    return repository[guid];
-}
-Base.getByDom = function(domNode) {
-    var guid = domNode.getAttribute("data-qpf-guid");
-    return Base.get(guid);
-}
-
-// dispose all the components attached in the domNode and
-// its children(if recursive is set true)
-Base.disposeDom = function(domNode, resursive) {
-
-    if (typeof(recursive) == "undefined") {
-        recursive = true;
+        context.trigger(eventType);
     }
 
-    function dispose(node) {
-        var guid = node.getAttribute("data-qpf-guid");
-        var component = Base.get(guid);
-        if (component) {
-            // do not recursive traverse the children of component
-            // element
-            // hand over dispose of sub element task to the components
-            // it self
-            component.dispose();
-        } else {
-            if (recursive) {
-                for(var i = 0; i < node.childNodes.length; i++) {
-                    var child = node.childNodes[i];
-                    if (child.nodeType == 1) {
-                        dispose(child);
+
+    // get a unique component by guid
+    Base.get = function(guid) {
+        return repository[guid];
+    }
+    Base.getByDom = function(domNode) {
+        var guid = domNode.getAttribute("data-qpf-guid");
+        return Base.get(guid);
+    }
+
+    // dispose all the components attached in the domNode and
+    // its children(if recursive is set true)
+    Base.disposeDom = function(domNode, recursive) {
+
+        if (typeof(recursive) == "undefined") {
+            recursive = true;
+        }
+
+        function dispose(node) {
+            var guid = node.getAttribute("data-qpf-guid");
+            var component = Base.get(guid);
+            if (component) {
+                // do not recursive traverse the children of component
+                // element
+                // hand over dispose of sub element task to the components
+                // it self
+                component.dispose();
+            } else {
+                if (recursive) {
+                    for(var i = 0; i < node.childNodes.length; i++) {
+                        var child = node.childNodes[i];
+                        if (child.nodeType == 1) {
+                            dispose(child);
+                        }
                     }
                 }
             }
         }
+
+        dispose(domNode);
     }
 
-    dispose(domNode);
-}
-
-// util function of generate a unique id
-var genGUID = (function() {
-    var id = 0;
-    return function() {
-        return id++;
-    }
-})();
-
-//----------------------------
-// knockout extenders
-ko.extenders.numeric = function(target, precision) {
-
-    var fixer = ko.computed({
-        read : target,
-        write : function(newValue) { 
-            if (newValue === "") {
-                target("");
-                return;
-            } else {
-                var val = parseFloat(newValue);
-            }
-            val = isNaN(val) ? 0 : val;
-            var precisionValue = parseFloat(ko.utils.unwrapObservable(precision));
-            if (! isNaN(precisionValue)) {
-                var multiplier = Math.pow(10, precisionValue);
-                val = Math.round(val * multiplier) / multiplier;
-            }
-            target(val);
+    // util function of generate a unique id
+    var genGUID = (function() {
+        var id = 0;
+        return function() {
+            return id++;
         }
-    });
+    })();
 
-    fixer(target());
+    //----------------------------
+    // knockout extenders
+    ko.extenders.numeric = function(target, precision) {
 
-    return fixer;
-};
-
-ko.extenders.clamp = function(target, options) {
-    var min = options.min;
-    var max = options.max;
-
-    var clamper = ko.computed({
-        read : target,
-        write : function(value) {
-            var minValue = parseFloat(ko.utils.unwrapObservable(min)),
-                maxValue = parseFloat(ko.utils.unwrapObservable(max));
-
-            if (! isNaN(minValue)) {
-                value = Math.max(minValue, value);
+        var fixer = ko.computed({
+            read : target,
+            write : function(newValue) { 
+                if (newValue === "") {
+                    target("");
+                    return;
+                } else {
+                    var val = parseFloat(newValue);
+                }
+                val = isNaN(val) ? 0 : val;
+                var precisionValue = parseFloat(ko.utils.unwrapObservable(precision));
+                if (! isNaN(precisionValue)) {
+                    var multiplier = Math.pow(10, precisionValue);
+                    val = Math.round(val * multiplier) / multiplier;
+                }
+                target(val);
             }
-            if (! isNaN(maxValue)) {
-                value = Math.min(maxValue, value);
-            }
-            target(value);
-        }
-    })
-
-    clamper(target());
-    return clamper;
-}
-
-//-------------------------------------------
-// Handle bingings in the knockout template
-
-var _bindings = {};
-Base.provideBinding = function(name, Component) {
-    _bindings[name] = Component;
-}
-
-Base.create = function(name, config) {
-    var Constructor = _bindings[name];
-    if (Constructor) {
-        return new Constructor(config);
-    }
-}
-
-// provide bindings to knockout
-ko.bindingHandlers["qpf"] = {
-
-    createComponent : function(element, valueAccessor) {
-        // dispose the previous component host on the element
-        var prevComponent = Base.getByDom(element);
-        if (prevComponent) {
-            prevComponent.dispose();
-        }
-        var component = createComponentFromDataBinding(element, valueAccessor);
-        return component;
-    },
-
-    init : function(element, valueAccessor) {
-
-        var component = ko.bindingHandlers["qpf"].createComponent(element, valueAccessor);
-
-        component.render();
-        // not apply bindings to the descendant doms in the UI component
-        return { 'controlsDescendantBindings': true };
-    },
-
-    update : function(element, valueAccessor) {}
-}
-
-// append the element of view in the binding
-ko.bindingHandlers["qpf_view"] = {
-    init : function(element, valueAccessor) {
-        var value = valueAccessor();
-
-        var subView = ko.utils.unwrapObservable(value);
-        if (subView && subView.$el) {
-            Base.disposeDom(element);
-            element.parentNode.replaceChild(subView.$el[0], element);
-        }
-        // PENDING
-        // handle disposal (if KO removes by the template binding)
-        // ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
-        //     subView.dispose();
-        // });
-
-        return { 'controlsDescendantBindings': true };
-    },
-
-    update : function(element, valueAccessor) {
-    }
-}
-
-//-----------------------------------
-// Provide plugins to jquery
-$.fn.qpf = function(op, viewModel) {
-    op = op || "get";
-    if (op === "get") {
-        var result = [];
-        this.each(function() {
-            var item = Base.getByDom(this);
-            if (item) {
-                result.push(item);
-            }
-        })
-        return result;
-    } else if (op === "init") {
-        this.each(function() {
-            ko.applyBindings(viewModel, this);
         });
-        return this.qpf("get");
-    } else if (op === "dispose") {
-        this.each(function() {
-            Base.disposeDom(this);
+
+        fixer(target());
+
+        return fixer;
+    };
+
+    ko.extenders.clamp = function(target, options) {
+        var min = options.min;
+        var max = options.max;
+
+        var clamper = ko.computed({
+            read : target,
+            write : function(value) {
+                var minValue = parseFloat(ko.utils.unwrapObservable(min)),
+                    maxValue = parseFloat(ko.utils.unwrapObservable(max));
+
+                if (! isNaN(minValue)) {
+                    value = Math.max(minValue, value);
+                }
+                if (! isNaN(maxValue)) {
+                    value = Math.min(maxValue, value);
+                }
+                target(value);
+            }
+        })
+
+        clamper(target());
+        return clamper;
+    }
+
+    //-------------------------------------------
+    // Handle bingings in the knockout template
+
+    var _bindings = {};
+    Base.provideBinding = function(name, Component) {
+        _bindings[name] = Component;
+    }
+
+    Base.create = function(name, config) {
+        var Constructor = _bindings[name];
+        if (Constructor) {
+            return new Constructor(config);
+        }
+    }
+
+    // provide bindings to knockout
+    ko.bindingHandlers["qpf"] = {
+
+        createComponent : function(element, valueAccessor) {
+            // dispose the previous component host on the element
+            var prevComponent = Base.getByDom(element);
+            if (prevComponent) {
+                prevComponent.dispose();
+            }
+            var component = createComponentFromDataBinding(element, valueAccessor);
+            return component;
+        },
+
+        init : function(element, valueAccessor) {
+
+            var component = ko.bindingHandlers["qpf"].createComponent(element, valueAccessor);
+
+            component.render();
+            // not apply bindings to the descendant doms in the UI component
+            return { 'controlsDescendantBindings': true };
+        },
+
+        update : function(element, valueAccessor) {}
+    }
+
+    // append the element of view in the binding
+    ko.bindingHandlers["qpf_view"] = {
+        init : function(element, valueAccessor) {
+            var value = valueAccessor();
+
+            var subView = ko.utils.unwrapObservable(value);
+            if (subView && subView.$el) {
+                Base.disposeDom(element);
+                element.parentNode.replaceChild(subView.$el[0], element);
+            }
+            // PENDING
+            // handle disposal (if KO removes by the template binding)
+            // ko.utils.domNodeDisposal.addDisposeCallback(element, function() {
+            //     subView.dispose();
+            // });
+
+            return { 'controlsDescendantBindings': true };
+        },
+
+        update : function(element, valueAccessor) {
+        }
+    }
+
+    //-----------------------------------
+    // Provide plugins to jquery
+    $.fn.qpf = function(op, viewModel) {
+        op = op || "get";
+        if (op === "get") {
+            var result = [];
+            this.each(function() {
+                var item = Base.getByDom(this);
+                if (item) {
+                    result.push(item);
+                }
+            })
+            return result;
+        } else if (op === "init") {
+            this.each(function() {
+                ko.applyBindings(viewModel, this);
+            });
+            return this.qpf("get");
+        } else if (op === "dispose") {
+            this.each(function() {
+                Base.disposeDom(this);
+            })
+        }
+    }
+
+    //------------------------------------
+    // Util functions
+    var unwrap = ko.utils.unwrapObservable;
+
+    function createComponentFromDataBinding(element, valueAccessor) {
+
+        var value = valueAccessor();
+        
+        var options = unwrap(value) || {};
+        var type = unwrap(options.type);
+
+        if (type) {
+            var Constructor = _bindings[type];
+
+            if (Constructor) {
+                var component = createComponentFromJSON(options, Constructor)
+                if (component) {
+                    element.innerHTML = "";
+                    element.appendChild(component.$el[0]);
+                    
+                    $(element).addClass("qpf-wrapper");
+                }
+                // save the guid in the element data attribute
+                element.setAttribute("data-qpf-guid", component.__GUID__);
+            } else {
+                throw new Error("Unkown UI type, " + type);
+            }
+        } else {
+            throw new Error("UI type is needed");
+        }
+        return component;
+    }
+
+    function createComponentFromJSON(options, Constructor) {
+
+        var type = unwrap(options.type);
+        var name = unwrap(options.name);
+        var attr = _.omit(options, "type", "name");
+
+        var events = {};
+
+        // Find which property is event
+        _.each(attr, function(value, key) {
+            if (key.indexOf("on") == 0 &&
+                Constructor.prototype.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
+                typeof(value) == "function") {
+                delete attr[key];
+                events[key.substr("on".length)] = value;
+            }
+        })
+
+        var component = new Constructor({
+            name : name || "",
+            attributes : attr,
+            events : events
+        });
+
+        return component;
+    }
+
+    // build a bridge of twe observables
+    // and update the value from source to target
+    // at first time
+    function bridge(target, source) {
+        
+        target(source());
+
+        // Save the previous value with clone method in underscore
+        // In case the notification is triggered by push methods of
+        // Observable Array and the commonValue instance is same with new value
+        // instance
+        // Reference : `set` method in backbone
+        var commonValue = _.clone(target());
+        target.subscribe(function(newValue) {
+            // Knockout will always suppose the value is mutated each time it is written
+            // the value which is not primitive type(like array)
+            // So here will cause a recurse trigger if the value is not a primitive type
+            // We use underscore deep compare function to evaluate if the value is changed
+            // PENDING : use shallow compare function?
+            try{
+                if (! _.isEqual(commonValue, newValue)) {
+                    commonValue = _.clone(newValue);
+                    source(newValue);
+                }
+            }catch(e) {
+                // Normally when source is computed value
+                // and it don't have a write function
+                console.error(e.toString());
+            }
+        })
+        source.subscribe(function(newValue) {
+            try{
+                if (! _.isEqual(commonValue, newValue)) {
+                    commonValue = _.clone(newValue);
+                    target(newValue);
+                }
+            }catch(e) {
+                console.error(e.toString());
+            }
         })
     }
-}
 
-//------------------------------------
-// Util functions
-var unwrap = ko.utils.unwrapObservable;
+    // export the interface
+    return Base;
 
-function createComponentFromDataBinding(element, valueAccessor) {
+});
+/**
+ * mixin to provide draggable interaction
+ * support multiple selection
+ *
+ * @property    helper
+ * @property    axis "x" | "y"
+ * @property    container
+ * @method      add(target[, handle])
+ * @method      remove(target)
+ **/
 
-    var value = valueAccessor();
+define('helper/Draggable',['require','../core/Clazz','knockout','$','_'],function(require) {
+
     
-    var options = unwrap(value) || {};
-    var type = unwrap(options.type);
 
-    if (type) {
-        var Constructor = _bindings[type];
+    var Clazz = require('../core/Clazz');
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-        if (Constructor) {
-            var component = createComponentFromJSON(options, Constructor)
-            if (component) {
-                element.innerHTML = "";
-                element.appendChild(component.$el[0]);
-                
-                $(element).addClass("qpf-wrapper");
-            }
-            // save the guid in the element data attribute
-            element.setAttribute("data-qpf-guid", component.__GUID__);
-        } else {
-            throw new Error("Unkown UI type, " + type);
+    var DraggableItem = Clazz.derive(function() {
+        return {
+
+            id : 0,
+
+            target : null,
+
+            handle : null,
+
+            margins : {},
+
+            // original position of the target relative to 
+            // its offsetParent, here we get it with jQuery.position method
+            originPosition : {},
+
+            // offset of the offsetParent, which is get with jQuery.offset
+            // method
+            offsetParentOffset : {},
+            // cache the size of the draggable target
+            width : 0,
+            height : 0,
+            // save the original css position of dragging target
+            // to be restored when stop the drag
+            positionType : "",
+            //
+            // data to be transferred
+            data : {},
+
+            // instance of [Draggable]
+            host : null
+        };
+    }, {
+        
+        setData : function(data) {
+
+        },
+
+        remove : function() {
+            this.host.remove(this.target);
         }
-    } else {
-        throw new Error("UI type is needed");
-    }
-    return component;
-}
-
-function createComponentFromJSON(options, Constructor) {
-
-    var type = unwrap(options.type);
-    var name = unwrap(options.name);
-    var attr = _.omit(options, "type", "name");
-
-    var events = {};
-
-    // Find which property is event
-    _.each(attr, function(value, key) {
-        if (key.indexOf("on") == 0 &&
-            Constructor.prototype.eventsProvided.indexOf(key.substr("on".length)) >= 0 &&
-            typeof(value) == "function") {
-            delete attr[key];
-            events[key.substr("on".length)] = value;
-        }
-    })
-
-    var component = new Constructor({
-        name : name || "",
-        attributes : attr,
-        events : events
     });
 
-    return component;
-}
+    var Draggable = Clazz.derive(function() {
+        return {
 
-// build a bridge of twe observables
-// and update the value from source to target
-// at first time
-function bridge(target, source) {
+            items : {}, 
+
+            axis : null,
+
+            // the container where draggable item is limited
+            // can be an array of boundingbox or HTMLDomElement or jquery selector
+            container : null,
+
+            helper : null,
+
+            // If update dom position is set false, it is only a proxy
+            // Like handles in Resizable
+            updateDomPosition : true,
+
+            //private properties
+            // boundingbox of container compatible with getBoundingClientRect method
+            _boundingBox : null,
+
+            _mouseStart : {},
+            _$helper : null
+        }
+    }, {
+
+        add : function(elem, handle) {
+            
+            var id = genGUID(),
+                $elem = $(elem);
+            if (handle) {
+                var $handle = $(handle);
+            }
+
+            $elem.attr("data-qpf-draggable", id)
+                .addClass("qpf-draggable");
+            
+            (handle ? $(handle) : $elem)
+                .unbind("mousedown", this._mouseDown)
+                .bind("mousedown", {context:this}, this._mouseDown);
+
+            var newItem = new DraggableItem({
+                id : id,
+                target : elem,
+                host : this,
+                handle : handle
+            })
+            this.items[id] = newItem;
+
+            return newItem;
+        },
+
+        remove : function(elem) {
+
+            if (elem instanceof DraggableItem) {
+                var item = elem,
+                    $elem = $(item.elem),
+                    id = item.id;
+            } else {
+                var $elem = $(elem),
+                    id = $elem.attr("data-qpf-draggable");
+                
+                if (id ) {
+                    var item = this.items[id];
+                }
+            }   
+            delete this.items[id];
+
+            
+            $elem.removeAttr("data-qpf-draggable")
+                .removeClass("qpf-draggable");
+            // remove the events binded to it
+            (item.handle ? $(item.handle) : $elem)
+                .unbind("mousedown", this._mouseDown);
+        },
+
+        clear : function() {
+
+            _.each(this.items, function(item) {
+                this.remove(item.target);
+            }, this);
+        },
+
+        _save : function() {
+
+            _.each(this.items, function(item) {
+
+                var $elem = $(item.target);
+                var $offsetParent = $elem.offsetParent();
+                var position = $elem.position();
+                var offsetParentOffset = $offsetParent.offset();
+                var margin = {
+                    left: parseInt($elem.css("marginLeft")) || 0,
+                    top: parseInt($elem.css("marginTop")) || 0
+                };
+
+                item.margin = margin;
+                // fix the position with margin
+                item.originPosition = {
+                    left: position.left - margin.left,
+                    top: position.top - margin.top
+                },
+                item.offsetParentOffset = offsetParentOffset;
+                // cache the size of the dom element
+                item.width = $elem.width(),
+                item.height = $elem.height(),
+                // save the position info for restoring after drop
+                item.positionType = $elem.css("position");
+
+            }, this);
+
+        },
+
+        _restore : function(restorePosition) {
+
+            _.each(this.items, function(item) {
+
+                var $elem = $(item.target);
+                var position = $elem.offset();
+                $elem.css("position", item.positionType);
+
+                if (restorePosition) {
+                    $elem.offset({
+                        left: item.originPosition.left + item.margin.left,
+                        top: item.originPosition.top + item.margin.top
+                    });
+                } else {
+                    $elem.offset(position);
+                }
+            }, this);
+        },
+
+        _mouseDown : function(e) {
+            
+            if (e.which !== 1) {
+                return;
+            }
+
+            var self = e.data.context;
+
+            if (self.updateDomPosition) {
+                self._save();
+            }
+
+            self._triggerProxy("dragstart", e);
+
+            if (! self.helper) {
+
+                _.each(self.items, function(item) {
+                    
+                    var $elem = $(item.target);
+
+                    $elem.addClass("qpf-draggable-dragging");
+
+                    if (self.updateDomPosition) {
+                        $elem.css({
+                            position: "absolute",
+                            left: (item.originPosition.left)+"px",
+                            top: (item.originPosition.top)+"px"
+                        });   
+                    }
+
+                }, self);
+
+                if (self.container) {
+                    self._boundingBox = self._computeBoundingBox(self.container);
+                } else {
+                    self._boundingBox = null;
+                }
+
+            } else {
+
+                self._$helper = $(self.helper);
+                document.body.appendChild(self._$helper[0]);
+                self._$helper.css({
+                    left: e.pageX,
+                    top: e.pageY
+                });
+            }
+
+            $(document.body)
+                .unbind("mousemove", self._mouseMove)
+                .bind("mousemove", {context:self}, self._mouseMove)
+                .unbind("mouseout", self._mouseOut)
+                .bind("mouseout", {context:self}, self._mouseOut)
+                .unbind('mouseup', self._mouseUp)
+                .bind("mouseup", {context:self}, self._mouseUp);
+
+            self._mouseStart = {
+                x : e.pageX,
+                y : e.pageY
+            };
+
+        },
+
+        _computeBoundingBox : function(container) {
+
+            if (_.isArray(container)) {
+
+                return {
+                    left : container[0][0],
+                    top : container[0][1],
+                    right : container[1][0],
+                    bottom : container[1][1]
+                }
+
+            } else if (container.left && 
+                        container.right &&
+                        container.top &&
+                        container.bottom) {
+
+                return container;
+            } else {
+                // using getBoundingClientRect to get the bounding box
+                // of HTMLDomElement
+                try {
+                    var $container = $(container);
+                    var offset = $container.offset();
+                    var bb = {
+                        left : offset.left + parseInt($container.css("padding-left")) || 0,
+                        top : offset.top + parseInt($container.css("padding-top")) || 0,
+                        right : offset.left + $container.width() - parseInt($container.css("padding-right")) || 0,
+                        bottom : offset.top + $container.height() - parseInt($container.css("padding-bottom")) || 0
+                    };
+                    
+                    return bb;
+                } catch (e) {
+                    console.error("Invalid container type");
+                }
+            }
+
+        },
+
+        _mouseMove : function(e) {
+
+            var self = e.data.context;
+
+            if (!self.updateDomPosition) {
+                self._triggerProxy("drag", e);
+                return;
+            }
+
+            var offset = {
+                x : e.pageX - self._mouseStart.x,
+                y : e.pageY - self._mouseStart.y
+            }
+
+            if (! self._$helper) {
+
+                _.each(self.items, function(item) {
+                    // calculate the offset position to the document
+                    var left = item.originPosition.left + item.offsetParentOffset.left + offset.x,
+                        top = item.originPosition.top + item.offsetParentOffset.top + offset.y;
+                    // constrained in the area of container
+                    if (self._boundingBox) {
+                        var bb = self._boundingBox;
+                        left = left > bb.left ? 
+                                        (left+item.width < bb.right ? left : bb.right-item.width)
+                                         : bb.left;
+                        top = top > bb.top ? 
+                                    (top+item.height < bb.bottom ? top : bb.bottom-item.height)
+                                    : bb.top;
+                    }
+
+                    var axis = ko.utils.unwrapObservable(self.axis);
+                    if (!axis || axis.toLowerCase() !== "y") {
+                        $(item.target).css("left", left - item.offsetParentOffset.left + "px");
+                    }
+                    if (!axis || axis.toLowerCase() !== "x") {
+                        $(item.target).css("top", top - item.offsetParentOffset.top + "px");
+                    }
+
+                }, self);
+
+
+            } else {
+
+                self._$helper.css({
+                    "left" : e.pageX,
+                    "top" : e.pageY
+                })
+            };
+
+            self._triggerProxy("drag", e);
+        },
+
+        _mouseUp : function(e) {
+
+            var self = e.data.context;
+
+            $(document.body).unbind("mousemove", self._mouseMove)
+                .unbind("mouseout", self._mouseOut)
+                .unbind("mouseup", self._mouseUp);
+
+            if (self._$helper) {
+
+                self._$helper.remove();
+            } else {
+
+                _.each(self.items, function(item) {
+
+                    var $elem = $(item.target);
+
+                    $elem.removeClass("qpf-draggable-dragging");
+
+                }, self);
+            }
+
+            if (self.updateDomPosition) {
+                self._restore();
+            }
+
+            self._triggerProxy("dragend", e);
+        },
+
+        _mouseOut : function(e) {
+            // PENDING
+            // this._mouseUp.call(this, e);
+        },
+
+        _triggerProxy : function() {
+            var args = arguments;
+            for (var name in this.items) {
+                this.items[name].trigger.apply(this.items[name], args);
+            }
+
+            this.trigger.apply(this, args);
+        }
+
+    });
+
+
+    var genGUID = (function() {
+        var id = 1;
+        return function() {
+            return id++;
+        }
+    }) ();
+
+    Draggable.applyTo = function(target, options) {
+        target.draggable = new Draggable(options);        
+    }
+    return Draggable;
+
+});
+define('helper/Resizable',['require','../core/Clazz','./Draggable','knockout','_','$'],function(require) {
+
     
-    target(source());
 
-    // Save the previous value with clone method in underscore
-    // In case the notification is triggered by push methods of
-    // Observable Array and the commonValue instance is same with new value
-    // instance
-    // Reference : `set` method in backbone
-    var commonValue = _.clone(target());
-    target.subscribe(function(newValue) {
-        // Knockout will always suppose the value is mutated each time it is writted
-        // the value which is not primitive type(like array)
-        // So here will cause a recurse trigger if the value is not a primitive type
-        // We use underscore deep compare function to evaluate if the value is changed
-        // PENDING : use shallow compare function?
-        try{
-            if (! _.isEqual(commonValue, newValue)) {
-                commonValue = _.clone(newValue);
-                source(newValue);
-            }
-        }catch(e) {
-            // Normally when source is computed value
-            // and it don't have a write function
-            console.error(e.toString());
+    var Clazz = require('../core/Clazz');
+    var Draggable = require('./Draggable');
+    var ko = require("knockout");
+    var _ = require("_");
+    var $ = require("$");
+
+    var Resizable = Clazz.derive(function() {
+        return {
+            
+            container : null,
+
+            $container : null,
+            
+            maxWidth : Infinity,
+            
+            minWidth : 0,
+            
+            maxHeight : Infinity,
+            
+            minHeight : 0,
+
+            handles : 'r,b,rb',
+
+            handleSize : 10,
+
+            _x0 : 0,
+            _y0 : 0,
+
+            _isContainerAbsolute : false
         }
-    })
-    source.subscribe(function(newValue) {
-        try{
-            if (! _.isEqual(commonValue, newValue)) {
-                commonValue = _.clone(newValue);
-                target(newValue);
+    }, {
+
+        enable : function() {
+            this.$container = $(this.container);
+            this._addHandlers();
+
+            if (!this._isContainerAbsolute) {
+                this.$container.css('position', 'relative');
             }
-        }catch(e) {
-            console.error(e.toString());
+        },
+
+        disable : function() {
+            this.$container.children('.qpf-resizable-handler').remove();
+        },
+
+        _addHandlers : function() {
+            var handles = this.handles.split(/\s*,\s*/);
+            _.each(handles, function(handle) {
+                switch(handle) {
+                    case 'r':
+                        this._addRightHandler();
+                        break;
+                    case 'b':
+                        this._addBottomHandler();
+                        break;
+                    case 'l':
+                        this._addLeftHandler();
+                        break;
+                    case 't':
+                        this._addTopHandler();
+                        break;
+                    case 'rb':
+
+                        break;
+                }
+            }, this);
+        },
+
+        _addRightHandler : function() {
+            var $handler = this._createHandler('right');
+            $handler.css({
+                right: '0px',
+                top: '0px',
+                bottom: '0px',
+                width: this.handleSize + 'px'
+            });
+            var draggable = new Draggable();
+            draggable.updateDomPosition = false;
+            draggable.add($handler);
+            draggable.on('dragstart', this._onResizeStart, this);
+            draggable.on('drag', this._onRightResize, this);
+        },
+
+        _addTopHandler : function() {
+            var $handler = this._createHandler('top');
+            $handler.css({
+                left: '0px',
+                top: '0px',
+                right: '0px',
+                height: this.handleSize + 'px'
+            });
+            var draggable = new Draggable();
+            draggable.updateDomPosition = false;
+            draggable.add($handler);
+            draggable.on('dragstart', this._onResizeStart, this);
+            draggable.on('drag', this._onTopResize, this);
+        },
+
+        _addLeftHandler : function() {
+            var $handler = this._createHandler('left');
+            $handler.css({
+                left: '0px',
+                top: '0px',
+                bottom: '0px',
+                width: this.handleSize + 'px'
+            });
+            var draggable = new Draggable();
+            draggable.updateDomPosition = false;
+            draggable.add($handler);
+            draggable.on('dragstart', this._onResizeStart, this);
+            draggable.on('drag', this._onLeftResize, this);
+        },
+
+        _addBottomHandler : function() {
+            var $handler = this._createHandler('bottom');
+            $handler.css({
+                left: '0px',
+                bottom: '0px',
+                right: '0px',
+                height: this.handleSize + 'px'
+            });
+            var draggable = new Draggable();
+            draggable.updateDomPosition = false;
+            draggable.add($handler);
+            draggable.on('dragstart', this._onResizeStart, this);
+            draggable.on('drag', this._onBottomResize, this);
+        },
+
+        _onResizeStart : function(e) {
+            this._x0 = e.pageX;
+            this._y0 = e.pageY;
+        },
+
+        _onTopResize : function(e, width, height, silent) {
+            var oy = -(e.pageY - this._y0);
+
+            var width = width || this.$container.width();
+            var height = height || this.$container.height();
+            var topName = this.$container.css('position') == 'absolute' ?
+                                'top' : 'marginTop';
+
+            var top = parseInt(this.$container.css(topName)) || 0;
+
+            if (height + oy > this.maxHeight) {
+                oy = this.maxHeight - height;
+            } else if (height + oy < this.minHeight) {
+                oy = this.minHeight - height;
+            }
+            this.$container.height(height + oy);
+            this.$container.css(topName, (top - oy) + 'px');
+
+            this._y0 = e.pageY;
+
+            if (!silent) {
+                this.trigger('resize', {
+                    width : width,
+                    height : height + oy
+                });   
+            }
+        },
+
+        _onBottomResize : function(e, width, height, silent) {
+            var oy = e.pageY - this._y0;
+
+            var width = width || this.$container.width();
+            var height = height || this.$container.height();
+
+            if (height + oy > this.maxHeight) {
+                oy = this.maxHeight - height;
+            } else if (height + oy < this.minHeight) {
+                oy = this.minHeight - height;
+            }
+            this.$container.height(height + oy);
+
+            this._y0 = e.pageY;
+
+            if (!silent) {
+                this.trigger('resize', {
+                    width : width,
+                    height : height + oy
+                });
+            }
+        },
+
+        _onLeftResize : function(e, width, height, silent) {
+            var ox = -(e.pageX - this._x0);
+
+            var width = width || this.$container.width();
+            var height = height || this.$container.height();
+
+            var leftName = this.$container.css('position') == 'absolute'
+                                ? 'left' : 'marginLeft';
+            var left = parseInt(this.$container.css(leftName)) || 0;
+
+            if (width + ox > this.maxWidth) {
+                ox = this.maxWidth - width;
+            } else if (width + ox < this.minWidth) {
+                ox = this.minWidth - width;
+            }
+
+            this.$container.width(width + ox);
+            this.$container.css(leftName, (left - ox) + 'px');
+
+            this._x0 = e.pageX;
+
+            if (!silent) {
+                this.trigger('resize', {
+                    width : width + ox,
+                    height : height
+                });
+            }
+        },
+
+        _onRightResize : function(e, width, height, silent) {
+            var ox = e.pageX - this._x0;
+            var width = width || this.$container.width();
+
+            if (width + ox > this.maxWidth) {
+                ox = this.maxWidth - width;
+            } else if (width + ox < this.minWidth) {
+                ox = this.minWidth - width;
+            }
+
+            this.$container.width(width + ox);
+
+            this._x0 = e.pageX;
+
+            if (!silent) {
+                this.trigger('resize', {
+                    width : width + ox,
+                    height : height
+                });
+            }
+        },
+
+        _onRightBottomResize : function(e) {
+            // Avoid width() and height() cause reflow
+            var width = this.$container.width();
+            var height = this.$container.height();
+
+            this._onRightResize(e, width, height, true);
+            this._onBottomResize(e, height, height, true);
+
+            this.trigger('resize', {
+                width : width,
+                height : height
+            })
+        },
+
+        _createHandler : function(className) {
+            var $handler = $('<div></div>').css("position", "absolute");
+            $handler.addClass('qpf-resizable-handler');
+            $handler.addClass('qpf-' + className);
+            this.$container.append($handler);
+            return $handler;
         }
-    })
-}
+    });
 
-// export the interface
-return Base;
+    Resizable.applyTo = function(target, options) {
+        target.resizable = new Resizable(options);
+        target.resizable.enable();
+    }
 
+    return Resizable;
 });
 /**
  * Base class of all container component
  */
-define('container/Container',['require','../Base','knockout','$','_'],function(require) {
+define('container/Container',['require','../Base','../helper/Resizable','knockout','$','_'],function(require) {
 
-var Base = require("../Base");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    var Base = require("../Base");
+    var Resizable = require('../helper/Resizable');
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-var Container = Base.derive(function() {
-    return {
-        // all child components
-        children : ko.observableArray()
-    }
-}, {
+    var Container = Base.derive(function() {
+        return {
+            children : ko.observableArray(),
+            
+            resizable : false,
 
-    type : "CONTAINER",
+            resizeHandles : 'r,b,rb',
 
-    css : 'container',
-    
-    template : '<div data-bind="foreach:children" class="qpf-children">\
-                    <div data-bind="qpf_view:$data"></div>\
-                </div>',
-    initialize : function() {
-        var self = this,
-            oldArray = this.children().slice();
-        this.children.subscribe(function(newArray) {
-            var differences = ko.utils.compareArrays(oldArray, newArray);
-            _.each(differences, function(item) {
-                // In case the dispose operation is launched by the child component
-                if (item.status == "added") {
-                    item.value.on("dispose", _onItemDispose, item.value);
-                }else if (item.status == "deleted") {
-                    item.value.off("dispose", _onItemDispose);
-                }
-            }, this);
-        });
-        function _onItemDispose() {  
-            self.remove(this);
+            resizeMinWidth : 0,
+
+            resizeMaxWidth : Infinity,
+
+            resizeMinHeight : 0,
+
+            resizeMaxHeight : Infinity
         }
-    },
-    // add child component
-    add : function(sub) {
-        sub.parent = this;
-        this.children.push(sub);
-        // Resize the child to fit the parent
-        sub.onResize();
-    },
-    // remove child component
-    remove : function(sub) {
-        sub.parent = null;
-        this.children.remove(sub);
-    },
-    removeAll : function() {
-        _.each(this.children(), function(child) {
-            child.parent = null;
-        }, this);
-        this.children([]);
-    },
-    children : function() {
-        return this.children()
-    },
-    doRender : function() {
-        // do render in the hierarchy from parent to child
-        // traverse tree in pre-order
+    }, {
+
+        type : "CONTAINER",
+
+        css : 'container',
         
-        Base.prototype.doRender.call(this);
+        template : '<div data-bind="foreach:children" class="qpf-children">\
+                        <div data-bind="qpf_view:$data"></div>\
+                    </div>',
 
-        _.each(this.children(), function(child) {
-            child.render();
-        });
+        initialize : function() {
+            var self = this;
+            var oldArray = this.children().slice();
 
-    },
-    // resize when width or height is changed
-    onResize : function() {
-        // stretch the children
-        if (this.height()) {
-            this.$el.children(".qpf-children").height(this.height()); 
-        }
-        // trigger the after resize event in post-order
-        _.each(this.children(), function(child) {
-            child.onResize();
-        }, this);
-        Base.prototype.onResize.call(this);
-    },
-    dispose : function() {
-        
-        _.each(this.children(), function(child) {
-            child.dispose();
-        });
-
-        Base.prototype.dispose.call(this);
-    },
-    // get child component by name
-    get : function(name) {
-        if (! name) {
-            return;
-        }
-        return _.filter(this.children(), function(item) { return item.name === name })[0];
-    }
-})
-
-Container.provideBinding = Base.provideBinding;
-
-// modify the qpf bindler
-var baseBindler = ko.bindingHandlers["qpf"];
-ko.bindingHandlers["qpf"] = {
-
-    init : function(element, valueAccessor, allBindingsAccessor, viewModel) {
-        
-        //save the child nodes before the element's innerHTML is changed in the createComponentFromDataBinding method
-        var childNodes = Array.prototype.slice.call(element.childNodes);
-
-        var component = baseBindler.createComponent(element, valueAccessor);
-
-        if (component instanceof Container) {
-            // hold the renderring of children until parent is renderred
-            // If the child renders first, the element is still not attached
-            // to the document. So any changes of observable will not work.
-            // Even worse, the dependantObservable is disposed so the observable
-            // is detached in to the dom
-            // https://groups.google.com/forum/?fromgroups=#!topic/knockoutjs/aREJNrD-Miw
-            var subViewModel = {
-                '__deferredrender__' : true 
+            this.children.subscribe(function(newArray) {
+                var differences = ko.utils.compareArrays(oldArray, newArray);
+                _.each(differences, function(item) {
+                    // In case the dispose operation is launched by the child component
+                    if (item.status == "added") {
+                        item.value.on("dispose", _onItemDispose, item.value);
+                    }else if (item.status == "deleted") {
+                        item.value.off("dispose", _onItemDispose);
+                    }
+                }, this);
+            });
+            function _onItemDispose() {  
+                self.remove(this);
             }
-            _.extend(subViewModel, viewModel);
-            // initialize from the dom element
-            for(var i = 0; i < childNodes.length; i++) {
-                var child = childNodes[i];
-                if (ko.bindingProvider.prototype.nodeHasBindings(child)) {
-                    // Binding with the container's viewModel
-                    ko.applyBindings(subViewModel, child);
-                    var sub = Base.getByDom(child);
-                    if (sub) {
-                        component.add(sub);
+
+        },
+
+        _onResizableResize : function(opts) {
+            this.width(opts.width);
+            this.height(opts.height);
+        },
+
+        // add child component
+        add : function(sub) {
+            sub.parent = this;
+            this.children.push(sub);
+            // Resize the child to fit the parent
+            sub.onResize();
+        },
+        
+        // remove child component
+        remove : function(sub) {
+            sub.parent = null;
+            this.children.remove(sub);
+        },
+        
+        removeAll : function() {
+            _.each(this.children(), function(child) {
+                child.parent = null;
+            }, this);
+            this.children([]);
+        },
+        
+        children : function() {
+            return this.children();
+        },
+        
+        doRender : function() {
+            // do render in the hierarchy from parent to child
+            // traverse tree in pre-order
+            Base.prototype.doRender.call(this);
+
+            _.each(this.children(), function(child) {
+                child.render();
+            });
+
+            if (this.resizable) {
+                Resizable.applyTo(this, {
+                    container : this.$el,
+                    handles : this.resizeHandles,
+                    minWidth : this.resizeMinWidth,
+                    maxWidth : this.resizeMaxWidth,
+                    minHeight : this.resizeMinHeight,
+                    maxHeight : this.resizeMaxHeight
+                });
+
+                this.resizable.on('resize', this._onResizableResize, this);
+            }
+        },
+        
+        // resize when width or height is changed
+        onResize : function() {
+            // stretch the children
+            if (this.height()) {
+                this.$el.children(".qpf-children").height(this.height()); 
+            }
+            // trigger the after resize event in post-order
+            _.each(this.children(), function(child) {
+                child.onResize();
+            }, this);
+            Base.prototype.onResize.call(this);
+        },
+
+        dispose : function() {
+            
+            _.each(this.children(), function(child) {
+                child.dispose();
+            });
+
+            Base.prototype.dispose.call(this);
+        },
+
+        // get child component by name
+        get : function(name) {
+            if (!name) {
+                return;
+            }
+            return _.filter(this.children(), function(item) { return item.name === name })[0];
+        }
+    })
+
+    Container.provideBinding = Base.provideBinding;
+
+    // modify the qpf bindler
+    var baseBindler = ko.bindingHandlers["qpf"];
+    ko.bindingHandlers["qpf"] = {
+
+        init : function(element, valueAccessor, allBindingsAccessor, viewModel) {
+            
+            //save the child nodes before the element's innerHTML is changed in the createComponentFromDataBinding method
+            var childNodes = Array.prototype.slice.call(element.childNodes);
+
+            var component = baseBindler.createComponent(element, valueAccessor);
+
+            if (component instanceof Container) {
+                // hold the renderring of children until parent is renderred
+                // If the child renders first, the element is still not attached
+                // to the document. So any changes of observable will not work.
+                // Even worse, the dependantObservable is disposed so the observable
+                // is detached in to the dom
+                // https://groups.google.com/forum/?fromgroups=#!topic/knockoutjs/aREJNrD-Miw
+                var subViewModel = {
+                    '__deferredrender__' : true 
+                }
+                _.extend(subViewModel, viewModel);
+                // initialize from the dom element
+                for(var i = 0; i < childNodes.length; i++) {
+                    var child = childNodes[i];
+                    if (ko.bindingProvider.prototype.nodeHasBindings(child)) {
+                        // Binding with the container's viewModel
+                        ko.applyBindings(subViewModel, child);
+                        var sub = Base.getByDom(child);
+                        if (sub) {
+                            component.add(sub);
+                        }
                     }
                 }
             }
-        }
-        if (! viewModel['__deferredrender__']) {
-            
-            component.render();
-        }
+            if (! viewModel['__deferredrender__']) {
+                
+                component.render();
+            }
 
-        return { 'controlsDescendantBindings': true };
+            return { 'controlsDescendantBindings': true };
 
-    },
-    update : function(element, valueAccessor) {
-        baseBindler.update(element, valueAccessor);
+        },
+        update : function(element, valueAccessor) {
+            baseBindler.update(element, valueAccessor);
+        }
     }
-}
 
-Container.provideBinding("container", Container);
+    Container.provideBinding("container", Container);
 
-return Container;
+    return Container;
 
 });
 /**
@@ -1342,55 +2135,59 @@ return Container;
  */
 define('container/Panel',['require','./Container','knockout','$'],function(require) {
 
-var Container = require("./Container");
-var ko = require("knockout");
-var $ = require("$");
-
-var Panel = Container.derive(function() {
-    return {
-        title : ko.observable("")
-    }
-}, {
-
-    type : 'PANEL',
-
-    css : 'panel',
-
-    template : '<div class="qpf-panel-header">\
-                    <div class="qpf-panel-title" data-bind="html:title"></div>\
-                    <div class="qpf-panel-tools"></div>\
-                </div>\
-                <div class="qpf-panel-body" data-bind="foreach:children" class="qpf-children">\
-                    <div data-bind="qpf_view:$data"></div>\
-                </div>\
-                <div class="qpf-panel-footer"></div>',
     
-    afterRender : function() {
-        var $el = this.$el;
-        this._$header = $el.children(".qpf-panel-header");
-        this._$tools = this._$header.children(".qpf-panel-tools");
-        this._$body = $el.children(".qpf-panel-body");
-        this._$footer = $el.children(".qpf-panel-footer");
-    },
 
-    onResize : function() {
-        // stretch the body when the panel's height is given
-        if (this._$body && this.height()) {
-            var headerHeight = this._$header.height();
-            var footerHeight = this._$footer.height();
+    var Container = require("./Container");
 
-            // PENDING : here use jquery innerHeight method ?because we still 
-            // need to consider the padding of body
-            this._$body.height(this.$el.height() - headerHeight - footerHeight );
-    
+    var ko = require("knockout");
+    var $ = require("$");
+
+    var Panel = Container.derive(function() {
+        return {
+            title : ko.observable(""),
+
         }
-        Container.prototype.onResize.call(this);
-    }
-})
+    }, {
 
-Container.provideBinding("panel", Panel);
+        type : 'PANEL',
 
-return Panel;
+        css : 'panel',
+
+        template : '<div class="qpf-panel-header">\
+                        <div class="qpf-panel-title" data-bind="html:title"></div>\
+                        <div class="qpf-panel-tools"></div>\
+                    </div>\
+                    <div class="qpf-panel-body" data-bind="foreach:children" class="qpf-children">\
+                        <div data-bind="qpf_view:$data"></div>\
+                    </div>\
+                    <div class="qpf-panel-footer"></div>',
+        
+        afterRender : function() {
+            var $el = this.$el;
+            this._$header = $el.children(".qpf-panel-header");
+            this._$tools = this._$header.children(".qpf-panel-tools");
+            this._$body = $el.children(".qpf-panel-body");
+            this._$footer = $el.children(".qpf-panel-footer");
+        },
+
+        onResize : function() {
+            // stretch the body when the panel's height is given
+            if (this._$body && this.height()) {
+                var headerHeight = this._$header.height();
+                var footerHeight = this._$footer.height();
+
+                // PENDING : here use jquery innerHeight method ?because we still 
+                // need to consider the padding of body
+                this._$body.height(this.$el.height() - headerHeight - footerHeight );
+        
+            }
+            Container.prototype.onResize.call(this);
+        }
+    })
+
+    Container.provideBinding("panel", Panel);
+
+    return Panel;
 
 })
 
@@ -1468,32 +2265,34 @@ return Accordion;
 
 define('container/Application',['require','./Container','knockout','$'],function(require) {
 
-var Container = require("./Container");
-var ko = require("knockout");
-var $ = require("$");
-
-var Application = Container.derive(function() {
-
-}, {
-
-    type : "APPLICATION",
     
-    css : "application",
 
-    initialize : function() {
-        $(window).resize( this._resize.bind(this) );
-        this._resize();
-    },
+    var Container = require("./Container");
+    var ko = require("knockout");
+    var $ = require("$");
 
-    _resize : function() {
-        this.width($(window).width());
-        this.height($(window).height());
-    }
-})
+    var Application = Container.derive({
 
-Container.provideBinding("application", Application);
+    }, {
 
-return Application;
+        type : "APPLICATION",
+        
+        css : "application",
+
+        initialize : function() {
+            $(window).resize(this._resize.bind(this));
+            this._resize();
+        },
+
+        _resize : function() {
+            this.width($(window).width());
+            this.height($(window).height());
+        }
+    })
+
+    Container.provideBinding("application", Application);
+
+    return Application;
 
 });
 /**
@@ -1502,159 +2301,175 @@ return Application;
 
 define('container/Box',['require','./Container','knockout','$','_'],function(require) {
 
-var Container = require("./Container");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    var Container = require("./Container");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-var Box = Container.derive(function() {
+    var Box = Container.derive({
+        _inResize : false
+    }, {
 
-return {
+        type : 'BOX',
 
-}}, {
+        css : 'box',
 
-    type : 'BOX',
+        initialize : function() {
 
-    css : 'box',
+            this.children.subscribe(this._onChildrenChanged, this);
 
-    initialize : function() {
+            this.$el.css("position", "relative");
 
-        this.children.subscribe(function(children) {
+            Container.prototype.initialize.call(this);
+        },
+
+        _onChildrenChanged : function(children) {
             this.onResize();
-            // resize after the child resize happens will cause recursive
-            // reszie problem
-            // _.each(children, function(child) {
-            //  child.on('resize', this.onResize, this);
-            // }, this)
-        }, this);
+            _.each(children, function(child) {
+                child.on('resize', this.onResize, this);
+            }, this);
+        },
 
-        this.$el.css("position", "relative");
+        _getMargin : function($el) {
+            return {
+                left : parseInt($el.css("marginLeft")) || 0,
+                top : parseInt($el.css("marginTop")) || 0,
+                bottom : parseInt($el.css("marginBottom")) || 0,
+                right : parseInt($el.css("marginRight")) || 0,
+            }
+        },
 
-        Container.prototype.initialize.call(this);
-    },
+        _resizeTimeout : 0,
 
-    _getMargin : function($el) {
-        return {
-            left : parseInt($el.css("marginLeft")) || 0,
-            top : parseInt($el.css("marginTop")) || 0,
-            bottom : parseInt($el.css("marginBottom")) || 0,
-            right : parseInt($el.css("marginRight")) || 0,
+        onResize : function() {
+            // Avoid recursive call from children
+            if (this._inResize) {
+                return;
+            }
+            var self = this;
+            // put resize in next tick,
+            // if multiple child have triggered the resize event
+            // it will do only once;
+            if (this._resizeTimeout) {
+                clearTimeout(this._resizeTimeout);
+            }
+            this._resizeTimeout = setTimeout(function() {
+                self._inResize = true;
+                self.resizeChildren();
+                Container.prototype.onResize.call(self);
+                self._inResize = false;
+            });
         }
-    },
 
-    _resizeTimeout : 0,
-
-    onResize : function() {
-
-        var self = this;
-        // put resize in next tick,
-        // if multiple child have triggered the resize event
-        // it will do only once;
-        if( this._resizeTimeout ) {
-            clearTimeout( this._resizeTimeout );
-        }
-        this._resizeTimeout = setTimeout(function() {
-            self.resizeChildren();
-            Container.prototype.onResize.call(self);
-        });
-
-    }
-
-})
+    })
 
 
-// Container.provideBinding("box", Box);
+    // Container.provideBinding("box", Box);
 
-return Box;
+    return Box;
 
 });
 /**
  * hbox layout
  *
  * Items of hbox can have flex and prefer two extra properties
- * About this tow properties, can reference to flexbox in css3
+ * About this tow properties, you can reference to flexbox in css3
  * http://www.w3.org/TR/css3-flexbox/
  * https://github.com/doctyper/flexie/blob/master/src/flexie.js
  */
 
 define('container/HBox',['require','./Container','./Box','knockout','$','_'],function(require) {
 
-var Container = require("./Container");
-var Box = require("./Box");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    var Container = require("./Container");
+    var Box = require("./Box");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-var hBox = Box.derive(function() {
-return {
-}}, {
+    var hBox = Box.derive({
+        _flexSum : 0,
+        _childrenWithFlex : [],
+        _marginCache : [],
+        _marginCacheWithFlex : [],
+        _remainderWidth : 0,
+        _accWidth : 0
+    }, {
 
-    type : 'HBOX',
+        type : 'HBOX',
 
-    css : 'hbox',
+        css : 'hbox',
 
-    resizeChildren : function() {
+        resizeChildren : function() {
 
-        var flexSum = 0;
-        var remainderWidth = this.$el.width();
-        var childrenWithFlex = [];
+            this._flexSum = 0;
+            this._accWidth = 0;
+            this._childrenWithFlex = [];
+            this._marginCache = [];
+            this._marginCacheWithFlex = [];
+            this._remainderWidth = this.$el.width();
 
-        var marginCache = [];
-        var marginCacheWithFlex = [];
+            _.each(this.children(), this._iterateChildren, this);
 
-        _.each(this.children(), function(child, idx) {
+            _.each(this._childrenWithFlex, this._updateChildrenWidth, this)
+
+            _.each(this.children(), this._updateChildrenPosition, this);
+        },
+
+        _iterateChildren : function(child, idx) {
             var margin = this._getMargin(child.$el);
-            marginCache.push(margin);
+            this._marginCache.push(margin);
             // stretch the height
             // (when align is stretch)
-            child.height(this.$el.height()-margin.top-margin.bottom );
+            child.height(this.$el.height() - margin.top - margin.bottom );
 
-            var prefer = ko.utils.unwrapObservable(child.prefer );
+            var prefer = ko.utils.unwrapObservable(child.prefer);
+            var resizable = ko.utils.unwrapObservable(child.resizable);
+            // Item is resizable, use the width and height directly
+            if (resizable) {
+                var width = +child.width() || 0;
+                this._remainderWidth -= width + margin.left + margin.right;
+            }
+            // item has a prefer size (not null or undefined);
+            else if (prefer != null) {
+                // TODO : if the prefer size is larger than vbox size??
+                prefer = Math.min(prefer, this._remainderWidth);
+                child.width(prefer);
 
-            // item has a prefer size;
-            if (prefer ) {
-                // TODO : if the prefer size is lager than vbox size??
-                prefer = Math.min(prefer, remainderWidth);
-                child.width(prefer );
-
-                remainderWidth -= prefer+margin.left+margin.right;
+                this._remainderWidth -= prefer + margin.left + margin.right;
             } else {
                 var flex = parseInt(ko.utils.unwrapObservable(child.flex ) || 1);
                 // put it in the next step to compute
                 // the height based on the flex property
-                childrenWithFlex.push(child);
-                marginCacheWithFlex.push(margin);
+                this._childrenWithFlex.push(child);
+                this._marginCacheWithFlex.push(margin);
 
-                flexSum += flex;
+                this._flexSum += flex;
             }
-        }, this);
+        },
 
-        _.each(childrenWithFlex, function(child, idx) {
-            var margin = marginCacheWithFlex[idx];
-            var flex = parseInt(ko.utils.unwrapObservable(child.flex ) || 1);
-            var ratio = flex / flexSum;
-
-            child.width(Math.floor(remainderWidth*ratio)-margin.left-margin.right );   
-        })
-
-        var prevWidth = 0;
-        _.each(this.children(), function(child, idx) {
-            var margin = marginCache[idx];
+        _updateChildrenPosition : function(child, idx) {
+            var margin = this._marginCache[idx];
             child.$el.css({
                 "position" : "absolute",
                 "top" : '0px',
-                "left" : prevWidth + "px"
+                "left" : this._accWidth + "px"
             });
-            prevWidth += child.width()+margin.left+margin.right;
-        })
-    }
+            this._accWidth += +child.width() + margin.left + margin.right;
+        },
 
-})
+        _updateChildrenWidth : function(child, idx) {
+            var margin = this._marginCacheWithFlex[idx];
+            var flex = parseInt(ko.utils.unwrapObservable(child.flex ) || 1);
+            var ratio = flex / this._flexSum;
+
+            child.width(Math.floor(this._remainderWidth * ratio) - margin.left - margin.right);   
+        }
+    })
 
 
-Container.provideBinding("hbox", hBox);
+    Container.provideBinding("hbox", hBox);
 
-return hBox;
+    return hBox;
 
 });
 /**
@@ -1718,7 +2533,6 @@ define('meta/ListItem',['require','./meta','knockout'],function(require){
     var ko = require("knockout");
 
     var ListItem = Meta.derive(function(){
-
         return {
             title : ko.observable("")
         }
@@ -1848,7 +2662,7 @@ define('container/List',['require','./Container','knockout','../meta/ListItem','
                 if(child) {
                     child.$el.removeClass("selected")
                 }
-            }, this)
+            }, this);
         }
 
     });
@@ -1863,153 +2677,150 @@ define('container/List',['require','./Container','knockout','../meta/ListItem','
 //============================================
 define('container/Tab',['require','./Container','./Panel','knockout','$','_'],function(require) {
 
-var Container = require("./Container");
-var Panel = require("./Panel");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    
 
-var Tab = Panel.derive(function() {
+    var Container = require("./Container");
+    var Panel = require("./Panel");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-    var ret = {
-            
-        actived : ko.observable(0),
+    var Tab = Panel.derive(function() {
+        return {
+            actived : ko.observable(0),
 
-        maxTabWidth : 100,
+            maxTabWidth : 100,
 
-        minTabWidth : 30
-
-    }
-
-    ret.actived.subscribe(function(idx) {
-        this._active(idx);
-    }, this);
-
-    return ret;
-}, {
-
-    type : "TAB",
-
-    css : 'tab',
-
-    add : function(item) {
-        if (item instanceof Panel) {
-            Panel.prototype.add.call(this, item);
-        } else {
-            console.error("Children of tab container must be instance of panel");
+            minTabWidth : 30
         }
-        this._active(this.actived());
-    },
-
-    eventsProvided : _.union('change', Container.prototype.eventsProvided),
-
-    initialize : function() {
-        // compute the tab value;
-        this.children.subscribe(function() {
-            this._updateTabSize();
+    }, function() {
+        this.actived.subscribe(function(idx) {
+            this._active(idx);
         }, this);
+    }, {
 
-        Panel.prototype.initialize.call(this);
-    },
+        type : "TAB",
 
-    template : '<div class="qpf-tab-header">\
-                    <ul class="qpf-tab-tabs" data-bind="foreach:children">\
-                        <li data-bind="click:$parent.actived.bind($data, $index())">\
-                            <a data-bind="html:title"></a>\
-                        </li>\
-                    </ul>\
-                    <div class="qpf-tab-tools"></div>\
-                </div>\
-                <div class="qpf-tab-body">\
-                    <div class="qpf-tab-views" data-bind="foreach:children" class="qpf-children">\
-                        <div data-bind="qpf_view:$data"></div>\
+        css : 'tab',
+
+        add : function(item) {
+            if (item instanceof Panel) {
+                Panel.prototype.add.call(this, item);
+            } else {
+                console.error("Children of tab container must be instance of panel");
+            }
+            this._active(this.actived());
+        },
+
+        eventsProvided : _.union('change', Container.prototype.eventsProvided),
+
+        initialize : function() {
+            // compute the tab value;
+            this.children.subscribe(function() {
+                this._updateTabSize();
+            }, this);
+
+            Panel.prototype.initialize.call(this);
+        },
+
+        template : '<div class="qpf-tab-header">\
+                        <ul class="qpf-tab-tabs" data-bind="foreach:children">\
+                            <li data-bind="click:$parent.actived.bind($data, $index())">\
+                                <a data-bind="html:title"></a>\
+                            </li>\
+                        </ul>\
+                        <div class="qpf-tab-tools"></div>\
                     </div>\
-                </div>\
-                <div class="qpf-tab-footer"></div>',
+                    <div class="qpf-tab-body">\
+                        <div class="qpf-tab-views" data-bind="foreach:children" class="qpf-children">\
+                            <div data-bind="qpf_view:$data"></div>\
+                        </div>\
+                    </div>\
+                    <div class="qpf-tab-footer"></div>',
 
-    afterRender : function() {
-        this._updateTabSize();
-        // cache the $element will be used
-        var $el = this.$el;
-        this._$header = $el.children(".qpf-tab-header");
-        this._$tools = this._$header.children(".qpf-tab-tools");
-        this._$body = $el.children(".qpf-tab-body");
-        this._$footer = $el.children('.qpf-tab-footer');
+        afterRender : function() {
+            this._updateTabSize();
+            // cache the $element will be used
+            var $el = this.$el;
+            this._$header = $el.children(".qpf-tab-header");
+            this._$tools = this._$header.children(".qpf-tab-tools");
+            this._$body = $el.children(".qpf-tab-body");
+            this._$footer = $el.children('.qpf-tab-footer');
 
-        this._active(this.actived());
-    },
+            this._active(this.actived());
+        },
 
-    onResize : function() {
-        this._adjustCurrentSize();
-        this._updateTabSize();
-        Container.prototype.onResize.call(this);
-    },
-
-    _unActiveAll : function() {
-        _.each(this.children(), function(child) {
-            child.$el.css("display", "none");
-        });
-    },
-
-    _updateTabSize : function() {
-        var length = this.children().length,
-            tabSize = Math.floor((this.$el.width()-20)/length);
-        // clamp
-        tabSize = Math.min(this.maxTabWidth, Math.max(this.minTabWidth, tabSize));
-
-        this.$el.find(".qpf-tab-header>.qpf-tab-tabs>li").width(tabSize);
-    },
-
-    _adjustCurrentSize : function() {
-
-        var current = this.children()[ this.actived() ];
-        if (current && this._$body) {
-            var headerHeight = this._$header.height(),
-                footerHeight = this._$footer.height();
-
-            if (this.height() &&
-                this.height() !== "auto") {
-                current.height(this.$el.height() - headerHeight - footerHeight);
-            }
-            // PENDING : compute the width ???
-            if (this.width() == "auto") {
-            }
-        }
-    },
-
-    _active : function(idx) {
-        this._unActiveAll();
-        var current = this.children()[idx];
-        if (current) {
-            current.$el.css("display", "block");
-
-            // Trigger the resize events manually
-            // Because the width and height is zero when the panel is hidden,
-            // so the children may not be properly layouted, We need to force the
-            // children do layout again when panel is visible;
+        onResize : function() {
             this._adjustCurrentSize();
-            current.onResize();
+            this._updateTabSize();
+            Container.prototype.onResize.call(this);
+        },
 
-            this.trigger('change', idx, current);
+        _unActiveAll : function() {
+            _.each(this.children(), function(child) {
+                child.$el.css("display", "none");
+            });
+        },
+
+        _updateTabSize : function() {
+            var length = this.children().length,
+                tabSize = Math.floor((this.$el.width()-20)/length);
+            // clamp
+            tabSize = Math.min(this.maxTabWidth, Math.max(this.minTabWidth, tabSize));
+
+            this.$el.find(".qpf-tab-header>.qpf-tab-tabs>li").width(tabSize);
+        },
+
+        _adjustCurrentSize : function() {
+
+            var current = this.children()[ this.actived() ];
+            if (current && this._$body) {
+                var headerHeight = this._$header.height(),
+                    footerHeight = this._$footer.height();
+
+                if (this.height() &&
+                    this.height() !== "auto") {
+                    current.height(this.$el.height() - headerHeight - footerHeight);
+                }
+                // PENDING : compute the width ???
+                if (this.width() == "auto") {
+                }
+            }
+        },
+
+        _active : function(idx) {
+            this._unActiveAll();
+            var current = this.children()[idx];
+            if (current) {
+                current.$el.css("display", "block");
+
+                // Trigger the resize events manually
+                // Because the width and height is zero when the panel is hidden,
+                // so the children may not be properly layouted, We need to force the
+                // children do layout again when panel is visible;
+                this._adjustCurrentSize();
+                current.onResize();
+
+                this.trigger('change', idx, current);
+            }
+
+            this.$el.find(".qpf-tab-header>.qpf-tab-tabs>li")
+                    .removeClass("actived")
+                    .eq(idx).addClass("actived");
         }
 
-        this.$el.find(".qpf-tab-header>.qpf-tab-tabs>li")
-                .removeClass("actived")
-                .eq(idx).addClass("actived");
-    }
+    })
 
-})
+    Container.provideBinding("tab", Tab);
 
-Container.provideBinding("tab", Tab);
-
-return Tab;
+    return Tab;
 
 });
 /**
  * vbox layout
  * 
  * Items of vbox can have flex and prefer two extra properties
- * About this tow properties, can reference to flexbox in css3
+ * About this tow properties, you can reference to flexbox in css3
  * http://www.w3.org/TR/css3-flexbox/
  * https://github.com/doctyper/flexie/blob/master/src/flexie.js
  * TODO : add flexbox support
@@ -2019,479 +2830,96 @@ return Tab;
 
 define('container/VBox',['require','./Container','./Box','knockout','$','_'],function(require) {
 
-var Container = require("./Container");
-var Box = require("./Box");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    var Container = require("./Container");
+    var Box = require("./Box");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-var vBox = Box.derive(function() {
+    var vBox = Box.derive({
+        _flexSum : 0,
+        _childrenWithFlex : [],
+        _marginCache : [],
+        _marginCacheWithFlex : [],
+        _remainderHeight : 0,
+        _accHeight : 0
+    }, {
 
-    return {
-    }
-}, {
+        type : 'VBOX',
 
-    type : 'VBOX',
+        css : 'vbox',
 
-    css : 'vbox',
+        resizeChildren : function() {
 
-    resizeChildren : function() {
+            this._flexSum = 0;
+            this._accHeight = 0;
+            this._childrenWithFlex = [];
+            this._marginCache = [];
+            this._marginCacheWithFlex = [];
+            this._remainderHeight = this.$el.height();
 
-        var flexSum = 0;
-        var remainderHeight = this.$el.height();
-        var childrenWithFlex = [];
+            _.each(this.children(), this._iterateChildren, this);
 
-        var marginCache = [];
-        var marginCacheWithFlex = [];
+            _.each(this._childrenWithFlex, this._updateChildrenHeight, this)
 
-        _.each(this.children(), function(child) {
+            _.each(this.children(), this._updateChildrenPosition, this);
+        },
+
+
+        _iterateChildren : function(child) {
             var margin = this._getMargin(child.$el);
-            marginCache.push(margin);
+            this._marginCache.push(margin);
             // stretch the width
             // (when align is stretch)
-            child.width(this.$el.width()-margin.left-margin.right);
+            child.width(this.$el.width() - margin.left - margin.right);
 
             var prefer = ko.utils.unwrapObservable(child.prefer);
-
-            // item has a prefer size;
-            if (prefer) {
-                // TODO : if the prefer size is lager than vbox size??
-                prefer = Math.min(prefer, remainderHeight);
+            var resizable = ko.utils.unwrapObservable(child.resizable);
+            // Item is resizable, use the width and height directly
+            if (resizable) {
+                var height = +child.height() || 0;
+                this._remainderHeight -= height + margin.top + margin.bottom;
+            }
+            // item has a prefer size (not null or undefined);
+            else if (prefer != null) {
+                // TODO : if the prefer size is larger than vbox size??
+                prefer = Math.min(prefer, this._remainderHeight);
                 child.height(prefer);
 
-                remainderHeight -= prefer+margin.top+margin.bottom;
+                this._remainderHeight -= prefer + margin.top + margin.bottom;
             } else {
                 var flex = parseInt(ko.utils.unwrapObservable(child.flex) || 1);
                 // put it in the next step to compute
                 // the height based on the flex property
-                childrenWithFlex.push(child);
-                marginCacheWithFlex.push(margin);
+                this._childrenWithFlex.push(child);
+                this._marginCacheWithFlex.push(margin);
 
-                flexSum += flex;
+                this._flexSum += flex;
             }
-        }, this);
+        },
 
-        _.each(childrenWithFlex, function(child, idx) {
-            var margin = marginCacheWithFlex[idx];
-            var flex = parseInt(ko.utils.unwrapObservable(child.flex) || 1),
-                ratio = flex / flexSum;
-            child.height(Math.floor(remainderHeight*ratio)-margin.top-margin.bottom); 
-        })
-
-        var prevHeight = 0;
-        _.each(this.children(), function(child, idx) {
-            var margin = marginCache[idx];
+        _updateChildrenPosition : function(child, idx) {
+            var margin = this._marginCache[idx];
             child.$el.css({
                 "position" : "absolute",
                 "left" : '0px', // still set left to zero, use margin to fix the layout
-                "top" : prevHeight + "px"
+                "top" : this._accHeight + "px"
             })
-            prevHeight += child.height()+margin.top+margin.bottom;
-        })
-    }
-
-})
-
-
-Container.provideBinding("vbox", vBox);
-
-return vBox;
-
-});
-/**
- * mixin to provide draggable interaction
- * support multiple selection
- *
- * @property    helper
- * @property    axis "x" | "y"
- * @property    container
- * @method      add(target[, handle])
- * @method      remove(target)
- **/
-
-define('mixin/Draggable',['require','core/mixin/derive','core/mixin/notifier','knockout','$','_'],function(require) {
-
-var derive = require("core/mixin/derive");
-var notifier = require("core/mixin/notifier");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
-
-var Clazz = new Function();
-_.extend(Clazz, derive);
-_.extend(Clazz.prototype, notifier);
-
-var DraggableItem = Clazz.derive(function() {
-    return {
-
-        id : 0,
-
-        target : null,
-
-        handle : null,
-
-        margins : {},
-
-        // original position of the target relative to 
-        // its offsetParent, here we get it with jQuery.position method
-        originPosition : {},
-
-        // offset of the offsetParent, which is get with jQuery.offset
-        // method
-        offsetParentOffset : {},
-        // cache the size of the draggable target
-        width : 0,
-        height : 0,
-        // save the original css position of dragging target
-        // to be restored when stop the drag
-        positionType : "",
-        //
-        // data to be transferred
-        data : {},
-
-        // instance of [Draggable]
-        host : null
-    };
-}, {
-    
-    setData : function(data) {
-
-    },
-
-    remove : function() {
-        this.host.remove(this.target);
-    }
-});
-
-var Draggable = Clazz.derive(function() {
-    return {
-
-        items : {}, 
-
-        axis : null,
-
-        // the container where draggable item is limited
-        // can be an array of boundingbox or HTMLDomElement or jquery selector
-        container : null,
-
-        helper : null,
-
-        //private properties
-        // boundingbox of container compatible with getBoundingClientRect method
-        _boundingBox : null,
-
-        _mouseStart : {},
-        _$helper : null
-
-    }
-}, {
-
-add : function(elem, handle) {
-    
-    var id = genGUID(),
-        $elem = $(elem);
-    if (handle) {
-        var $handle = $(handle);
-    }
-
-    $elem.attr("data-qpf-draggable", id)
-        .addClass("qpf-draggable");
-    
-    (handle ? $(handle) : $elem)
-        .unbind("mousedown", this._mouseDown)
-        .bind("mousedown", {context:this}, this._mouseDown);
-
-    var newItem = new DraggableItem({
-        id : id,
-        target : elem,
-        host : this,
-        handle : handle
-    })
-    this.items[id] = newItem;
-
-    return newItem;
-},
-
-remove : function(elem) {
-
-    if (elem instanceof DraggableItem) {
-        var item = elem,
-            $elem = $(item.elem),
-            id = item.id;
-    } else {
-        var $elem = $(elem),
-            id = $elem.attr("data-qpf-draggable");
-        
-        if (id ) {
-            var item = this.items[id];
-        }
-    }   
-    delete this.items[ id ];
-
-    
-    $elem.removeAttr("data-qpf-draggable")
-        .removeClass("qpf-draggable");
-    // remove the events binded to it
-    (item.handle ? $(item.handle) : $elem)
-        .unbind("mousedown", this._mouseDown);
-},
-
-clear : function() {
-
-    _.each(this.items, function(item) {
-        this.remove(item.target);
-    }, this);
-},
-
-_save : function() {
-
-    _.each(this.items, function(item) {
-
-        var $elem = $(item.target);
-        var $offsetParent = $elem.offsetParent();
-        var position = $elem.position();
-        var offsetParentOffset = $offsetParent.offset();
-        var margin = {
-                left : parseInt($elem.css("marginLeft")) || 0,
-                top : parseInt($elem.css("marginTop")) || 0
-            };
-
-        item.margin = margin;
-        // fix the position with margin
-        item.originPosition = {
-            left : position.left - margin.left,
-            top : position.top - margin.top
+            this._accHeight += +child.height() + margin.top + margin.bottom;
         },
-        item.offsetParentOffset = offsetParentOffset;
-        // cache the size of the dom element
-        item.width = $elem.width(),
-        item.height = $elem.height(),
-        // save the position info for restoring after drop
-        item.positionType = $elem.css("position");
 
-    }, this);
-
-},
-
-_restore : function(restorePosition) {
-
-    _.each(this.items, function(item) {
-
-        var $elem = $(item.target);
-        var position = $elem.offset();
-
-        $elem.css("position", item.positionType);
-
-        if (restorePosition) {
-            $elem.offset({
-                left : item.originPosition.left + item.margin.left,
-                top : item.originPosition.top + item.margin.top
-            })
-        } else {
-            $elem.offset(position);
+        _updateChildrenHeight : function(child, idx) {
+            var margin = this._marginCacheWithFlex[idx];
+            var flex = parseInt(ko.utils.unwrapObservable(child.flex) || 1),
+                ratio = flex / this._flexSum;
+            child.height(Math.floor(this._remainderHeight*ratio) - margin.top - margin.bottom); 
         }
-    }, this);
-},
-
-_mouseDown : function(e) {
-    
-    if (e.which !== 1) {
-        return;
-    }
-
-    var self = e.data.context;
-
-    self._save();
-
-    self._triggerProxy("dragstart", e);
-
-    if (! self.helper) {
-
-        _.each(self.items, function(item) {
-            
-            var $elem = $(item.target);
-
-            $elem.addClass("qpf-draggable-dragging");
-
-            $elem.css({
-                "position" : "absolute",
-                "left" : (item.originPosition.left)+"px",
-                "top" : (item.originPosition.top)+"px"
-            });
-
-        }, self);
-
-        if (self.container) {
-            self._boundingBox = self._computeBoundingBox(self.container);
-        } else {
-            self._boundingBox = null;
-        }
-
-    } else {
-
-        self._$helper = $(self.helper);
-        document.body.appendChild(self._$helper[0]);
-        self._$helper.css({
-            left : e.pageX,
-            top : e.pageY
-        })
-    }
-
-    $(document.body)
-        .unbind("mousemove", self._mouseMove)
-        .bind("mousemove", {context:self}, self._mouseMove)
-        .unbind("mouseout", self._mouseOut)
-        .bind("mouseout", {context:self}, self._mouseOut)
-        .unbind('mouseup', self._mouseUp)
-        .bind("mouseup", {context:self}, self._mouseUp);
-
-    self._mouseStart = {
-        x : e.pageX,
-        y : e.pageY
-    };
-
-},
-
-_computeBoundingBox : function(container) {
-
-    if (_.isArray(container)) {
-
-        return {
-            left : container[0][0],
-            top : container[0][1],
-            right : container[1][0],
-            bottom : container[1][1]
-        }
-
-    } else if (container.left && 
-                container.right &&
-                container.top &&
-                container.bottom) {
-
-        return container;
-    } else {
-        // using getBoundingClientRect to get the bounding box
-        // of HTMLDomElement
-        try {
-            var $container = $(container);
-            var offset = $container.offset();
-            var bb = {
-                left : offset.left + parseInt($container.css("padding-left")) || 0,
-                top : offset.top + parseInt($container.css("padding-top")) || 0,
-                right : offset.left + $container.width() - parseInt($container.css("padding-right")) || 0,
-                bottom : offset.top + $container.height() - parseInt($container.css("padding-bottom")) || 0
-            };
-            
-            return bb;
-        } catch (e) {
-            console.error("Invalid container type");
-        }
-    }
-
-},
-
-_mouseMove : function(e) {
-
-    var self = e.data.context;
-
-    var offset = {
-        x : e.pageX - self._mouseStart.x,
-        y : e.pageY - self._mouseStart.y
-    }
-
-    if (! self._$helper) {
-
-        _.each(self.items, function(item) {
-            // calculate the offset position to the document
-            var left = item.originPosition.left + item.offsetParentOffset.left + offset.x,
-                top = item.originPosition.top + item.offsetParentOffset.top + offset.y;
-            // constrained in the area of container
-            if (self._boundingBox) {
-                var bb = self._boundingBox;
-                left = left > bb.left ? 
-                                (left+item.width < bb.right ? left : bb.right-item.width)
-                                 : bb.left;
-                top = top > bb.top ? 
-                            (top+item.height < bb.bottom ? top : bb.bottom-item.height)
-                            : bb.top;
-            }
-
-            var axis = ko.utils.unwrapObservable(self.axis);
-            if (!axis || axis.toLowerCase() !== "y") {
-                $(item.target).css("left", left - item.offsetParentOffset.left + "px");
-            }
-            if (!axis || axis.toLowerCase() !== "x") {
-                $(item.target).css("top", top - item.offsetParentOffset.top + "px");
-            }
-
-        }, self);
-
-
-    } else {
-
-        self._$helper.css({
-            "left" : e.pageX,
-            "top" : e.pageY
-        })
-    };
-
-    self._triggerProxy("drag", e);
-},
-
-_mouseUp : function(e) {
-
-    var self = e.data.context;
-
-    $(document.body).unbind("mousemove", self._mouseMove)
-        .unbind("mouseout", self._mouseOut)
-        .unbind("mouseup", self._mouseUp);
-
-    if (self._$helper) {
-
-        self._$helper.remove();
-    } else {
-
-        _.each(self.items, function(item) {
-
-            var $elem = $(item.target);
-
-            $elem.removeClass("qpf-draggable-dragging");
-
-        }, self);
-    }
-    self._restore();
-
-    self._triggerProxy("dragend", e);
-},
-
-_mouseOut : function(e) {
-    // PENDING
-    // this._mouseUp.call(this, e);
-},
-
-_triggerProxy : function() {
-    var args = arguments;
-    _.each(this.items, function(item) {
-        item.trigger.apply(item, args);
     });
 
-    this.trigger.apply(this, args);
-}
 
-});
+    Container.provideBinding("vbox", vBox);
 
-
-var genGUID = (function() {
-    var id = 1;
-    return function() {
-        return id++;
-    }
-}) ();
-
-Draggable.applyTo = function(target, options) {
-    target.draggable = new Draggable(options);        
-}
-return Draggable;
+    return vBox;
 
 });
 /**
@@ -2499,62 +2927,64 @@ return Draggable;
  * Window is a panel wich can be drag
  * and close
  */
-define('container/Window',['require','./Container','./Panel','../mixin/Draggable','knockout','$','_'],function(require) {
+define('container/Window',['require','./Container','./Panel','../helper/Draggable','knockout','$','_'],function(require) {
 
-var Container = require("./Container");
-var Panel = require("./Panel");
-var Draggable = require("../mixin/Draggable");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    
 
-var Window = Panel.derive(function() {
-    return {
+    var Container = require("./Container");
+    var Panel = require("./Panel");
+    var Draggable = require("../helper/Draggable");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-        $el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
+    var Window = Panel.derive(function() {
+        return {
 
-        children : ko.observableArray(),
-        title : ko.observable("Window"),
+            $el : $('<div data-bind="style:{left:_leftPx, top:_topPx}"></div>'),
 
-        left : ko.observable(0),
-        top : ko.observable(0),
+            children : ko.observableArray(),
+            title : ko.observable("Window"),
 
-        _leftPx : ko.computed(function() {
-            return this.left()+"px";
-        }, this, {
-            deferEvaluation : true
-        }),
-        _topPx : ko.computed(function() {
-            return this.top()+"px";
-        }, this, {
-            deferEvaluation : true
-        })
-        
-    }
-}, {
+            left : ko.observable(0),
+            top : ko.observable(0),
 
-    type : 'WINDOW',
+            _leftPx : ko.computed(function() {
+                return this.left()+"px";
+            }, this, {
+                deferEvaluation : true
+            }),
+            _topPx : ko.computed(function() {
+                return this.top()+"px";
+            }, this, {
+                deferEvaluation : true
+            })
+            
+        }
+    }, {
 
-    css : _.union('window', Panel.prototype.css),
+        type : 'WINDOW',
 
-    initialize : function() {
-        Draggable.applyTo( this );
-        
-        Panel.prototype.initialize.call( this );
-    },
+        css : _.union('window', Panel.prototype.css),
 
-    afterRender : function() {
-        
-        Panel.prototype.afterRender.call( this );
+        initialize : function() {
+            Draggable.applyTo(this);
+            
+            Panel.prototype.initialize.call(this);
+        },
 
-        this.draggable.add( this.$el, this._$header);
-        
-    }
-})
+        afterRender : function() {
+            
+            Panel.prototype.afterRender.call(this);
 
-Container.provideBinding("window", Window);
+            this.draggable.add(this.$el, this._$header);
+            
+        }
+    })
 
-return Window;
+    Container.provideBinding("window", Window);
+
+    return Window;
 
 });
 /**
@@ -3074,186 +3504,188 @@ define('meta/NativeHtml',['require','./Meta','core/XMLParser','knockout','_'],fu
  * @method updatePosition   update the slider position manually
  * @event change newValue prevValue self[Slider]
  */
-define('meta/Slider',['require','./Meta','../mixin/Draggable','knockout','$','_'],function(require){
+define('meta/Slider',['require','./Meta','../helper/Draggable','knockout','$','_'],function(require){
 
-var Meta = require("./Meta");
-var Draggable = require("../mixin/Draggable");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
-
-var Slider = Meta.derive(function(){
-
-    var ret =  {
-
-        $el : $('<div data-bind="css:orientation"></div>'),
-
-        step : ko.observable(1),
-
-        min : ko.observable(-100),
-
-        max : ko.observable(100),
-
-        orientation : ko.observable("horizontal"),// horizontal | vertical
-
-        format : "{{value}}",
-
-        _format : function(number){
-            return this.format.replace("{{value}}", number);
-        },
-
-        // compute size dynamically when dragging
-        autoResize : true
-    }
-
-    ret.value = ko.observable(1).extend({
-        clamp : { 
-            max : ret.max,
-            min : ret.min
-        }
-    });
-
-    var precision = 0;
-    ko.computed(function() {
-        var tmp = ret.step().toString().split('.');
-        var fraction = tmp[1];
-        if (fraction) {
-            precision = fraction.length;
-        } else {
-            precision = 0;
-        }
-    });
-    ret._valueNumeric = ko.computed(function(){
-        return ret.value().toFixed(precision);
-    });
-
-    ret._percentageStr = ko.computed({
-        read : function(){
-            var min = ret.min();
-            var max = ret.max();
-            var value = ret.value();
-            var percentage = ( value - min ) / ( max - min );
-            
-            return percentage * 100 + "%";
-        },
-        deferEvaluation : true
-    })
-    return ret;
-
-}, {
-
-    type : "SLIDER",
-
-    css : 'slider',
-
-    template : '<div class="qpf-slider-groove-box">\
-                    <div class="qpf-slider-groove">\
-                        <div class="qpf-slider-percentage" data-bind="style:{width:_percentageStr}"></div>\
-                    </div>\
-                </div>\
-                <div class="qpf-slider-min" data-bind="text:_format(min())"></div>\
-                <div class="qpf-slider-max" data-bind="text:_format(max())"></div>\
-                <div class="qpf-slider-control" data-bind="style:{left:_percentageStr}">\
-                    <div class="qpf-slider-control-inner"></div>\
-                    <div class="qpf-slider-value" data-bind="text:_format(_valueNumeric())"></div>\
-                </div>',
-
-    eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
     
-    initialize : function(){
-        var min = this.min();
-        var max = this.max();
-        // Clamp
-        this.value(Math.min(Math.max(this.value(), min), max));
-        // add draggable mixin
-        Draggable.applyTo( this, {
-            axis : ko.computed(function(){
-                return this.orientation() == "horizontal" ? "x" : "y"
-            }, this)
-        });
 
-        var prevValue = this._valueNumeric();
-        this.value.subscribe(function(){
-            this.trigger("change", this._valueNumeric(), prevValue, this);
-            prevValue = this._valueNumeric();
-        }, this);
-    },
+    var Meta = require("./Meta");
+    var Draggable = require("../helper/Draggable");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-    afterRender : function(){
+    var Slider = Meta.derive(function(){
 
-        // cache the element;
-        this._$groove = this.$el.find(".qpf-slider-groove");
-        this._$percentage = this.$el.find(".qpf-slider-percentage");
-        this._$control = this.$el.find(".qpf-slider-control");
+        var ret =  {
 
-        this.draggable.container = this._$groove;
-        var item = this.draggable.add( this._$control );
-        
-        item.on("drag", this._dragHandler, this);
+            $el : $('<div data-bind="css:orientation"></div>'),
 
-        // disable text selection
-        this.$el.mousedown(function(e){
-            e.preventDefault();
-        });
-    },
+            step : ko.observable(1),
 
-    onResize : function(){
-        Meta.prototype.onResize.call(this);
-    },
+            min : ko.observable(-100),
 
-    computePercentage : function(){
+            max : ko.observable(100),
 
-        if( this.autoResize ){
-            this._cacheSize();
+            orientation : ko.observable("horizontal"),// horizontal | vertical
+
+            format : "{{value}}",
+
+            _format : function(number){
+                return this.format.replace("{{value}}", number);
+            },
+
+            // compute size dynamically when dragging
+            autoResize : true
         }
 
-        var offset = this._computeOffset();
-        return offset / ( this._grooveSize - this._sliderSize );
-    },
+        ret.value = ko.observable(1).extend({
+            clamp : { 
+                max : ret.max,
+                min : ret.min
+            }
+        });
 
-    _cacheSize : function(){
+        var precision = 0;
+        ko.computed(function() {
+            var tmp = ret.step().toString().split('.');
+            var fraction = tmp[1];
+            if (fraction) {
+                precision = fraction.length;
+            } else {
+                precision = 0;
+            }
+        });
+        ret._valueNumeric = ko.computed(function(){
+            return ret.value().toFixed(precision);
+        });
 
-        // cache the size of the groove and slider
-        var isHorizontal =this._isHorizontal();
-        this._grooveSize =  isHorizontal ?
-                            this._$groove.width() :
-                            this._$groove.height();
-        this._sliderSize = isHorizontal ?
-                            this._$control.width() :
-                            this._$control.height();
-    },
+        ret._percentageStr = ko.computed({
+            read : function(){
+                var min = ret.min();
+                var max = ret.max();
+                var value = ret.value();
+                var percentage = ( value - min ) / ( max - min );
+                
+                return percentage * 100 + "%";
+            },
+            deferEvaluation : true
+        })
+        return ret;
 
-    _computeOffset : function(){
+    }, {
 
-        var isHorizontal = this._isHorizontal();
-        var grooveOffset = isHorizontal ?
-                            this._$groove.offset().left :
-                            this._$groove.offset().top;
-        var sliderOffset = isHorizontal ? 
-                            this._$control.offset().left :
-                            this._$control.offset().top;
+        type : "SLIDER",
 
-        return sliderOffset - grooveOffset;
-    },
+        css : 'slider',
 
-    _dragHandler : function(){
+        template : '<div class="qpf-slider-groove-box">\
+                        <div class="qpf-slider-groove">\
+                            <div class="qpf-slider-percentage" data-bind="style:{width:_percentageStr}"></div>\
+                        </div>\
+                    </div>\
+                    <div class="qpf-slider-min" data-bind="text:_format(min())"></div>\
+                    <div class="qpf-slider-max" data-bind="text:_format(max())"></div>\
+                    <div class="qpf-slider-control" data-bind="style:{left:_percentageStr}">\
+                        <div class="qpf-slider-control-inner"></div>\
+                        <div class="qpf-slider-value" data-bind="text:_format(_valueNumeric())"></div>\
+                    </div>',
 
-        var percentage = this.computePercentage(),
-            min = parseFloat( this.min() ),
-            max = parseFloat( this.max() ),
-            value = (max-min)*percentage+min;
+        eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
+        
+        initialize : function(){
+            var min = this.min();
+            var max = this.max();
+            // Clamp
+            this.value(Math.min(Math.max(this.value(), min), max));
+            // add draggable mixin
+            Draggable.applyTo( this, {
+                axis : ko.computed(function(){
+                    return this.orientation() == "horizontal" ? "x" : "y"
+                }, this)
+            });
 
-        this.value( value );  
-    },
+            var prevValue = this._valueNumeric();
+            this.value.subscribe(function(){
+                this.trigger("change", this._valueNumeric(), prevValue, this);
+                prevValue = this._valueNumeric();
+            }, this);
+        },
 
-    _isHorizontal : function(){
-        return ko.utils.unwrapObservable( this.orientation ) == "horizontal";
-    },
-})
+        afterRender : function(){
 
-Meta.provideBinding("slider", Slider);
+            // cache the element;
+            this._$groove = this.$el.find(".qpf-slider-groove");
+            this._$percentage = this.$el.find(".qpf-slider-percentage");
+            this._$control = this.$el.find(".qpf-slider-control");
 
-return Slider;
+            this.draggable.container = this._$groove;
+            var item = this.draggable.add( this._$control );
+            
+            item.on("drag", this._dragHandler, this);
+
+            // disable text selection
+            this.$el.mousedown(function(e){
+                e.preventDefault();
+            });
+        },
+
+        onResize : function(){
+            Meta.prototype.onResize.call(this);
+        },
+
+        computePercentage : function(){
+
+            if( this.autoResize ){
+                this._cacheSize();
+            }
+
+            var offset = this._computeOffset();
+            return offset / ( this._grooveSize - this._sliderSize );
+        },
+
+        _cacheSize : function(){
+
+            // cache the size of the groove and slider
+            var isHorizontal =this._isHorizontal();
+            this._grooveSize =  isHorizontal ?
+                                this._$groove.width() :
+                                this._$groove.height();
+            this._sliderSize = isHorizontal ?
+                                this._$control.width() :
+                                this._$control.height();
+        },
+
+        _computeOffset : function(){
+
+            var isHorizontal = this._isHorizontal();
+            var grooveOffset = isHorizontal ?
+                                this._$groove.offset().left :
+                                this._$groove.offset().top;
+            var sliderOffset = isHorizontal ? 
+                                this._$control.offset().left :
+                                this._$control.offset().top;
+
+            return sliderOffset - grooveOffset;
+        },
+
+        _dragHandler : function(){
+
+            var percentage = this.computePercentage(),
+                min = parseFloat( this.min() ),
+                max = parseFloat( this.max() ),
+                value = (max-min)*percentage+min;
+
+            this.value( value );  
+        },
+
+        _isHorizontal : function(){
+            return ko.utils.unwrapObservable( this.orientation ) == "horizontal";
+        },
+    })
+
+    Meta.provideBinding("slider", Slider);
+
+    return Slider;
 
 });
 /**
@@ -3265,104 +3697,130 @@ return Slider;
  *
  * @event change newValue prevValue self[Spinner]
  */
-define('meta/Spinner',['require','./Meta','knockout','$','_'],function(require) {
+define('meta/Spinner',['require','./Meta','knockout','$','_','../helper/Draggable'],function(require) {
 
-var Meta = require("./Meta");
-var ko = require("knockout");
-var $ = require('$');
-var _ = require("_");
+	
 
-function increase() {
-	this.value(parseFloat(this.value()) + parseFloat(this.step()));
-}
+	var Meta = require("./Meta");
+	var ko = require("knockout");
+	var $ = require('$');
+	var _ = require("_");
 
-function decrease() {
-	this.value(parseFloat(this.value()) - parseFloat(this.step()));
-}
+	var Draggable = require('../helper/Draggable');
 
-var Spinner = Meta.derive(function() {
-	var ret = {
-		step : ko.observable(1),
-		valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
-		precision : ko.observable(2),
-		min : ko.observable(null),
-		max : ko.observable(null),
-		increase : increase,
-		decrease : decrease
-	};
-	ret.value = ko.observable(1).extend({
-		numeric : ret.precision,
-		clamp : { 
-					max : ret.max,
-					min : ret.min
-				}
-	});
-	return ret;
-}, {
-	type : 'SPINNER',
-
-	css : 'spinner',
-
-	initialize : function() {
-		var prevValue = this.value() || 0;
-		this.value.subscribe(function(newValue) {
-
-			this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
-			prevValue = newValue;
-		}, this)
-	},
-
-	eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
-
-	template : '<div class="qpf-left">\
-					<input type="text" class="qpf-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
-				</div>\
-				<div class="qpf-right">\
-					<div class="qpf-common-button qpf-increase" data-bind="click:increase">\
-					+</div>\
-					<div class="qpf-common-button qpf-decrease" data-bind="click:decrease">\
-					-</div>\
-				</div>',
-
-	afterRender : function() {
-		var self = this;
-		// disable selection
-		this.$el.find('.qpf-increase,.qpf-decrease').mousedown(function(e) {
-			e.preventDefault();
-		})
-		this._$value = this.$el.find(".qpf-spinner-value")
-		// numeric input only
-		this._$value.keydown(function(event) {
-			// Allow: backspace, delete, tab, escape and dot
-			if (event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9 || event.keyCode == 27 || event.keyCode == 190 ||
-				 // Allow: Ctrl+A
-				(event.keyCode == 65 && event.ctrlKey === true) || 
-				// Allow: home, end, left, right
-				(event.keyCode >= 35 && event.keyCode <= 39)) {
-				// let it happen, don't do anything
-				return;
-			}
-			else {
-				// Ensure that it is a number and stop the keypress
-				if (event.shiftKey || (event.keyCode < 48 || event.keyCode > 57) && (event.keyCode < 96 || event.keyCode > 105)) {
-					event.preventDefault(); 
-				}
-	        }
-		});
-
-		this._$value.change(function() {
-			// sync the value in the input
-			if (this.value !== self.value().toString()) {
-				this.value = self.value();
-			}
-		})
-
+	function increase() {
+		this.value(parseFloat(this.value()) + parseFloat(this.step()));
 	}
-})
 
-Meta.provideBinding('spinner', Spinner);
+	function decrease() {
+		this.value(parseFloat(this.value()) - parseFloat(this.step()));
+	}
 
-return Spinner;
+	var Spinner = Meta.derive(function() {
+		var ret = {
+			step : ko.observable(1),
+			valueUpdate : "afterkeydown", //"keypress" "keyup" "afterkeydown"
+			precision : ko.observable(2),
+			min : ko.observable(null),
+			max : ko.observable(null),
+			increase : increase,
+			decrease : decrease
+		};
+		ret.value = ko.observable(1).extend({
+			numeric : ret.precision,
+			clamp : { 
+						max : ret.max,
+						min : ret.min
+					}
+		});
+		return ret;
+	}, {
+		type : 'SPINNER',
+
+		css : 'spinner',
+
+		initialize : function() {
+			var prevValue = this.value() || 0;
+			this.value.subscribe(function(newValue) {
+				this.trigger("change", parseFloat(newValue), parseFloat(prevValue), this);
+				prevValue = newValue;
+			}, this)
+		},
+
+		eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
+
+		template : '<div class="qpf-left">\
+						<input type="text" class="qpf-spinner-value" data-bind="value:value,valueUpdate:valueUpdate" />\
+					</div>\
+					<div class="qpf-right">\
+						<div class="qpf-common-button qpf-increase" data-bind="click:increase">\
+						+</div>\
+						<div class="qpf-common-button qpf-decrease" data-bind="click:decrease">\
+						-</div>\
+					</div>',
+
+		afterRender : function() {
+			var self = this;
+			// disable selection
+			this.$el.find('.qpf-increase,.qpf-decrease').mousedown(function(e) {
+				e.preventDefault();
+			});
+
+			Draggable.applyTo(this, {
+				updateDomPosition: false
+			});
+
+			this.draggable.add(this.$el.find('.qpf-right'));
+			this.draggable.on('dragstart', this._onDragStart, this);
+			this.draggable.on('drag', this._onDrag, this);
+
+			this._$value = this.$el.find(".qpf-spinner-value")
+			// numeric input only
+			this._$value.keydown(function(event) {
+				// Allow: backspace, delete, tab, escape and dot
+				if (event.keyCode == 46 || event.keyCode == 8 || event.keyCode == 9 || event.keyCode == 27 || event.keyCode == 190 ||
+					 // Allow: Ctrl+A
+					(event.keyCode == 65 && event.ctrlKey === true) || 
+					// Allow: home, end, left, right
+					(event.keyCode >= 35 && event.keyCode <= 39)) {
+					// let it happen, don't do anything
+					return;
+				}
+				else {
+					// Ensure that it is a number and stop the keypress
+					if (event.shiftKey || (event.keyCode < 48 || event.keyCode > 57) && (event.keyCode < 96 || event.keyCode > 105)) {
+						event.preventDefault(); 
+					}
+		        }
+			});
+
+			this._$value.change(function() {
+				// sync the value in the input
+				if (this.value !== self.value().toString()) {
+					this.value = self.value();
+				}
+			})
+		},
+
+		_onDragStart : function(e) {
+			this._y0 = e.pageY;
+		},
+
+		_onDrag : function(e) {
+			var oy = e.pageY - this._y0;
+			if (oy < 0) {
+				oy = Math.floor(oy / 5);
+			} else {
+				oy = Math.ceil(oy / 5);
+			}
+			this.value(this.value() - this.step() * oy);
+			this._y0 = e.pageY;
+		}
+	})
+
+	Meta.provideBinding('spinner', Spinner);
+
+	return Spinner;
 });
 /**
  * Textfiled component
@@ -3999,225 +4457,225 @@ return Vector;
  */
 define('widget/Palette',['require','./Widget','./Color','knockout','$','_','widget/Vector','meta/TextField','meta/Slider'],function(require) {
 
-var Widget = require("./Widget");
-var Color = require("./Color");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    var Widget = require("./Widget");
+    var Color = require("./Color");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-// component will be used in the widget
-require("widget/Vector");
-require("meta/TextField");
-require("meta/Slider");
+    // component will be used in the widget
+    require("widget/Vector");
+    require("meta/TextField");
+    require("meta/Slider");
 
-var Palette = Widget.derive(function() {
-    var ret = new Color;
-    var self = this;
-
-    _.extend(ret, {
-        _recent : ko.observableArray(),
-        _recentMax : 5
-    });
-    return ret;
-}, {
-
-    type : 'PALETTE',
-
-    css : 'palette',
-
-    eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply']),
-
-    template :  '<div class="qpf-palette-adjuster">\
-                    <div class="qpf-left">\
-                        <div class="qpf-palette-picksv" data-bind="style:{backgroundColor:hueRGB}">\
-                            <div class="qpf-palette-saturation">\
-                                <div class="qpf-palette-value"></div>\
-                            </div>\
-                            <div class="qpf-palette-picker"></div>\
-                        </div>\
-                        <div class="qpf-palette-pickh">\
-                            <div class="qpf-palette-picker"></div>\
-                        </div>\
-                        <div style="clear:both"></div>\
-                        <div class="qpf-palette-alpha">\
-                            <div class="qpf-palette-alpha-slider" data-bind="qpf:{type:\'slider\', min:0, max:1, value:alpha, precision:2}"></div>\
-                        </div>\
-                    </div>\
-                    <div class="qpf-right">\
-                        <div class="qpf-palette-rgb">\
-                            <div data-bind="qpf:{type:\'label\', text:\'RGB\'}"></div>\
-                            <div data-bind="qpf:{type:\'vector\', items:rgbVector}"></div>\
-                        </div>\
-                        <div class="qpf-palette-hsv">\
-                            <div data-bind="qpf:{type:\'label\', text:\'HSV\'}"></div>\
-                            <div data-bind="qpf:{type:\'vector\', items:hsvVector}"></div>\
-                        </div>\
-                        <div class="qpf-palette-hex">\
-                            <div data-bind="qpf:{type:\'label\', text:\'#\'}"></div>\
-                            <div data-bind="qpf:{type:\'textfield\',text:hexString}"></div>\
-                        </div>\
-                    </div>\
-                </div>\
-                <div style="clear:both"></div>\
-                <ul class="qpf-palette-recent" data-bind="foreach:_recent">\
-                    <li data-bind="style:{backgroundColor:rgbString},\
-                                    attr:{title:hexString},\
-                                    click:$parent.hex.bind($parent, hex)"></li>\
-                </ul>\
-                <div class="qpf-palette-buttons">\
-                    <div data-bind="qpf:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel.bind($data)}"></div>\
-                    <div data-bind="qpf:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply.bind($data)}"></div>\
-                </div>',
-
-    initialize : function() {
-        this.hsv.subscribe(function(hsv) {
-            this._setPickerPosition();
-            this.trigger("change", this.hex());
-        }, this);
-        // incase the saturation and value is both zero or one, and
-        // the rgb value not change when hue is changed
-        this._h.subscribe(this._setPickerPosition, this);
-    },
-    afterRender : function() {
-        this._$svSpace = $('.qpf-palette-picksv');
-        this._$hSpace = $('.qpf-palette-pickh');
-        this._$svPicker = this._$svSpace.children('.qpf-palette-picker');
-        this._$hPicker = this._$hSpace.children('.qpf-palette-picker');
-
-        this._svSize = this._$svSpace.height();
-        this._hSize = this._$hSpace.height();
-
-        this._setPickerPosition();
-        this._setupSvDragHandler();
-        this._setupHDragHandler();
-    },
-    onResize : function() {
-        var $slider = this.$el.find(".qpf-palette-alpha-slider");
-        if ($slider.length) {
-            $slider.qpf("get")[0].onResize();
-        }
-
-        Widget.prototype.onResize.call(this);
-    },
-
-    _setupSvDragHandler : function() {
+    var Palette = Widget.derive(function() {
+        var ret = new Color;
         var self = this;
 
-        var _getMousePos = function(e) {
-            var offset = self._$svSpace.offset(),
-                left = e.pageX - offset.left,
-                top = e.pageY - offset.top;
-            return {
-                left :left,
-                top : top
-            }
-        };
-        var _mouseMoveHandler = function(e) {
-            var pos = _getMousePos(e);
-            self._computeSV(pos.left, pos.top);
-        }
-        var _mouseUpHandler = function(e) {
-            $(document.body).unbind("mousemove", _mouseMoveHandler)
-                            .unbind("mouseup", _mouseUpHandler)
-                            .unbind('mousedown', _disableSelect);
-        }
-        var _disableSelect = function(e) {
-            e.preventDefault();
-        }
-        this._$svSpace.mousedown(function(e) {
-            var pos = _getMousePos(e);
-            self._computeSV(pos.left, pos.top);
-
-            $(document.body).bind("mousemove", _mouseMoveHandler)
-                            .bind("mouseup", _mouseUpHandler)
-                            .bind("mousedown", _disableSelect);
-        })
-    },
-
-    _setupHDragHandler : function() {
-        var self = this;
-
-        var _getMousePos = function(e) {
-            var offset = self._$hSpace.offset(),
-                top = e.pageY - offset.top;
-            return top;
-        };
-        var _mouseMoveHandler = function(e) {
-            self._computeH(_getMousePos(e));
-        };
-        var _disableSelect = function(e) {
-            e.preventDefault();
-        }
-        var _mouseUpHandler = function(e) {
-            $(document.body).unbind("mousemove", _mouseMoveHandler)
-                            .unbind("mouseup", _mouseUpHandler)
-                            .unbind('mousedown', _disableSelect);
-        }
-
-        this._$hSpace.mousedown(function(e) {
-            self._computeH(_getMousePos(e));
-
-            $(document.body).bind("mousemove", _mouseMoveHandler)
-                            .bind("mouseup", _mouseUpHandler)
-                            .bind("mousedown", _disableSelect);
-        })
-
-    },
-
-    _computeSV : function(left, top) {
-        var saturation = left / this._svSize,
-            value = (this._svSize-top)/this._svSize;
-
-        this._s(saturation*100);
-        this._v(value*100);
-    },
-
-    _computeH : function(top) {
-
-        this._h(top/this._hSize * 360);
-    },
-
-    _setPickerPosition : function() {
-        if (this._$svPicker) {
-            var hsv = this.hsv();
-            var hue = hsv[0];
-            var saturation = hsv[1];
-            var value = hsv[2];
-
-            // set position relitave to space
-            this._$svPicker.css({
-                left : Math.round(saturation/100 * this._svSize) + "px",
-                top : Math.round((100-value)/100 * this._svSize) + "px"
-            });
-            this._$hPicker.css({
-                top : Math.round(hue/360 * this._hSize) + "px"
-            });
-        }
-    },
-
-    _apply : function() {
-        if (this._recent().length > this._recentMax) {
-            this._recent.shift();
-        }
-        this._recent.push({
-            rgbString : "rgb(" + this.rgb().join(",") + ")",
-            hexString : this.hexString(),
-            hex : this.hex()
+        _.extend(ret, {
+            _recent : ko.observableArray(),
+            _recentMax : 5
         });
-        
-        this.trigger("apply", this.hex());
-    },
+        return ret;
+    }, {
 
-    _cancel : function() {
-        this.trigger("cancel")
-    }
-})
+        type : 'PALETTE',
 
-Widget.provideBinding("palette", Palette);
+        css : 'palette',
 
-return Palette;
+        eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply']),
+
+        template :  '<div class="qpf-palette-adjuster">\
+                        <div class="qpf-left">\
+                            <div class="qpf-palette-picksv" data-bind="style:{backgroundColor:hueRGB}">\
+                                <div class="qpf-palette-saturation">\
+                                    <div class="qpf-palette-value"></div>\
+                                </div>\
+                                <div class="qpf-palette-picker"></div>\
+                            </div>\
+                            <div class="qpf-palette-pickh">\
+                                <div class="qpf-palette-picker"></div>\
+                            </div>\
+                            <div style="clear:both"></div>\
+                            <div class="qpf-palette-alpha">\
+                                <div class="qpf-palette-alpha-slider" data-bind="qpf:{type:\'slider\', min:0, max:1, value:alpha, precision:2}"></div>\
+                            </div>\
+                        </div>\
+                        <div class="qpf-right">\
+                            <div class="qpf-palette-rgb">\
+                                <div data-bind="qpf:{type:\'label\', text:\'RGB\'}"></div>\
+                                <div data-bind="qpf:{type:\'vector\', items:rgbVector}"></div>\
+                            </div>\
+                            <div class="qpf-palette-hsv">\
+                                <div data-bind="qpf:{type:\'label\', text:\'HSV\'}"></div>\
+                                <div data-bind="qpf:{type:\'vector\', items:hsvVector}"></div>\
+                            </div>\
+                            <div class="qpf-palette-hex">\
+                                <div data-bind="qpf:{type:\'label\', text:\'#\'}"></div>\
+                                <div data-bind="qpf:{type:\'textfield\',text:hexString}"></div>\
+                            </div>\
+                        </div>\
+                    </div>\
+                    <div style="clear:both"></div>\
+                    <ul class="qpf-palette-recent" data-bind="foreach:_recent">\
+                        <li data-bind="style:{backgroundColor:rgbString},\
+                                        attr:{title:hexString},\
+                                        click:$parent.hex.bind($parent, hex)"></li>\
+                    </ul>\
+                    <div class="qpf-palette-buttons">\
+                        <div data-bind="qpf:{type:\'button\', text:\'Cancel\', class:\'small\', onclick:_cancel.bind($data)}"></div>\
+                        <div data-bind="qpf:{type:\'button\', text:\'Apply\', class:\'small\', onclick:_apply.bind($data)}"></div>\
+                    </div>',
+
+        initialize : function() {
+            this.hsv.subscribe(function(hsv) {
+                this._setPickerPosition();
+                this.trigger("change", this.hex());
+            }, this);
+            // incase the saturation and value is both zero or one, and
+            // the rgb value not change when hue is changed
+            this._h.subscribe(this._setPickerPosition, this);
+        },
+        afterRender : function() {
+            this._$svSpace = $('.qpf-palette-picksv');
+            this._$hSpace = $('.qpf-palette-pickh');
+            this._$svPicker = this._$svSpace.children('.qpf-palette-picker');
+            this._$hPicker = this._$hSpace.children('.qpf-palette-picker');
+
+            this._svSize = this._$svSpace.height();
+            this._hSize = this._$hSpace.height();
+
+            this._setPickerPosition();
+            this._setupSvDragHandler();
+            this._setupHDragHandler();
+        },
+        onResize : function() {
+            var $slider = this.$el.find(".qpf-palette-alpha-slider");
+            if ($slider.length) {
+                $slider.qpf("get")[0].onResize();
+            }
+
+            Widget.prototype.onResize.call(this);
+        },
+
+        _setupSvDragHandler : function() {
+            var self = this;
+
+            var _getMousePos = function(e) {
+                var offset = self._$svSpace.offset(),
+                    left = e.pageX - offset.left,
+                    top = e.pageY - offset.top;
+                return {
+                    left :left,
+                    top : top
+                }
+            };
+            var _mouseMoveHandler = function(e) {
+                var pos = _getMousePos(e);
+                self._computeSV(pos.left, pos.top);
+            }
+            var _mouseUpHandler = function(e) {
+                $(document.body).unbind("mousemove", _mouseMoveHandler)
+                                .unbind("mouseup", _mouseUpHandler)
+                                .unbind('mousedown', _disableSelect);
+            }
+            var _disableSelect = function(e) {
+                e.preventDefault();
+            }
+            this._$svSpace.mousedown(function(e) {
+                var pos = _getMousePos(e);
+                self._computeSV(pos.left, pos.top);
+
+                $(document.body).bind("mousemove", _mouseMoveHandler)
+                                .bind("mouseup", _mouseUpHandler)
+                                .bind("mousedown", _disableSelect);
+            })
+        },
+
+        _setupHDragHandler : function() {
+            var self = this;
+
+            var _getMousePos = function(e) {
+                var offset = self._$hSpace.offset(),
+                    top = e.pageY - offset.top;
+                return top;
+            };
+            var _mouseMoveHandler = function(e) {
+                self._computeH(_getMousePos(e));
+            };
+            var _disableSelect = function(e) {
+                e.preventDefault();
+            }
+            var _mouseUpHandler = function(e) {
+                $(document.body).unbind("mousemove", _mouseMoveHandler)
+                                .unbind("mouseup", _mouseUpHandler)
+                                .unbind('mousedown', _disableSelect);
+            }
+
+            this._$hSpace.mousedown(function(e) {
+                self._computeH(_getMousePos(e));
+
+                $(document.body).bind("mousemove", _mouseMoveHandler)
+                                .bind("mouseup", _mouseUpHandler)
+                                .bind("mousedown", _disableSelect);
+            })
+
+        },
+
+        _computeSV : function(left, top) {
+            var saturation = left / this._svSize,
+                value = (this._svSize-top)/this._svSize;
+
+            this._s(saturation*100);
+            this._v(value*100);
+        },
+
+        _computeH : function(top) {
+
+            this._h(top/this._hSize * 360);
+        },
+
+        _setPickerPosition : function() {
+            if (this._$svPicker) {
+                var hsv = this.hsv();
+                var hue = hsv[0];
+                var saturation = hsv[1];
+                var value = hsv[2];
+
+                // set position relitave to space
+                this._$svPicker.css({
+                    left : Math.round(saturation/100 * this._svSize) + "px",
+                    top : Math.round((100-value)/100 * this._svSize) + "px"
+                });
+                this._$hPicker.css({
+                    top : Math.round(hue/360 * this._hSize) + "px"
+                });
+            }
+        },
+
+        _apply : function() {
+            if (this._recent().length > this._recentMax) {
+                this._recent.shift();
+            }
+            this._recent.push({
+                rgbString : "rgb(" + this.rgb().join(",") + ")",
+                hexString : this.hexString(),
+                hex : this.hex()
+            });
+            
+            this.trigger("apply", this.hex());
+        },
+
+        _cancel : function() {
+            this.trigger("cancel")
+        }
+    })
+
+    Widget.provideBinding("palette", Palette);
+
+    return Palette;
 });
-define('qpf',['require','Base','container/Accordian','container/Application','container/Box','container/Container','container/HBox','container/Inline','container/List','container/Panel','container/Tab','container/VBox','container/Window','core/Clazz','core/XMLParser','core/mixin/derive','core/mixin/notifier','meta/Button','meta/CheckBox','meta/ComboBox','meta/Label','meta/ListItem','meta/Meta','meta/NativeHtml','meta/Slider','meta/Spinner','meta/TextField','meta/Tree','mixin/Draggable','util','widget/Color','widget/Palette','widget/Vector','widget/Widget'],function(require){
+define('qpf',['require','Base','container/Accordian','container/Application','container/Box','container/Container','container/HBox','container/Inline','container/List','container/Panel','container/Tab','container/VBox','container/Window','core/Clazz','core/XMLParser','core/mixin/derive','core/mixin/notifier','helper/Draggable','helper/Resizable','meta/Button','meta/CheckBox','meta/ComboBox','meta/Label','meta/ListItem','meta/Meta','meta/NativeHtml','meta/Slider','meta/Spinner','meta/TextField','meta/Tree','util','widget/Color','widget/Palette','widget/Vector','widget/Widget'],function(require){
     
     var qpf =  {
 	"Base": require('Base'),
@@ -4242,6 +4700,10 @@ define('qpf',['require','Base','container/Accordian','container/Application','co
 			"notifier": require('core/mixin/notifier')
 		}
 	},
+	"helper": {
+		"Draggable": require('helper/Draggable'),
+		"Resizable": require('helper/Resizable')
+	},
 	"meta": {
 		"Button": require('meta/Button'),
 		"CheckBox": require('meta/CheckBox'),
@@ -4254,9 +4716,6 @@ define('qpf',['require','Base','container/Accordian','container/Application','co
 		"Spinner": require('meta/Spinner'),
 		"TextField": require('meta/TextField'),
 		"Tree": require('meta/Tree')
-	},
-	"mixin": {
-		"Draggable": require('mixin/Draggable')
 	},
 	"util": require('util'),
 	"widget": {

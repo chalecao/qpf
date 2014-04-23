@@ -381,7 +381,7 @@ body {
 }
 .qpf-ui-combobox ul.qpf-combobox-items > li {
   list-style: none;
-  border-bottom: 1px solid #565656;
+  border-bottom: 1px solid #383838;
   background-color: #2e302f;
   color: #8d8d8d;
   line-height: 30px;
@@ -522,7 +522,7 @@ body {
   background-image: -ms-linear-gradient(top, rgba(204, 154, 129, 0) 0%, #000000 100%);
   background-image: -o-linear-gradient(top, rgba(204, 154, 129, 0) 0%, #000000 100%);
   background-image: linear-gradient(top, rgba(204, 154, 129, 0) 0%, #000000 100%);
-  box-shadow: inset 0px 0px 5px black;
+  box-shadow: inset 0px 0px 2px black;
 }
 .qpf-ui-palette .qpf-palette-picksv .qpf-palette-picker {
   width: 8px;
@@ -543,7 +543,7 @@ body {
   background: -moz-linear-gradient(top, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
   background: linear-gradient(top, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%);
   overflow: hidden;
-  box-shadow: inset 0px 0px 5px black;
+  box-shadow: inset 0px 0px 2px black;
 }
 .qpf-ui-palette .qpf-palette-pickh .qpf-palette-picker {
   width: 16px;
@@ -613,6 +613,7 @@ body {
   color: #CCC;
   line-height: 25px;
   background-color: #424242;
+  border-radius: 3px 3px 0px 0px;
 }
 .qpf-ui-panel > .qpf-panel-header > .qpf-panel-title {
   margin-left: 10px;
@@ -656,7 +657,7 @@ body {
   overflow: hidden;
 }
 .qpf-ui-tab > .qpf-tab-header > .qpf-tab-tabs > li.actived {
-  background-color: #323234;
+  background-color: #2A2C2B;
   border-bottom: none;
   margin-top: -1px;
   line-height: 25px;
@@ -682,4 +683,19 @@ body {
 }
 .qpf-ui-inline .qpf-children > div {
   float: left;
+}
+.qpf-resizable-handler.qpf-right {
+  cursor: e-resize;
+}
+.qpf-resizable-handler.qpf-left {
+  cursor: w-resize;
+}
+.qpf-resizable-handler.qpf-top {
+  cursor: n-resize;
+}
+.qpf-resizable-handler.qpf-bottom {
+  cursor: s-resize;
+}
+.qpf-resizable-handler.qpf-right {
+  cursor: e-resize;
 }

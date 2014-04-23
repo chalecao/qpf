@@ -15,7 +15,15 @@ define(function(require) {
             
             resizable : false,
 
-            resizeHandles : 'r,b,rb'
+            resizeHandles : 'r,b,rb',
+
+            resizeMinWidth : 0,
+
+            resizeMaxWidth : Infinity,
+
+            resizeMinHeight : 0,
+
+            resizeMaxHeight : Infinity
         }
     }, {
 
@@ -83,18 +91,22 @@ define(function(require) {
             // traverse tree in pre-order
             Base.prototype.doRender.call(this);
 
+            _.each(this.children(), function(child) {
+                child.render();
+            });
+
             if (this.resizable) {
                 Resizable.applyTo(this, {
                     container : this.$el,
-                    handles : this.resizeHandles
+                    handles : this.resizeHandles,
+                    minWidth : this.resizeMinWidth,
+                    maxWidth : this.resizeMaxWidth,
+                    minHeight : this.resizeMinHeight,
+                    maxHeight : this.resizeMaxHeight
                 });
 
                 this.resizable.on('resize', this._onResizableResize, this);
             }
-            
-            _.each(this.children(), function(child) {
-                child.render();
-            });
         },
         
         // resize when width or height is changed

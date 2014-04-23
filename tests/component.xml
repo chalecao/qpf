@@ -1,5 +1,6 @@
+<?xml version='1.0'?>
 <application>
-	<tab height="100%" actived="0">
+	<tab height="100%" actived="1">
 		<panel title="Meta">
 			<inline style="margin:10px">
 				<label style="margin:5px">Button</label>
