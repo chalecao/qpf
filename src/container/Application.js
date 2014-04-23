@@ -6,31 +6,33 @@
 
 define(function(require) {
 
-var Container = require("./Container");
-var ko = require("knockout");
-var $ = require("$");
+    'use strict';
 
-var Application = Container.derive(function() {
+    var Container = require("./Container");
+    var ko = require("knockout");
+    var $ = require("$");
 
-}, {
+    var Application = Container.derive({
 
-    type : "APPLICATION",
-    
-    css : "application",
+    }, {
 
-    initialize : function() {
-        $(window).resize( this._resize.bind(this) );
-        this._resize();
-    },
+        type : "APPLICATION",
+        
+        css : "application",
 
-    _resize : function() {
-        this.width($(window).width());
-        this.height($(window).height());
-    }
-})
+        initialize : function() {
+            $(window).resize(this._resize.bind(this));
+            this._resize();
+        },
 
-Container.provideBinding("application", Application);
+        _resize : function() {
+            this.width($(window).width());
+            this.height($(window).height());
+        }
+    })
 
-return Application;
+    Container.provideBinding("application", Application);
+
+    return Application;
 
 })

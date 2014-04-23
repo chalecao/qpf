@@ -4,69 +4,71 @@
 
 define(function(require) {
 
-var Container = require("./Container");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    var Container = require("./Container");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-var Box = Container.derive(function() {
+    var Box = Container.derive({
+        _inResize : false
+    }, {
 
-return {
+        type : 'BOX',
 
-}}, {
+        css : 'box',
 
-    type : 'BOX',
+        initialize : function() {
 
-    css : 'box',
+            this.children.subscribe(this._onChildrenChanged, this);
 
-    initialize : function() {
+            this.$el.css("position", "relative");
 
-        this.children.subscribe(function(children) {
+            Container.prototype.initialize.call(this);
+        },
+
+        _onChildrenChanged : function(children) {
             this.onResize();
-            // resize after the child resize happens will cause recursive
-            // reszie problem
-            // _.each(children, function(child) {
-            //  child.on('resize', this.onResize, this);
-            // }, this)
-        }, this);
+            _.each(children, function(child) {
+                child.on('resize', this.onResize, this);
+            }, this);
+        },
 
-        this.$el.css("position", "relative");
+        _getMargin : function($el) {
+            return {
+                left : parseInt($el.css("marginLeft")) || 0,
+                top : parseInt($el.css("marginTop")) || 0,
+                bottom : parseInt($el.css("marginBottom")) || 0,
+                right : parseInt($el.css("marginRight")) || 0,
+            }
+        },
 
-        Container.prototype.initialize.call(this);
-    },
+        _resizeTimeout : 0,
 
-    _getMargin : function($el) {
-        return {
-            left : parseInt($el.css("marginLeft")) || 0,
-            top : parseInt($el.css("marginTop")) || 0,
-            bottom : parseInt($el.css("marginBottom")) || 0,
-            right : parseInt($el.css("marginRight")) || 0,
+        onResize : function() {
+            // Avoid recursive call from children
+            if (this._inResize) {
+                return;
+            }
+            var self = this;
+            // put resize in next tick,
+            // if multiple child have triggered the resize event
+            // it will do only once;
+            if (this._resizeTimeout) {
+                clearTimeout(this._resizeTimeout);
+            }
+            this._resizeTimeout = setTimeout(function() {
+                self._inResize = true;
+                self.resizeChildren();
+                Container.prototype.onResize.call(self);
+                self._inResize = false;
+            });
         }
-    },
 
-    _resizeTimeout : 0,
-
-    onResize : function() {
-
-        var self = this;
-        // put resize in next tick,
-        // if multiple child have triggered the resize event
-        // it will do only once;
-        if( this._resizeTimeout ) {
-            clearTimeout( this._resizeTimeout );
-        }
-        this._resizeTimeout = setTimeout(function() {
-            self.resizeChildren();
-            Container.prototype.onResize.call(self);
-        });
-
-    }
-
-})
+    })
 
 
-// Container.provideBinding("box", Box);
+    // Container.provideBinding("box", Box);
 
-return Box;
+    return Box;
 
 })

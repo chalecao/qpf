@@ -4,7 +4,7 @@
 // css3 functions
 @import "./css-vendor.less";
 
-body{
+body {
 	font-family: "Helvetica", "Arial", "黑体";
 	font-size: 14px;
 }
@@ -14,28 +14,27 @@ body{
 // small : 20px height 
 //-------------------------------------
 .qpf-ui-button,
-.qpf-common-button{
+.qpf-common-button {
 	border:none;
 	border-radius: 3px;
 	box-shadow: 0px 1px 3px black;
 	border-top: 1px solid #626262;
 	.linear-gradient-top(#3f3f3f, rgba(255,255,255,0.1), 0%, rgba(255,255,255,0.0), 99%);
 	color:#aeaeae;
-	line-height: 30px;
 	height:30px;
 	text-align: center;
 	padding: 0px 20px;
 	cursor: pointer;
 
 	&:hover,
-	&.hover{
+	&.hover {
 		background-color: #757575;
 		border-top: 1px solid #848484;
 		color:#232323;
 	}
 
 	&:active,
-	&.active{
+	&.active {
 		.linear-gradient-top(#000000, rgba(255,255,255,0.0), 0%, rgba(255,255,255,0.1), 99%);
 		border-bottom: 1px solid #2b2b2b;
 		box-shadow: inset 0px 1px 3px black;
@@ -43,7 +42,7 @@ body{
 		color:#aeaeae;
 	}
 
-	&.small{
+	&.small {
 		line-height: 20px;
 		height:20px;
 		padding: 0px 10px;
@@ -55,14 +54,14 @@ body{
 //-------------------------------------
 // meta : label
 //-------------------------------------
-.qpf-ui-label{
+.qpf-ui-label {
 	color : white;
 }
 
 //-------------------------------------
 // meta : textfield
 //-------------------------------------
-.qpf-ui-textfield{
+.qpf-ui-textfield {
 
 	background-color: #111111;
 	border-radius: 3px;
@@ -70,7 +69,7 @@ body{
 	border-bottom: 1px solid #414141;
 	box-shadow: inset 0px 1px 3px black;
 
-	input{
+	input {
 		background:none;
 		border:none;
 		//default width
@@ -83,7 +82,7 @@ body{
 		padding-left: 4px;
 		font-size: 14px;
 
-		&:focus{
+		&:focus {
 			outline: none;
 		}
 
@@ -93,15 +92,15 @@ body{
 //-------------------------------------
 // meta : checkbox
 //-------------------------------------
-.qpf-ui-checkbox{
+.qpf-ui-checkbox {
 
 	cursor: pointer;
 
-	input{
+	input {
 		display: none;
 	}
 
-	span{
+	span {
 		width: 19px;
 		height: 16px;
 		background-image: url(images/check_radio_sheet.png);
@@ -109,14 +108,14 @@ body{
 		display: inline-block;
 		border-radius: 3px;
 		
-		&.checked{
+		&.checked {
 			background-position: -19px 0px;
 		}
 	}
 }
 
 //spinner
-.qpf-ui-spinner{
+.qpf-ui-spinner {
 	
 	background-color: #111111;
 	border-radius: 3px;
@@ -124,10 +123,11 @@ body{
 	height:26px;
 	box-shadow: inset 0px 1px 3px black;
 
-	.qpf-left{
+	.qpf-left {
 		
 		float:left;
-		input{
+
+		input {
 			background:none;
 			border:none;
 			//default width
@@ -136,34 +136,34 @@ body{
 			float:left;
 			margin:0px;
 
-			line-height: 23px;
+			height: 26px;
 			padding-left: 4px;
 			font-size: 14px;
 
-			&:focus{
+			&:focus {
 				outline: none;
 			}
 
 		}
 	}
-	.qpf-right{
+	.qpf-right {
 		
 		float:right;
 
 		.qpf-increase,
-		.qpf-decrease{
+		.qpf-decrease {
 			width:16px;
 			height:11px;
 			margin-top: 1px;
 			padding:0px;
 		}
 
-		.qpf-increase{
+		.qpf-increase {
 			border-radius: 0px 3px 0px 0px;
 			line-height: 9px;
 			font-size: 12px;
 		}
-		.qpf-decrease{
+		.qpf-decrease {
 			border-radius: 0px 0px 3px 0px;
 			line-height: 9px;
 			font-size: 16px;
@@ -174,15 +174,15 @@ body{
 //-------------------------------------
 // meta : slider
 //-------------------------------------
-.qpf-ui-slider{
+.qpf-ui-slider {
 	
 	height:25px;
 	position: relative;
 
-	.qpf-slider-groove-box{
+	.qpf-slider-groove-box {
 		float: left;
 	}
-	.qpf-slider-groove{
+	.qpf-slider-groove {
 
 		background-color: #030303;
 		box-shadow: 0px 0px 1px black;
@@ -191,26 +191,26 @@ body{
 		overflow: hidden;
 	}
 
-	.qpf-slider-percentage{
+	.qpf-slider-percentage {
 		background-color: #4EADD5;
 		margin-top: 1px;
 		margin-left: 1px;
 		border-radius: 2px;
 	}
 
-	.qpf-slider-control{
+	.qpf-slider-control {
 		width: 0px;
 		height: 14px;
 		position: absolute;
 
-		.qpf-slider-control-inner{
+		.qpf-slider-control-inner {
 			width: 12px;
 			height: 14px;
 			margin-left: -6px;
 			background-image: url(images/slider-control.png);
 		}
 
-		.qpf-slider-value{
+		.qpf-slider-value {
 			background-color: #464648;
 			color:#939395;
 			padding:2px 4px;
@@ -222,49 +222,49 @@ body{
 			.transition-delay(1s);
 		}
 
-		&:hover{
-			.qpf-slider-value{
+		&:hover {
+			.qpf-slider-value {
 				opacity: 1;
 				.transition-delay(0s);
 			}
 		}
 	}
 
-	.qpf-slider-min{
+	.qpf-slider-min {
 		position: absolute;
 		font-size: 12px;
 		color:#616161;
 	}
-	.qpf-slider-max{		
+	.qpf-slider-max {		
 		position: absolute;
 		font-size: 12px;
 		color:#616161;
 	}
 
 	// the slider is horizontal
-	&.horizontal{
-		.qpf-slider-groove-box{
+	&.horizontal {
+		.qpf-slider-groove-box {
 			width:100%;
 		}
-		.qpf-slider-groove{
+		.qpf-slider-groove {
 			width:100%;
 			height:3px;
 			margin-top: 15px;
 		}
-		.qpf-slider-percentage{
+		.qpf-slider-percentage {
 			height: 2px;
 		}
-		.qpf-slider-min{
+		.qpf-slider-min {
 			left:0px;
 			top:2px;
 		}
-		.qpf-slider-max{
+		.qpf-slider-max {
 			right:0px;
 			top:2px;
 		}
-		.qpf-slider-control{
+		.qpf-slider-control {
 			top:10px;
-			.qpf-slider-value{
+			.qpf-slider-value {
 				bottom:-1px;
 				left:16px;
 			}
@@ -272,30 +272,30 @@ body{
 	}
 
 	// the slider is vertical
-	&.vertical{
+	&.vertical {
 		height: 100%;
-		.qpf-slider-groove-box{
+		.qpf-slider-groove-box {
 			height:100%;
 		}
-		.qpf-slider-groove{
+		.qpf-slider-groove {
 			width:3px;
 			height:100%;
 			margin-left: 5px;
 		}
-		.qpf-slider-percentage{
+		.qpf-slider-percentage {
 			height: 2px;
 		}
-		.qpf-slider-min{
+		.qpf-slider-min {
 			left:15px;
 			top:0px;
 		}
-		.qpf-slider-max{
+		.qpf-slider-max {
 			left:15px;
 			bottom:0px;
 		}
-		.qpf-slider-control{
+		.qpf-slider-control {
 			top:10px;
-			.qpf-slider-value{
+			.qpf-slider-value {
 				bottom:-1px;
 				left:16px;
 			}
@@ -306,17 +306,17 @@ body{
 //-------------------------------------
 // meta : combobox
 //-------------------------------------
-.qpf-ui-combobox{
+.qpf-ui-combobox {
 
 	border-radius: 3px;
 	border: 1px solid #141414;
 	position: relative;
 
-	.qpf-combobox-selected{
+	.qpf-combobox-selected {
 		
 		position: relative;
 
-		.qpf-left{
+		.qpf-left {
 			box-shadow: none;
 			text-align: left;
 			padding: 0px 10px;
@@ -332,7 +332,7 @@ body{
 
 			margin-right: 21px;
 		}
-		.qpf-right{
+		.qpf-right {
 			float:right;
 			width:20px;
 			height:30px;
@@ -345,12 +345,12 @@ body{
 			box-shadow: none;
 			border-left: 1px solid #272727;
 
-			&:active{
+			&:active {
 				background-color: #757575;
 				border-top: 1px solid #848484;
 				color:#232323;
 			}
-			.qpf-icon{
+			.qpf-icon {
 				background-size: 10px 10px;
 				width:20px;
 				height:30px;
@@ -361,7 +361,7 @@ body{
 		}
 	}
 
-	ul.qpf-combobox-items{
+	ul.qpf-combobox-items {
 		margin:0px;
 		padding: 0px;
 		display: none;
@@ -375,7 +375,7 @@ body{
 		border-top: none;
 		margin-left: -1px;
 
-		&>li{
+		&>li {
 			list-style: none;
 			border-bottom: 1px solid #292929;
 			border-top: 1px solid #565656;
@@ -387,44 +387,44 @@ body{
 
 			cursor: pointer;
 
-			&:hover{
+			&:hover {
 				color:#acacac;
 				background-color:#4b4b4b;
 			}
 
-			&.selected{
+			&.selected {
 				border-left: 2px solid #4EADD5;
 				box-sizing:border-box;
 			}
 		}
 	}
 
-	&.active{
+	&.active {
 		border-radius: 3px 3px 0px 0px;
 		
-		.qpf-combobox-selected{
-			.qpf-left{
+		.qpf-combobox-selected {
+			.qpf-left {
 				border-bottom: 1px solid #292929;
 				border-radius: 3px 0px 0px 0px;
 			}
-			.qpf-right{
+			.qpf-right {
 				border-bottom: 1px solid #292929;
 				border-radius: 0px 3px 0px 0px;
-				.qpf-icon{
+				.qpf-icon {
 					background-image: url(images/arrow-up.svg);
 				}
 			}
 		}
 
-		ul.qpf-combobox-items{
+		ul.qpf-combobox-items {
 			display: block;
 		}
 	}
 
-	&.small{
-		.qpf-combobox-selected{
+	&.small {
+		.qpf-combobox-selected {
 
-			.qpf-left{
+			.qpf-left {
 				line-height: 20px;
 				height:20px;
 				padding: 0px 10px;
@@ -669,60 +669,65 @@ body{
 //-------------------------------------
 .qpf-ui-panel{
 
-	border-radius: 5px;
 	box-shadow: 0px 1px 2px black;
 	background-color: #323234;
 	position: relative;
 
-	&>.qpf-panel-header{
+	&>.qpf-panel-header {
 		.linear-gradient-top(#3f3f3f, rgba(255,255,255,0.1), 0%, rgba(255,255,255,0.0), 99%);
 		border-top: 1px solid #626262;
 		color:#919191;
 		line-height: 25px;
 
-		border-radius: 5px 5px 0px 0px;
-
 		box-shadow: 0px 1px 1px black;
 
-		&>.qpf-panel-title{
+		&>.qpf-panel-title {
 			margin-left: 10px;
 		}
 
 	}
 
-	&>.qpf-panel-body{
+	&>.qpf-panel-body {
 		padding: 10px;
 	}
 
-	&>.qpf-panel-footer{
+	&>.qpf-panel-footer {
 		min-height: 5px;
-		border-radius: 0px 0px 5px 5px;
+	}
+
+	&.border-radius-5 {
+		border-radius: 5px;
+		&>.qpf-panel-header {
+			border-radius: 5px 5px 0px 0px;
+		}
+		&>.qpf-panel-footer {
+			border-radius: 0px 0px 5px 5px;
+		}
 	}
 }
 //-------------------------------------
 // container : Window
 //-------------------------------------
 
-.qpf-ui-window{
+.qpf-ui-window {
 	position: absolute;
 }
 //-------------------------------------
 // container : Tab
 //-------------------------------------
-.qpf-ui-tab{
+.qpf-ui-tab {
 
-
-	&>.qpf-tab-header{
+	&>.qpf-tab-header {
 		overflow: hidden;
 
-		&>.qpf-tab-tabs{
+		&>.qpf-tab-tabs {
 
 			margin: -1px -1px 0px -1px;
 			box-shadow: inset 0px 0px 1px black;
 			height: 28px;
 			padding: 3px 3px 1px 1px;
 			
-			&>li{
+			&>li {
 				cursor: pointer;
 				list-style: none;
 				border-radius: 5px 5px 0px 0px;
@@ -736,7 +741,7 @@ body{
 
 				overflow: hidden;
 
-				&.actived{
+				&.actived {
 					background-color: #323234;
 					border: 1px solid #1B1B1B;
 					border-bottom: none;
@@ -744,7 +749,7 @@ body{
 					line-height: 29px;
 				}
 
-				a{
+				a {
 					color:#919191;
 					margin:0px 5px;
 				}
@@ -752,18 +757,18 @@ body{
 		}
 	}
 
-	&>.qpf-tab-body{
+	&>.qpf-tab-body {
 		background-color: #323234;
 		border-radius: 0px 0px 5px 5px;
 		border:1px solid #1B1B1B;
 		border-top: none;
 
-		&>.qpf-tab-views>.qpf-ui-panel{
+		&>.qpf-tab-views>.qpf-ui-panel {
 			box-shadow: none;
-			&>.qpf-panel-header{
+			&>.qpf-panel-header {
 				display: none;
 			}
-			&>.qpf-panel-footer{
+			&>.qpf-panel-footer {
 				display: none;
 			}
 		}
@@ -773,9 +778,9 @@ body{
 //-------------------------------------
 // container : Inline
 //-------------------------------------
-.qpf-ui-inline{
+.qpf-ui-inline {
 
-	.qpf-children>div{
+	.qpf-children>div {
 		float:left;
 	}
 }

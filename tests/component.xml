@@ -22,7 +22,7 @@
 			</inline>
 
 			<label>Spinner</label>
-			<spinner value="20" max="100"></spinner>
+			<spinner value="20" max="100" width="500px"></spinner>
 		</panel>
 		<panel title="Widget">
 			<label>
@@ -37,7 +37,7 @@
 			</label>
 			<vector>
 				<slider value="100"></slider>
-				<slider value="10"></slider>
+				<slider value="10" step="0.1"></slider>
 			</vector>
 			<palette></palette>
 		</panel>
@@ -49,10 +49,10 @@
 			</vbox>
 		</panel>
 		<panel title="HBox">
-			<hbox height="400" id="Hbox">
-				<panel title="first" style="margin:5px;"></panel>
-				<panel title="second" prefer="50" style="margin:5px;"></panel>
-				<panel title="third" flex="2" style="margin:5px;"></panel>
+			<hbox height="400" id="Hbox" resizable="true" resizeHandles="b">
+				<panel title="first" width="200" resizable="true" resizeHandles="r" style="margin:5px;"></panel>
+				<panel title="second" style="margin:5px;"></panel>
+				<panel title="third" width="200" resizable="true" resizeHandles="l" style="margin:5px;"></panel>
 			</hbox>
 		</panel>
 	</tab>

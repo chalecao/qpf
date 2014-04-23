@@ -17,6 +17,7 @@ var Meta = require("./Meta");
 var ko = require('knockout');
 var $ = require('$');
 var _ = require("_");
+var XMLParser = require('core/XMLParser');
 
 var Tree = Meta.derive(function() {
     return {

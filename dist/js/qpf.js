@@ -432,6 +432,8 @@ _define("_", [], function(){
 
 define('core/mixin/derive',['require'],function(require) {
 
+
+
 /**
  * derive a sub class from base class
  * @makeDefaultOpt [Object|Function] default option of this sub class, 
@@ -450,43 +452,59 @@ function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/) {
 
     var _super = this;
 
+    var propList;
+    if (! (makeDefaultOpt instanceof Function)) {
+        // Optimize the property iterate if it have been fixed
+        propList = [];
+        for (var propName in makeDefaultOpt) {
+            if (makeDefaultOpt.hasOwnProperty(propName)) {
+                propList.push(propName);
+            }
+        }
+    }
+
     var sub = function(options) {
 
         // call super constructor
         _super.call(this);
 
-        // call defaultOpt generate function each time
-        // if it is a function, So we can make sure each 
-        // property in the object is fresh
-        extend(this, typeof makeDefaultOpt == "function" ?
-                        makeDefaultOpt.call(this) : makeDefaultOpt);
-
-        extend(this, options);
+        if (makeDefaultOpt instanceof Function) {
+            // call defaultOpt generate function each time
+            // if it is a function, So we can make sure each 
+            // property in the object is fresh
+            extend(this, makeDefaultOpt.call(this));
+        } else {
+            extendWithPropList(this, makeDefaultOpt, propList);
+        }
+        
+        if (options) {
+            extend(this, options);
+        }
 
         if (this.constructor === sub) {
-            // find the base class, and the initialize function will be called 
-            // in the order of inherit
+            // initialize function will be called in the order of inherit
             var base = sub;
-            var initializeChain = [];
-            while (base) {
-                if (base.__initialize__) {
-                    initializeChain.push(base.__initialize__);
-                }
-                base = base.__super__;
-            }
-            for (var i = initializeChain.length - 1; i >= 0; i--) {
-                initializeChain[i].call(this);
+            var initializers = sub.__initializer__;
+            for (var i = 0; i < initializers.length; i++) {
+                initializers[i].call(this);
             }
         }
     };
     // save super constructor
     sub.__super__ = _super;
     // initialize function will be called after all the super constructor is called
-    sub.__initialize__ = initialize;
+    if (!_super.__initializer__) {
+        sub.__initializer__ = [];
+    } else {
+        sub.__initializer__ = _super.__initializer__.slice();
+    }
+    if (initialize) {
+        sub.__initializer__.push(initialize);
+    }
 
-    var Ghost = function() {};
-    Ghost.prototype = _super.prototype;
-    sub.prototype = new Ghost();
+    var Ctor = function() {};
+    Ctor.prototype = _super.prototype;
+    sub.prototype = new Ctor();
     sub.prototype.constructor = sub;
     extend(sub.prototype, proto);
     
@@ -497,11 +515,21 @@ function derive(makeDefaultOpt, initialize/*optional*/, proto/*optional*/) {
 }
 
 function extend(target, source) {
+    if (!source) {
+        return;
+    }
     for (var name in source) {
         if (source.hasOwnProperty(name)) {
             target[name] = source[name];
         }
     }
+}
+
+function extendWithPropList(target, source, propList) {
+    for (var i = 0; i < propList.length; i++) {
+        var propName = propList[i];
+        target[propName] = source[propName];
+    }   
 }
 
 return {
@@ -663,9 +691,6 @@ return {    // Public properties
             this.$el.addClass(this.withPrefix(className, this.classPrefix));
         }, this)
     }
-    // Class name of wrapper element is depend on the lowercase of component type
-    // this.$el.addClass(this.withPrefix(this.type.toLowerCase(), this.classPrefix));
-
     this.width.subscribe(function(newValue) {
         this.$el.width(newValue);
         this.onResize();
@@ -1659,6 +1684,179 @@ Container.provideBinding("inline", Inline);
 return Inline;
 
 });
+/**
+ * Base class of all meta component
+ * Meta component is the ui component
+ * that has no children
+ */
+define('meta/meta',['require','../Base','knockout'],function(require) {
+
+var Base = require("../Base");
+var ko = require("knockout");
+
+var Meta = Base.derive(
+{
+}, {
+    type : "META",
+
+    css : 'meta'
+});
+
+// Inherit the static methods
+Meta.provideBinding = Base.provideBinding;
+
+Meta.provideBinding("meta", Meta);
+
+return Meta;
+
+});
+// Default list item component
+// Specially provide for List container
+define('meta/ListItem',['require','./meta','knockout'],function(require){
+
+    var Meta = require("./meta");
+    var ko = require("knockout");
+
+    var ListItem = Meta.derive(function(){
+
+        return {
+            title : ko.observable("")
+        }
+    }, {
+        type : "LISTITEM",
+        
+        css : "list-item",
+
+        initialize : function(){
+            this.$el.mousedown(function(e){
+                e.preventDefault();
+            });
+        },
+
+        template : '<div class="title" data-bind="html:title"></div>'
+    })
+
+    return ListItem;
+});
+define('container/List',['require','./Container','knockout','../meta/ListItem','_'],function(require) {
+
+    var Container = require("./Container");
+    var ko = require("knockout");
+    var ListItem = require("../meta/ListItem");
+    var _ = require('_');
+
+    var List = Container.derive(function() {
+
+        return {
+            
+            dataSource : ko.observableArray([]),
+
+            itemView : ko.observable(ListItem), // item component constructor
+            
+            selected : ko.observableArray([]),
+
+            multipleSelect : false,
+            dragSort : false
+        }
+    }, {
+        type : "LIST",
+        
+        css : "list",
+
+        template : '<div data-bind="foreach:children" >\
+                        <div class="qpf-container-item">\
+                            <div data-bind="qpf_view:$data"></div>\
+                        </div>\
+                    </div>',
+
+        eventsProvided : _.union(Container.prototype.eventsProvided, "select"),
+
+        initialize : function() {
+
+            var oldArray = _.clone(this.dataSource());
+            var self = this;
+            
+            this.dataSource.subscribe(function(newArray) {
+                this._update(oldArray, newArray);
+                oldArray = _.clone(newArray);
+                _.each(oldArray, function(item, idx) {
+                    if(ko.utils.unwrapObservable(item.selected)) {
+                        this.selected(idx)
+                    }
+                }, this);
+            }, this);
+
+            this.selected.subscribe(function(idxList) {
+                this._unSelectAll();
+
+                _.each(idxList, function(idx) {
+                    var child = this.children()[idx];
+                    child &&
+                        child.$el.addClass("selected");
+                }, this)
+
+                self.trigger("select", this._getSelectedData());
+            }, this);
+
+            this.$el.delegate(".qpf-container-item", "click", function() {
+                var context = ko.contextFor(this);
+                self.selected([context.$index()]);
+            });
+
+            this._update([], oldArray);
+        },
+
+        _getSelectedData : function() {
+            var dataSource = this.dataSource();
+            var result = _.map(this.selected(), function(idx) {
+                return dataSource[idx];
+            }, this);
+            return result;
+        },
+
+        _update : function(oldArray, newArray) {
+
+            var children = this.children();
+            var ItemView = this.itemView();
+            var result = [];
+
+            var differences = ko.utils.compareArrays(oldArray, newArray);
+            var newChildren = [];
+            _.each(differences, function(item) {
+                if(item.status === "retained") {
+                    var index = oldArray.indexOf(item.value);
+                    result[ index ] = children[ index ];
+                }else if(item.status === "added") {
+                    var newChild = new ItemView({
+                        attributes : item.value
+                    });
+                    result[item.index] = newChild;
+                    children.splice(item.index, 0, newChild);
+                    newChildren.push(newChild);
+                }
+            }, this)
+            this.children(result);
+            // render after it is appended in the dom
+            // so the component like range will be resized proply
+            _.each(newChildren, function(child) {
+                child.render();
+            });
+        },
+
+        _unSelectAll : function() {
+            _.each(this.children(), function(child, idx) {
+                if(child) {
+                    child.$el.removeClass("selected")
+                }
+            }, this)
+        }
+
+    });
+
+    Container.provideBinding("list", List);
+
+    return List;
+});
 //============================================
 // Tab Container
 // Children of tab container must be a panel
@@ -1851,19 +2049,19 @@ var vBox = Box.derive(function() {
             marginCache.push(margin);
             // stretch the width
             // (when align is stretch)
-            child.width( this.$el.width()-margin.left-margin.right );
+            child.width(this.$el.width()-margin.left-margin.right);
 
-            var prefer = ko.utils.unwrapObservable( child.prefer );
+            var prefer = ko.utils.unwrapObservable(child.prefer);
 
             // item has a prefer size;
-            if( prefer ) {
+            if (prefer) {
                 // TODO : if the prefer size is lager than vbox size??
                 prefer = Math.min(prefer, remainderHeight);
-                child.height( prefer );
+                child.height(prefer);
 
                 remainderHeight -= prefer+margin.top+margin.bottom;
-            }else{
-                var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1);
+            } else {
+                var flex = parseInt(ko.utils.unwrapObservable(child.flex) || 1);
                 // put it in the next step to compute
                 // the height based on the flex property
                 childrenWithFlex.push(child);
@@ -1873,11 +2071,11 @@ var vBox = Box.derive(function() {
             }
         }, this);
 
-        _.each( childrenWithFlex, function(child, idx) {
+        _.each(childrenWithFlex, function(child, idx) {
             var margin = marginCacheWithFlex[idx];
-            var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1),
+            var flex = parseInt(ko.utils.unwrapObservable(child.flex) || 1),
                 ratio = flex / flexSum;
-            child.height( Math.floor(remainderHeight*ratio)-margin.top-margin.bottom ); 
+            child.height(Math.floor(remainderHeight*ratio)-margin.top-margin.bottom); 
         })
 
         var prevHeight = 0;
@@ -2823,6 +3021,45 @@ XMLParser.provideParser("label", function(xmlNode) {
 return Label;
 
 });
+// default list item component
+define('meta/NativeHtml',['require','./Meta','core/XMLParser','knockout','_'],function(require){
+
+    var Meta = require("./Meta");
+    var XMLParser = require("core/XMLParser");
+    var ko = require("knockout");
+    var _ = require("_");
+
+    var NativeHtml = Meta.derive(function(){
+        return {
+            $el : $('<div data-bind="html:html"></div>'),
+            html : ko.observable("ko")
+        }
+    }, {
+        type : "NATIVEHTML",
+        
+        css : "native-html"
+    })
+
+    Meta.provideBinding("nativehtml", NativeHtml);
+
+    XMLParser.provideParser("nativehtml", function(xmlNode){
+        var children = XMLParser.util.getChildren(xmlNode);
+        var html = "";
+        _.each(children, function(child){
+            // CDATA
+            if(child.nodeType === 4){
+                html += child.textContent;
+            }
+        });
+        if( html ){
+            return {
+                html : html
+            }
+        }
+    })
+
+    return NativeHtml;
+});
 /**
  * Slider component
  * 
@@ -2859,8 +3096,6 @@ var Slider = Meta.derive(function(){
 
         orientation : ko.observable("horizontal"),// horizontal | vertical
 
-        precision : ko.observable(2),
-
         format : "{{value}}",
 
         _format : function(number){
@@ -2873,14 +3108,24 @@ var Slider = Meta.derive(function(){
 
     ret.value = ko.observable(1).extend({
         clamp : { 
-                    max : ret.max,
-                    min : ret.min
-                }
+            max : ret.max,
+            min : ret.min
+        }
     });
 
+    var precision = 0;
+    ko.computed(function() {
+        var tmp = ret.step().toString().split('.');
+        var fraction = tmp[1];
+        if (fraction) {
+            precision = fraction.length;
+        } else {
+            precision = 0;
+        }
+    });
     ret._valueNumeric = ko.computed(function(){
-        return ret.value().toFixed(ret.precision());
-    })
+        return ret.value().toFixed(precision);
+    });
 
     ret._percentageStr = ko.computed({
         read : function(){
@@ -2916,6 +3161,10 @@ var Slider = Meta.derive(function(){
     eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
     
     initialize : function(){
+        var min = this.min();
+        var max = this.max();
+        // Clamp
+        this.value(Math.min(Math.max(this.value(), min), max));
         // add draggable mixin
         Draggable.applyTo( this, {
             axis : ko.computed(function(){
@@ -3040,14 +3289,14 @@ var Spinner = Meta.derive(function() {
 		max : ko.observable(null),
 		increase : increase,
 		decrease : decrease
-	}
+	};
 	ret.value = ko.observable(1).extend({
 		numeric : ret.precision,
 		clamp : { 
 					max : ret.max,
 					min : ret.min
 				}
-	})
+	});
 	return ret;
 }, {
 	type : 'SPINNER',
@@ -3099,7 +3348,7 @@ var Spinner = Meta.derive(function() {
 					event.preventDefault(); 
 				}
 	        }
-		})
+		});
 
 		this._$value.change(function() {
 			// sync the value in the input
@@ -3167,12 +3416,13 @@ return TextField;
  * ----------------------------------
  * 
  */
-define('meta/Tree',['require','./Meta','knockout','$','_'],function(require) {
+define('meta/Tree',['require','./Meta','knockout','$','_','core/XMLParser'],function(require) {
 
 var Meta = require("./Meta");
 var ko = require('knockout');
 var $ = require('$');
 var _ = require("_");
+var XMLParser = require('core/XMLParser');
 
 var Tree = Meta.derive(function() {
     return {
@@ -3266,7 +3516,7 @@ return Tree;
  * provide util function to operate
  * the components
  */
-define('util',['require','knockout','core/XMLParser','./Base'],function(require){
+define('util',['require','knockout','core/XMLParser','./Base'],function(require) {
 
 var ko = require("knockout");
 var XMLParser = require("core/XMLParser");
@@ -3274,20 +3524,39 @@ var Base = require("./Base");
 var exports = {};
 
 // Return an array of components created from XML
-exports.createComponentsFromXML = function(XMLString, viewModel){
-
+exports.createComponentsFromXML = function(XMLString, viewModel) {
     var dom = XMLParser.parse(XMLString);
     ko.applyBindings(viewModel || {}, dom);
     var ret = [];
     var node = dom.firstChild;
-    while(node){
+    while (node) {
         var component = Base.getByDom(node);
-        if( component ){
+        if (component) {
             ret.push(component);
         }
         node = node.nextSibling;
     }
     return ret;
+}
+
+exports.initFromXML = function(dom, XMLString, viewModel) {
+    var components = exports.createComponentsFromXML(XMLString, viewModel);
+    for (var i = 0; i < components.length; i++) {
+        dom.appendChild(components[i].$el[0]);
+    }
+    return components;
+}
+
+exports.init = function(dom, viewModel, callback) {
+    ko.applyBindings(dom, viewModel);
+
+    var xmlPath = dom.getAttribute('data-qpf-xml');
+    if (xmlPath) {
+        $.get(xmlPath, function(XMLString) {
+            exports.initFromXML(dom, XMLString, viewModel);
+            callback && callback();
+        }, 'text');
+    }
 }
 
 return exports;
@@ -3948,7 +4217,7 @@ Widget.provideBinding("palette", Palette);
 
 return Palette;
 });
-define('qpf',['require','Base','container/Accordian','container/Application','container/Box','container/Container','container/HBox','container/Inline','container/Panel','container/Tab','container/VBox','container/Window','core/Clazz','core/XMLParser','core/mixin/derive','core/mixin/notifier','meta/Button','meta/CheckBox','meta/ComboBox','meta/Label','meta/Meta','meta/Slider','meta/Spinner','meta/TextField','meta/Tree','mixin/Draggable','util','widget/Color','widget/Palette','widget/Vector','widget/Widget'],function(require){
+define('qpf',['require','Base','container/Accordian','container/Application','container/Box','container/Container','container/HBox','container/Inline','container/List','container/Panel','container/Tab','container/VBox','container/Window','core/Clazz','core/XMLParser','core/mixin/derive','core/mixin/notifier','meta/Button','meta/CheckBox','meta/ComboBox','meta/Label','meta/ListItem','meta/Meta','meta/NativeHtml','meta/Slider','meta/Spinner','meta/TextField','meta/Tree','mixin/Draggable','util','widget/Color','widget/Palette','widget/Vector','widget/Widget'],function(require){
     
     var qpf =  {
 	"Base": require('Base'),
@@ -3959,6 +4228,7 @@ define('qpf',['require','Base','container/Accordian','container/Application','co
 		"Container": require('container/Container'),
 		"HBox": require('container/HBox'),
 		"Inline": require('container/Inline'),
+		"List": require('container/List'),
 		"Panel": require('container/Panel'),
 		"Tab": require('container/Tab'),
 		"VBox": require('container/VBox'),
@@ -3977,7 +4247,9 @@ define('qpf',['require','Base','container/Accordian','container/Application','co
 		"CheckBox": require('meta/CheckBox'),
 		"ComboBox": require('meta/ComboBox'),
 		"Label": require('meta/Label'),
+		"ListItem": require('meta/ListItem'),
 		"Meta": require('meta/Meta'),
+		"NativeHtml": require('meta/NativeHtml'),
 		"Slider": require('meta/Slider'),
 		"Spinner": require('meta/Spinner'),
 		"TextField": require('meta/TextField'),

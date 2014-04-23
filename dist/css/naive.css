@@ -84,46 +84,31 @@ body {
 }
 .qpf-ui-button,
 .qpf-common-button {
-  border: none;
   border-radius: 3px;
-  box-shadow: 0px 1px 3px black;
-  border-top: 1px solid #626262;
-  background-color: #3f3f3f;
-  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, rgba(255, 255, 255, 0.1)), color-stop(99% rgba(255, 255, 255, 0)));
-  background-image: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -moz-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -ms-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -o-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  color: #aeaeae;
+  border: none;
+  background-color: #4B4B4B;
+  color: #aaa;
   height: 30px;
   text-align: center;
   padding: 0px 20px;
   cursor: pointer;
 }
+.qpf-ui-button:focus,
+.qpf-common-button:focus {
+  outline: none;
+}
 .qpf-ui-button:hover,
 .qpf-common-button:hover,
 .qpf-ui-button.hover,
 .qpf-common-button.hover {
-  background-color: #757575;
-  border-top: 1px solid #848484;
-  color: #232323;
+  background-color: #353736;
+  color: #eee;
 }
 .qpf-ui-button:active,
 .qpf-common-button:active,
 .qpf-ui-button.active,
 .qpf-common-button.active {
-  background-color: #000000;
-  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, rgba(255, 255, 255, 0)), color-stop(99% rgba(255, 255, 255, 0.1)));
-  background-image: -webkit-linear-gradient(top, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 99%);
-  background-image: -moz-linear-gradient(top, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 99%);
-  background-image: -ms-linear-gradient(top, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 99%);
-  background-image: -o-linear-gradient(top, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 99%);
-  background-image: linear-gradient(top, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 99%);
-  border-bottom: 1px solid #2b2b2b;
-  box-shadow: inset 0px 1px 3px black;
-  border-top: none;
-  color: #aeaeae;
+  background-color: #1d1f1e;
 }
 .qpf-ui-button.small,
 .qpf-common-button.small {
@@ -133,7 +118,7 @@ body {
   font-size: 12px;
 }
 .qpf-ui-label {
-  color: white;
+  color: #C0C0C0;
 }
 .qpf-ui-textfield {
   background-color: #111111;
@@ -158,6 +143,7 @@ body {
 }
 .qpf-ui-checkbox {
   cursor: pointer;
+  color: #C0C0C0;
 }
 .qpf-ui-checkbox input {
   display: none;
@@ -179,14 +165,17 @@ body {
   border-bottom: 1px solid #414141;
   height: 26px;
   box-shadow: inset 0px 1px 3px black;
+  position: relative;
 }
 .qpf-ui-spinner .qpf-left {
-  float: left;
+  margin-right: 16px;
+  height: 100%;
 }
 .qpf-ui-spinner .qpf-left input {
   background: none;
   border: none;
   min-width: 10px;
+  width: 100%;
   color: #717171;
   float: left;
   margin: 0px;
@@ -198,23 +187,25 @@ body {
   outline: none;
 }
 .qpf-ui-spinner .qpf-right {
-  float: right;
+  position: absolute;
+  right: 0px;
+  top: 0px;
 }
 .qpf-ui-spinner .qpf-right .qpf-increase,
 .qpf-ui-spinner .qpf-right .qpf-decrease {
   width: 16px;
-  height: 11px;
+  height: 12px;
   margin-top: 1px;
   padding: 0px;
 }
 .qpf-ui-spinner .qpf-right .qpf-increase {
   border-radius: 0px 3px 0px 0px;
-  line-height: 9px;
+  line-height: 11px;
   font-size: 12px;
 }
 .qpf-ui-spinner .qpf-right .qpf-decrease {
   border-radius: 0px 0px 3px 0px;
-  line-height: 9px;
+  line-height: 11px;
   font-size: 16px;
 }
 .qpf-ui-slider {
@@ -338,28 +329,19 @@ body {
   left: 16px;
 }
 .qpf-ui-combobox {
-  border-radius: 3px;
-  border: 1px solid #141414;
+  border-radius: 4px;
+  border: 1px solid #494949;
   position: relative;
 }
 .qpf-ui-combobox .qpf-combobox-selected {
   position: relative;
 }
 .qpf-ui-combobox .qpf-combobox-selected .qpf-left {
-  box-shadow: none;
+  background-color: #2e302f;
   text-align: left;
   padding: 0px 10px;
   border-radius: 3px 0px 0px 3px;
-  border-right: 1px solid #616161;
-  background-color: #3f3f3f;
-  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, rgba(255, 255, 255, 0.1)), color-stop(99% rgba(255, 255, 255, 0)));
-  background-image: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -moz-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -ms-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -o-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
   color: #aeaeae;
-  border-top: 1px solid #626262;
   overflow: hidden;
   height: 30px;
   line-height: 30px;
@@ -375,12 +357,7 @@ body {
   padding: 0px;
   border-radius: 0px 3px 3px 0px;
   box-shadow: none;
-  border-left: 1px solid #272727;
-}
-.qpf-ui-combobox .qpf-combobox-selected .qpf-right:active {
-  background-color: #757575;
-  border-top: 1px solid #848484;
-  color: #232323;
+  border: none;
 }
 .qpf-ui-combobox .qpf-combobox-selected .qpf-right .qpf-icon {
   background-size: 10px 10px;
@@ -398,15 +375,14 @@ body {
   position: absolute;
   top: 32px;
   z-index: 20000;
-  border: 1px solid #141414;
+  border: 1px solid #494949;
   border-top: none;
   margin-left: -1px;
 }
 .qpf-ui-combobox ul.qpf-combobox-items > li {
   list-style: none;
-  border-bottom: 1px solid #292929;
-  border-top: 1px solid #565656;
-  background-color: #414141;
+  border-bottom: 1px solid #565656;
+  background-color: #2e302f;
   color: #8d8d8d;
   line-height: 30px;
   padding: 0px 10px;
@@ -424,11 +400,9 @@ body {
   border-radius: 3px 3px 0px 0px;
 }
 .qpf-ui-combobox.active .qpf-combobox-selected .qpf-left {
-  border-bottom: 1px solid #292929;
   border-radius: 3px 0px 0px 0px;
 }
 .qpf-ui-combobox.active .qpf-combobox-selected .qpf-right {
-  border-bottom: 1px solid #292929;
   border-radius: 0px 3px 0px 0px;
 }
 .qpf-ui-combobox.active .qpf-combobox-selected .qpf-right .qpf-icon {
@@ -632,21 +606,13 @@ body {
 }
 .qpf-ui-panel {
   box-shadow: 0px 1px 2px black;
-  background-color: #323234;
+  background-color: #2a2c2b;
   position: relative;
 }
 .qpf-ui-panel > .qpf-panel-header {
-  background-color: #3f3f3f;
-  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, rgba(255, 255, 255, 0.1)), color-stop(99% rgba(255, 255, 255, 0)));
-  background-image: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -moz-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -ms-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -o-linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: linear-gradient(top, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 99%);
-  border-top: 1px solid #626262;
-  color: #919191;
+  color: #CCC;
   line-height: 25px;
-  box-shadow: 0px 1px 1px black;
+  background-color: #424242;
 }
 .qpf-ui-panel > .qpf-panel-header > .qpf-panel-title {
   margin-left: 10px;
@@ -674,34 +640,26 @@ body {
 }
 .qpf-ui-tab > .qpf-tab-header > .qpf-tab-tabs {
   margin: -1px -1px 0px -1px;
-  box-shadow: inset 0px 0px 1px black;
-  height: 28px;
+  height: 24px;
   padding: 3px 3px 1px 1px;
 }
 .qpf-ui-tab > .qpf-tab-header > .qpf-tab-tabs > li {
   cursor: pointer;
   list-style: none;
-  border-radius: 5px 5px 0px 0px;
+  border-radius: 3px 3px 0px 0px;
   border-top: 1px solid #525252;
   background-color: #3f3f3f;
-  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, rgba(255, 255, 255, 0.05)), color-stop(99% rgba(255, 255, 255, 0)));
-  background-image: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -moz-linear-gradient(top, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -ms-linear-gradient(top, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: -o-linear-gradient(top, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 99%);
-  background-image: linear-gradient(top, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 99%);
-  line-height: 27px;
+  line-height: 24px;
   float: left;
   text-align: center;
-  border-bottom: 1px solid #222;
+  margin-right: 1px;
   overflow: hidden;
 }
 .qpf-ui-tab > .qpf-tab-header > .qpf-tab-tabs > li.actived {
   background-color: #323234;
-  border: 1px solid #1B1B1B;
   border-bottom: none;
   margin-top: -1px;
-  line-height: 29px;
+  line-height: 25px;
 }
 .qpf-ui-tab > .qpf-tab-header > .qpf-tab-tabs > li a {
   color: #919191;

@@ -15,7 +15,7 @@
 define(function(require){
 
 var Meta = require("./Meta");
-var Draggable = require("../mixin/Draggable");
+var Draggable = require("../helper/Draggable");
 var ko = require("knockout");
 var $ = require("$");
 var _ = require("_");
@@ -34,8 +34,6 @@ var Slider = Meta.derive(function(){
 
         orientation : ko.observable("horizontal"),// horizontal | vertical
 
-        precision : ko.observable(2),
-
         format : "{{value}}",
 
         _format : function(number){
@@ -48,14 +46,24 @@ var Slider = Meta.derive(function(){
 
     ret.value = ko.observable(1).extend({
         clamp : { 
-                    max : ret.max,
-                    min : ret.min
-                }
+            max : ret.max,
+            min : ret.min
+        }
     });
 
+    var precision = 0;
+    ko.computed(function() {
+        var tmp = ret.step().toString().split('.');
+        var fraction = tmp[1];
+        if (fraction) {
+            precision = fraction.length;
+        } else {
+            precision = 0;
+        }
+    });
     ret._valueNumeric = ko.computed(function(){
-        return ret.value().toFixed(ret.precision());
-    })
+        return ret.value().toFixed(precision);
+    });
 
     ret._percentageStr = ko.computed({
         read : function(){
@@ -91,6 +99,10 @@ var Slider = Meta.derive(function(){
     eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
     
     initialize : function(){
+        var min = this.min();
+        var max = this.max();
+        // Clamp
+        this.value(Math.min(Math.max(this.value(), min), max));
         // add draggable mixin
         Draggable.applyTo( this, {
             axis : ko.computed(function(){

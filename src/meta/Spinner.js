@@ -31,14 +31,14 @@ var Spinner = Meta.derive(function() {
 		max : ko.observable(null),
 		increase : increase,
 		decrease : decrease
-	}
+	};
 	ret.value = ko.observable(1).extend({
 		numeric : ret.precision,
 		clamp : { 
 					max : ret.max,
 					min : ret.min
 				}
-	})
+	});
 	return ret;
 }, {
 	type : 'SPINNER',
@@ -90,7 +90,7 @@ var Spinner = Meta.derive(function() {
 					event.preventDefault(); 
 				}
 	        }
-		})
+		});
 
 		this._$value.change(function() {
 			// sync the value in the input

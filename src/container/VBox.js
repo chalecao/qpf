@@ -2,7 +2,7 @@
  * vbox layout
  * 
  * Items of vbox can have flex and prefer two extra properties
- * About this tow properties, can reference to flexbox in css3
+ * About this tow properties, you can reference to flexbox in css3
  * http://www.w3.org/TR/css3-flexbox/
  * https://github.com/doctyper/flexie/blob/master/src/flexie.js
  * TODO : add flexbox support
@@ -12,82 +12,95 @@
 
 define(function(require) {
 
-var Container = require("./Container");
-var Box = require("./Box");
-var ko = require("knockout");
-var $ = require("$");
-var _ = require("_");
+    var Container = require("./Container");
+    var Box = require("./Box");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
 
-var vBox = Box.derive(function() {
+    var vBox = Box.derive({
+        _flexSum : 0,
+        _childrenWithFlex : [],
+        _marginCache : [],
+        _marginCacheWithFlex : [],
+        _remainderHeight : 0,
+        _accHeight : 0
+    }, {
 
-    return {
-    }
-}, {
+        type : 'VBOX',
 
-    type : 'VBOX',
+        css : 'vbox',
 
-    css : 'vbox',
+        resizeChildren : function() {
 
-    resizeChildren : function() {
+            this._flexSum = 0;
+            this._accHeight = 0;
+            this._childrenWithFlex = [];
+            this._marginCache = [];
+            this._marginCacheWithFlex = [];
+            this._remainderHeight = this.$el.height();
 
-        var flexSum = 0;
-        var remainderHeight = this.$el.height();
-        var childrenWithFlex = [];
+            _.each(this.children(), this._iterateChildren, this);
 
-        var marginCache = [];
-        var marginCacheWithFlex = [];
+            _.each(this._childrenWithFlex, this._updateChildrenHeight, this)
 
-        _.each(this.children(), function(child) {
+            _.each(this.children(), this._updateChildrenPosition, this);
+        },
+
+
+        _iterateChildren : function(child) {
             var margin = this._getMargin(child.$el);
-            marginCache.push(margin);
+            this._marginCache.push(margin);
             // stretch the width
             // (when align is stretch)
-            child.width( this.$el.width()-margin.left-margin.right );
+            child.width(this.$el.width() - margin.left - margin.right);
 
-            var prefer = ko.utils.unwrapObservable( child.prefer );
+            var prefer = ko.utils.unwrapObservable(child.prefer);
+            var resizable = ko.utils.unwrapObservable(child.resizable);
+            // Item is resizable, use the width and height directly
+            if (resizable) {
+                var height = +child.height() || 0;
+                this._remainderHeight -= height + margin.top + margin.bottom;
+            }
+            // item has a prefer size (not null or undefined);
+            else if (prefer != null) {
+                // TODO : if the prefer size is larger than vbox size??
+                prefer = Math.min(prefer, this._remainderHeight);
+                child.height(prefer);
 
-            // item has a prefer size;
-            if( prefer ) {
-                // TODO : if the prefer size is lager than vbox size??
-                prefer = Math.min(prefer, remainderHeight);
-                child.height( prefer );
-
-                remainderHeight -= prefer+margin.top+margin.bottom;
-            }else{
-                var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1);
+                this._remainderHeight -= prefer + margin.top + margin.bottom;
+            } else {
+                var flex = parseInt(ko.utils.unwrapObservable(child.flex) || 1);
                 // put it in the next step to compute
                 // the height based on the flex property
-                childrenWithFlex.push(child);
-                marginCacheWithFlex.push(margin);
+                this._childrenWithFlex.push(child);
+                this._marginCacheWithFlex.push(margin);
 
-                flexSum += flex;
+                this._flexSum += flex;
             }
-        }, this);
+        },
 
-        _.each( childrenWithFlex, function(child, idx) {
-            var margin = marginCacheWithFlex[idx];
-            var flex = parseInt(ko.utils.unwrapObservable( child.flex ) || 1),
-                ratio = flex / flexSum;
-            child.height( Math.floor(remainderHeight*ratio)-margin.top-margin.bottom ); 
-        })
-
-        var prevHeight = 0;
-        _.each(this.children(), function(child, idx) {
-            var margin = marginCache[idx];
+        _updateChildrenPosition : function(child, idx) {
+            var margin = this._marginCache[idx];
             child.$el.css({
                 "position" : "absolute",
                 "left" : '0px', // still set left to zero, use margin to fix the layout
-                "top" : prevHeight + "px"
+                "top" : this._accHeight + "px"
             })
-            prevHeight += child.height()+margin.top+margin.bottom;
-        })
-    }
+            this._accHeight += +child.height() + margin.top + margin.bottom;
+        },
 
-})
+        _updateChildrenHeight : function(child, idx) {
+            var margin = this._marginCacheWithFlex[idx];
+            var flex = parseInt(ko.utils.unwrapObservable(child.flex) || 1),
+                ratio = flex / this._flexSum;
+            child.height(Math.floor(this._remainderHeight*ratio) - margin.top - margin.bottom); 
+        }
+    });
 
 
-Container.provideBinding("vbox", vBox);
+    Container.provideBinding("vbox", vBox);
 
-return vBox;
+    return vBox;
 
 })

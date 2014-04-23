@@ -9,6 +9,7 @@ define(function(require){
 		"Container": require('container/Container'),
 		"HBox": require('container/HBox'),
 		"Inline": require('container/Inline'),
+		"List": require('container/List'),
 		"Panel": require('container/Panel'),
 		"Tab": require('container/Tab'),
 		"VBox": require('container/VBox'),
@@ -27,14 +28,17 @@ define(function(require){
 		"CheckBox": require('meta/CheckBox'),
 		"ComboBox": require('meta/ComboBox'),
 		"Label": require('meta/Label'),
+		"ListItem": require('meta/ListItem'),
 		"Meta": require('meta/Meta'),
+		"NativeHtml": require('meta/NativeHtml'),
 		"Slider": require('meta/Slider'),
 		"Spinner": require('meta/Spinner'),
 		"TextField": require('meta/TextField'),
 		"Tree": require('meta/Tree')
 	},
-	"mixin": {
-		"Draggable": require('mixin/Draggable')
+	"helper": {
+		"Draggable": require('helper/Draggable'),
+		"Resizable": require('helper/Resizable')
 	},
 	"util": require('util'),
 	"widget": {
