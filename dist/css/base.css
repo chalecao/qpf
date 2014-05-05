@@ -132,6 +132,22 @@ body {
   padding: 0px 10px;
   font-size: 12px;
 }
+.qpf-ui-icon-button {
+  width: 30px;
+  height: 30px;
+  padding: 0px;
+}
+.qpf-ui-icon-button .qpf-icon {
+  background-size: 18px 18px;
+  width: 30px;
+  height: 30px;
+  background-position: 50% 50%;
+  background-repeat: no-repeat;
+}
+.qpf-ui-icon-button.small {
+  width: 20px;
+  height: 20px;
+}
 .qpf-ui-label {
   color: white;
 }

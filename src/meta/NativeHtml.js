@@ -2,14 +2,14 @@
 define(function(require){
 
     var Meta = require("./Meta");
-    var XMLParser = require("core/XMLParser");
+    var XMLParser = require("../core/XMLParser");
     var ko = require("knockout");
     var _ = require("_");
 
     var NativeHtml = Meta.derive(function(){
         return {
             $el : $('<div data-bind="html:html"></div>'),
-            html : ko.observable("ko")
+            html : ko.observable("")
         }
     }, {
         type : "NATIVEHTML",

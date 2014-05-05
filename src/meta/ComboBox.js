@@ -9,7 +9,7 @@
 define(function(require) {
 
 var Meta = require("./Meta");
-var XMLParser = require("core/XMLParser");
+var XMLParser = require("../core/XMLParser");
 var ko = require("knockout");
 var $ = require("$");
 var _ = require("_");

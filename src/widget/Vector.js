@@ -10,7 +10,7 @@ define(function(require) {
 
 var Widget = require("./Widget");
 var Base = require("../Base");
-var XMLParser = require("core/XMLParser");
+var XMLParser = require("../core/XMLParser");
 var Slider = require("../meta/Slider");
 var Spinner = require("../meta/Spinner");
 var ko = require("knockout");

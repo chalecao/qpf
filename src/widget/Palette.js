@@ -10,9 +10,9 @@ define(function(require) {
     var _ = require("_");
 
     // component will be used in the widget
-    require("widget/Vector");
-    require("meta/TextField");
-    require("meta/Slider");
+    require("./Vector");
+    require("../meta/TextField");
+    require("../meta/Slider");
 
     var Palette = Widget.derive(function() {
         var ret = new Color;

@@ -25,13 +25,13 @@
 <body>
 	<script type="text/javascript">
 		requirejs.config({
-			baseUrl : "../src",
 		    paths : {
 		        // libraries
 		        "knockout" : "../thirdparty/knockout",
 		        // Use jquery temporary, zepto's bind does not support context
 		        "$" : "../thirdparty/jquery",
-		        "_" : "../thirdparty/underscore"
+		        "_" : "../thirdparty/underscore",
+		        "qpf" : "../src"
 		    },
 		    shim : {
 		        '$' : {

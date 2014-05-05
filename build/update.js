@@ -27,7 +27,7 @@ glob("**/*.js", {
             return memo[propName];
         }, namespace);
         
-        object[baseName] = "__require('"+filePathWithOutExt+"')__";
+        object[baseName] = "__require('qpf/"+filePathWithOutExt+"')__";
     })
 
     var jsString = JSON.stringify( namespace, null, '\t' );

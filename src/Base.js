@@ -6,8 +6,8 @@ define(function(require) {
 
     'use strict';
 
-    var Clazz = require("core/Clazz");
-    var notifier = require("core/mixin/notifier");
+    var Clazz = require("./core/Clazz");
+    var notifier = require("./core/mixin/notifier");
     var ko = require("knockout");
     var $ = require("$");
     var _ = require("_");

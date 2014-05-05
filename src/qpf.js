@@ -1,51 +1,52 @@
 define(function(require){
     
     var qpf =  {
-	"Base": require('Base'),
+	"Base": require('qpf/Base'),
 	"container": {
-		"Accordian": require('container/Accordian'),
-		"Application": require('container/Application'),
-		"Box": require('container/Box'),
-		"Container": require('container/Container'),
-		"HBox": require('container/HBox'),
-		"Inline": require('container/Inline'),
-		"List": require('container/List'),
-		"Panel": require('container/Panel'),
-		"Tab": require('container/Tab'),
-		"VBox": require('container/VBox'),
-		"Window": require('container/Window')
+		"Accordian": require('qpf/container/Accordian'),
+		"Application": require('qpf/container/Application'),
+		"Box": require('qpf/container/Box'),
+		"Container": require('qpf/container/Container'),
+		"HBox": require('qpf/container/HBox'),
+		"Inline": require('qpf/container/Inline'),
+		"List": require('qpf/container/List'),
+		"Panel": require('qpf/container/Panel'),
+		"Tab": require('qpf/container/Tab'),
+		"VBox": require('qpf/container/VBox'),
+		"Window": require('qpf/container/Window')
 	},
 	"core": {
-		"Clazz": require('core/Clazz'),
-		"XMLParser": require('core/XMLParser'),
+		"Clazz": require('qpf/core/Clazz'),
+		"XMLParser": require('qpf/core/XMLParser'),
 		"mixin": {
-			"derive": require('core/mixin/derive'),
-			"notifier": require('core/mixin/notifier')
+			"derive": require('qpf/core/mixin/derive'),
+			"notifier": require('qpf/core/mixin/notifier')
 		}
 	},
 	"helper": {
-		"Draggable": require('helper/Draggable'),
-		"Resizable": require('helper/Resizable')
+		"Draggable": require('qpf/helper/Draggable'),
+		"Resizable": require('qpf/helper/Resizable')
 	},
 	"meta": {
-		"Button": require('meta/Button'),
-		"CheckBox": require('meta/CheckBox'),
-		"ComboBox": require('meta/ComboBox'),
-		"Label": require('meta/Label'),
-		"ListItem": require('meta/ListItem'),
-		"Meta": require('meta/Meta'),
-		"NativeHtml": require('meta/NativeHtml'),
-		"Slider": require('meta/Slider'),
-		"Spinner": require('meta/Spinner'),
-		"TextField": require('meta/TextField'),
-		"Tree": require('meta/Tree')
+		"Button": require('qpf/meta/Button'),
+		"CheckBox": require('qpf/meta/CheckBox'),
+		"ComboBox": require('qpf/meta/ComboBox'),
+		"IconButton": require('qpf/meta/IconButton'),
+		"Label": require('qpf/meta/Label'),
+		"ListItem": require('qpf/meta/ListItem'),
+		"Meta": require('qpf/meta/Meta'),
+		"NativeHtml": require('qpf/meta/NativeHtml'),
+		"Slider": require('qpf/meta/Slider'),
+		"Spinner": require('qpf/meta/Spinner'),
+		"TextField": require('qpf/meta/TextField'),
+		"Tree": require('qpf/meta/Tree')
 	},
-	"util": require('util'),
+	"util": require('qpf/util'),
 	"widget": {
-		"Color": require('widget/Color'),
-		"Palette": require('widget/Palette'),
-		"Vector": require('widget/Vector'),
-		"Widget": require('widget/Widget')
+		"Color": require('qpf/widget/Color'),
+		"Palette": require('qpf/widget/Palette'),
+		"Vector": require('qpf/widget/Vector'),
+		"Widget": require('qpf/widget/Widget')
 	}
 };
 
