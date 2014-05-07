@@ -83,8 +83,8 @@ define(function(require) {
             this._h.subscribe(this._setPickerPosition, this);
         },
         afterRender : function() {
-            this._$svSpace = $('.qpf-palette-picksv');
-            this._$hSpace = $('.qpf-palette-pickh');
+            this._$svSpace = this.$el.find('.qpf-palette-picksv');
+            this._$hSpace = this.$el.find('.qpf-palette-pickh');
             this._$svPicker = this._$svSpace.children('.qpf-palette-picker');
             this._$hPicker = this._$hSpace.children('.qpf-palette-picker');
 
@@ -99,6 +99,11 @@ define(function(require) {
             var $slider = this.$el.find(".qpf-palette-alpha-slider");
             if ($slider.length) {
                 $slider.qpf("get")[0].onResize();
+            }
+
+            if (this._$svSpace) {
+                this._svSize = this._$svSpace.height();
+                this._hSize = this._$hSpace.height();
             }
 
             Widget.prototype.onResize.call(this);
@@ -187,7 +192,7 @@ define(function(require) {
                 var hue = hsv[0];
                 var saturation = hsv[1];
                 var value = hsv[2];
-
+                
                 // set position relitave to space
                 this._$svPicker.css({
                     left : Math.round(saturation/100 * this._svSize) + "px",

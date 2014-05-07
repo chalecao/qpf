@@ -346,18 +346,20 @@ define(function(require) {
     ko.extenders.clamp = function(target, options) {
         var min = options.min;
         var max = options.max;
-
+        
         var clamper = ko.computed({
             read : target,
             write : function(value) {
                 var minValue = parseFloat(ko.utils.unwrapObservable(min)),
                     maxValue = parseFloat(ko.utils.unwrapObservable(max));
-
                 if (! isNaN(minValue)) {
                     value = Math.max(minValue, value);
                 }
                 if (! isNaN(maxValue)) {
                     value = Math.min(maxValue, value);
+                }
+                if (options.test) {
+                    console.log(value)
                 }
                 target(value);
             }

@@ -89,16 +89,18 @@ define(function(require) {
     //
     // so writing hsv will not result circular update
     //
-    var Color = Clazz.derive({
-        //--------------------rgb color space
-        _r : ko.observable().extend({numeric:0}),
-        _g : ko.observable().extend({numeric:0}),
-        _b : ko.observable().extend({numeric:0}),
-        //--------------------hsv color space
-        _h : ko.observable().extend({clamp:{min:0,max:360}}),
-        _s : ko.observable().extend({clamp:{min:0,max:100}}),
-        _v : ko.observable().extend({clamp:{min:0,max:100}}),
-        alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
+    var Color = Clazz.derive(function() {
+        return {
+            //--------------------rgb color space
+            _r : ko.observable().extend({numeric:0}),
+            _g : ko.observable().extend({numeric:0}),
+            _b : ko.observable().extend({numeric:0}),
+            //--------------------hsv color space
+            _h : ko.observable().extend({clamp:{min:0,max:360}}),
+            _s : ko.observable().extend({clamp:{min:0,max:100}}),
+            _v : ko.observable().extend({clamp:{min:0,max:100}}),
+            alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
+        }
     }, function() {
 
         this.hex = ko.computed({

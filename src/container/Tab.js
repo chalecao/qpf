@@ -45,6 +45,7 @@ define(function(require) {
             // compute the tab value;
             this.children.subscribe(function() {
                 this._updateTabSize();
+                this._active(this.actived());
             }, this);
 
             Panel.prototype.initialize.call(this);

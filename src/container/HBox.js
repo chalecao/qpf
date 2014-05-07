@@ -45,6 +45,9 @@ define(function(require) {
         },
 
         _iterateChildren : function(child, idx) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._getMargin(child.$el);
             this._marginCache.push(margin);
             // stretch the height
@@ -77,6 +80,9 @@ define(function(require) {
         },
 
         _updateChildrenPosition : function(child, idx) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._marginCache[idx];
             child.$el.css({
                 "position" : "absolute",
@@ -87,6 +93,9 @@ define(function(require) {
         },
 
         _updateChildrenWidth : function(child, idx) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._marginCacheWithFlex[idx];
             var flex = parseInt(ko.utils.unwrapObservable(child.flex ) || 1);
             var ratio = flex / this._flexSum;

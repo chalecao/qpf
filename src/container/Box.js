@@ -4,6 +4,7 @@
 
 define(function(require) {
 
+    var Base = require('../Base');
     var Container = require("./Container");
     var ko = require("knockout");
     var $ = require("$");
@@ -59,11 +60,10 @@ define(function(require) {
             this._resizeTimeout = setTimeout(function() {
                 self._inResize = true;
                 self.resizeChildren();
-                Container.prototype.onResize.call(self);
+                Base.prototype.onResize.call(self);
                 self._inResize = false;
-            });
+            }, 1);
         }
-
     })
 
 

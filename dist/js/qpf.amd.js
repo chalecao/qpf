@@ -612,18 +612,20 @@ define('qpf/Base',['require','./core/Clazz','./core/mixin/notifier','knockout','
     ko.extenders.clamp = function(target, options) {
         var min = options.min;
         var max = options.max;
-
+        
         var clamper = ko.computed({
             read : target,
             write : function(value) {
                 var minValue = parseFloat(ko.utils.unwrapObservable(min)),
                     maxValue = parseFloat(ko.utils.unwrapObservable(max));
-
                 if (! isNaN(minValue)) {
                     value = Math.max(minValue, value);
                 }
                 if (! isNaN(maxValue)) {
                     value = Math.min(maxValue, value);
+                }
+                if (options.test) {
+                    console.log(value)
                 }
                 target(value);
             }
@@ -1870,8 +1872,9 @@ define('qpf/container/Application',['require','./Container','knockout','$'],func
  * base class of vbox and hbox
  */
 
-define('qpf/container/Box',['require','./Container','knockout','$','_'],function(require) {
+define('qpf/container/Box',['require','../Base','./Container','knockout','$','_'],function(require) {
 
+    var Base = require('../Base');
     var Container = require("./Container");
     var ko = require("knockout");
     var $ = require("$");
@@ -1927,11 +1930,10 @@ define('qpf/container/Box',['require','./Container','knockout','$','_'],function
             this._resizeTimeout = setTimeout(function() {
                 self._inResize = true;
                 self.resizeChildren();
-                Container.prototype.onResize.call(self);
+                Base.prototype.onResize.call(self);
                 self._inResize = false;
-            });
+            }, 1);
         }
-
     })
 
 
@@ -1987,6 +1989,9 @@ define('qpf/container/HBox',['require','./Container','./Box','knockout','$','_']
         },
 
         _iterateChildren : function(child, idx) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._getMargin(child.$el);
             this._marginCache.push(margin);
             // stretch the height
@@ -2019,6 +2024,9 @@ define('qpf/container/HBox',['require','./Container','./Box','knockout','$','_']
         },
 
         _updateChildrenPosition : function(child, idx) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._marginCache[idx];
             child.$el.css({
                 "position" : "absolute",
@@ -2029,6 +2037,9 @@ define('qpf/container/HBox',['require','./Container','./Box','knockout','$','_']
         },
 
         _updateChildrenWidth : function(child, idx) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._marginCacheWithFlex[idx];
             var flex = parseInt(ko.utils.unwrapObservable(child.flex ) || 1);
             var ratio = flex / this._flexSum;
@@ -2289,6 +2300,7 @@ define('qpf/container/Tab',['require','./Container','./Panel','knockout','$','_'
             // compute the tab value;
             this.children.subscribe(function() {
                 this._updateTabSize();
+                this._active(this.actived());
             }, this);
 
             Panel.prototype.initialize.call(this);
@@ -2438,6 +2450,9 @@ define('qpf/container/VBox',['require','./Container','./Box','knockout','$','_']
 
 
         _iterateChildren : function(child) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._getMargin(child.$el);
             this._marginCache.push(margin);
             // stretch the width
@@ -2470,6 +2485,9 @@ define('qpf/container/VBox',['require','./Container','./Box','knockout','$','_']
         },
 
         _updateChildrenPosition : function(child, idx) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._marginCache[idx];
             child.$el.css({
                 "position" : "absolute",
@@ -2480,6 +2498,9 @@ define('qpf/container/VBox',['require','./Container','./Box','knockout','$','_']
         },
 
         _updateChildrenHeight : function(child, idx) {
+            if (!child.visible()) {
+                return;
+            }
             var margin = this._marginCacheWithFlex[idx];
             var flex = parseInt(ko.utils.unwrapObservable(child.flex) || 1),
                 ratio = flex / this._flexSum;
@@ -3056,7 +3077,7 @@ define('qpf/meta/NativeHtml',['require','./Meta','../core/XMLParser','knockout',
     var NativeHtml = Meta.derive(function(){
         return {
             $el : $('<div data-bind="html:html"></div>'),
-            html : ko.observable("ko")
+            html : ko.observable("")
         }
     }, {
         type : "NATIVEHTML",
@@ -3706,16 +3727,18 @@ define('qpf/widget/Color',['require','../core/Clazz','knockout','_'],function(re
     //
     // so writing hsv will not result circular update
     //
-    var Color = Clazz.derive({
-        //--------------------rgb color space
-        _r : ko.observable().extend({numeric:0}),
-        _g : ko.observable().extend({numeric:0}),
-        _b : ko.observable().extend({numeric:0}),
-        //--------------------hsv color space
-        _h : ko.observable().extend({clamp:{min:0,max:360}}),
-        _s : ko.observable().extend({clamp:{min:0,max:100}}),
-        _v : ko.observable().extend({clamp:{min:0,max:100}}),
-        alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
+    var Color = Clazz.derive(function() {
+        return {
+            //--------------------rgb color space
+            _r : ko.observable().extend({numeric:0}),
+            _g : ko.observable().extend({numeric:0}),
+            _b : ko.observable().extend({numeric:0}),
+            //--------------------hsv color space
+            _h : ko.observable().extend({clamp:{min:0,max:360}}),
+            _s : ko.observable().extend({clamp:{min:0,max:100}}),
+            _v : ko.observable().extend({clamp:{min:0,max:100}}),
+            alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
+        }
     }, function() {
 
         this.hex = ko.computed({
@@ -4131,8 +4154,8 @@ define('qpf/widget/Palette',['require','./Widget','./Color','knockout','$','_','
             this._h.subscribe(this._setPickerPosition, this);
         },
         afterRender : function() {
-            this._$svSpace = $('.qpf-palette-picksv');
-            this._$hSpace = $('.qpf-palette-pickh');
+            this._$svSpace = this.$el.find('.qpf-palette-picksv');
+            this._$hSpace = this.$el.find('.qpf-palette-pickh');
             this._$svPicker = this._$svSpace.children('.qpf-palette-picker');
             this._$hPicker = this._$hSpace.children('.qpf-palette-picker');
 
@@ -4147,6 +4170,11 @@ define('qpf/widget/Palette',['require','./Widget','./Color','knockout','$','_','
             var $slider = this.$el.find(".qpf-palette-alpha-slider");
             if ($slider.length) {
                 $slider.qpf("get")[0].onResize();
+            }
+
+            if (this._$svSpace) {
+                this._svSize = this._$svSpace.height();
+                this._hSize = this._$hSpace.height();
             }
 
             Widget.prototype.onResize.call(this);
@@ -4235,7 +4263,7 @@ define('qpf/widget/Palette',['require','./Widget','./Color','knockout','$','_','
                 var hue = hsv[0];
                 var saturation = hsv[1];
                 var value = hsv[2];
-
+                
                 // set position relitave to space
                 this._$svPicker.css({
                     left : Math.round(saturation/100 * this._svSize) + "px",
@@ -4322,6 +4350,8 @@ define('qpf/qpf',['require','qpf/Base','qpf/container/Accordian','qpf/container/
 };
 
     qpf.create = qpf.Base.create;
+    
+    qpf.init = qpf.util.init;
 
     return qpf;
 });

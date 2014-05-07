@@ -51,6 +51,8 @@ define(function(require){
 };
 
     qpf.create = qpf.Base.create;
+    
+    qpf.init = qpf.util.init;
 
     return qpf;
 })
