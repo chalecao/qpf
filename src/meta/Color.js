@@ -69,12 +69,12 @@ define(function(require) {
                 });
                 _paletteWindow.$el.hide();
 
-                this._palette = _paletteWindow.getPalette();
-
                 document.body.appendChild(_paletteWindow.$el[0]);
 
                 _paletteWindow.render();
             }
+
+            this._palette = _paletteWindow.getPalette();
 
             this.$el.click(function(){
                 self.showPalette();
