@@ -1,6 +1,6 @@
 <?xml version='1.0'?>
 <application>
-	<tab height="100%" actived="1">
+	<tab height="100%" actived="0">
 		<panel title="Meta">
 			<inline style="margin:10px">
 				<label style="margin:5px">Button</label>
@@ -24,6 +24,9 @@
 
 			<label>Spinner</label>
 			<spinner value="20" max="100" width="500px"></spinner>
+
+			<label>Color</label>
+			<color color="#ffffff"></color>
 		</panel>
 		<panel title="Widget">
 			<label>

@@ -4,7 +4,7 @@
 define(function(require) {
 
     var Widget = require("./Widget");
-    var Color = require("./Color");
+    var ColorViewModel = require("./ColorViewModel");
     var ko = require("knockout");
     var $ = require("$");
     var _ = require("_");
@@ -15,7 +15,7 @@ define(function(require) {
     require("../meta/Slider");
 
     var Palette = Widget.derive(function() {
-        var ret = new Color;
+        var ret = new ColorViewModel;
         var self = this;
 
         _.extend(ret, {
@@ -29,7 +29,7 @@ define(function(require) {
 
         css : 'palette',
 
-        eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply']),
+        eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply', 'cancel']),
 
         template :  '<div class="qpf-palette-adjuster">\
                         <div class="qpf-left">\

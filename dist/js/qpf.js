@@ -1043,7 +1043,7 @@ define('qpf/Base',['require','./core/Clazz','./core/mixin/notifier','knockout','
     ko.extenders.clamp = function(target, options) {
         var min = options.min;
         var max = options.max;
-        
+
         var clamper = ko.computed({
             read : target,
             write : function(value) {
@@ -1054,9 +1054,6 @@ define('qpf/Base',['require','./core/Clazz','./core/mixin/notifier','knockout','
                 }
                 if (! isNaN(maxValue)) {
                     value = Math.min(maxValue, value);
-                }
-                if (options.test) {
-                    console.log(value)
                 }
                 target(value);
             }
@@ -3201,6 +3198,221 @@ define('qpf/core/XMLParser',['require','exports','module','_'],function(require,
         getTextContent : getTextContent
     }
 });
+// (c) Dean McNamee <dean@gmail.com>, 2012.
+//
+// https://github.com/deanm/css-color-parser-js
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+// IN THE SOFTWARE.
+
+define('qpf/core/color',[],function() {
+    // http://www.w3.org/TR/css3-color/
+    var kCSSColorTable = {
+        "transparent": [0,0,0,0], "aliceblue": [240,248,255,1],
+        "antiquewhite": [250,235,215,1], "aqua": [0,255,255,1],
+        "aquamarine": [127,255,212,1], "azure": [240,255,255,1],
+        "beige": [245,245,220,1], "bisque": [255,228,196,1],
+        "black": [0,0,0,1], "blanchedalmond": [255,235,205,1],
+        "blue": [0,0,255,1], "blueviolet": [138,43,226,1],
+        "brown": [165,42,42,1], "burlywood": [222,184,135,1],
+        "cadetblue": [95,158,160,1], "chartreuse": [127,255,0,1],
+        "chocolate": [210,105,30,1], "coral": [255,127,80,1],
+        "cornflowerblue": [100,149,237,1], "cornsilk": [255,248,220,1],
+        "crimson": [220,20,60,1], "cyan": [0,255,255,1],
+        "darkblue": [0,0,139,1], "darkcyan": [0,139,139,1],
+        "darkgoldenrod": [184,134,11,1], "darkgray": [169,169,169,1],
+        "darkgreen": [0,100,0,1], "darkgrey": [169,169,169,1],
+        "darkkhaki": [189,183,107,1], "darkmagenta": [139,0,139,1],
+        "darkolivegreen": [85,107,47,1], "darkorange": [255,140,0,1],
+        "darkorchid": [153,50,204,1], "darkred": [139,0,0,1],
+        "darksalmon": [233,150,122,1], "darkseagreen": [143,188,143,1],
+        "darkslateblue": [72,61,139,1], "darkslategray": [47,79,79,1],
+        "darkslategrey": [47,79,79,1], "darkturquoise": [0,206,209,1],
+        "darkviolet": [148,0,211,1], "deeppink": [255,20,147,1],
+        "deepskyblue": [0,191,255,1], "dimgray": [105,105,105,1],
+        "dimgrey": [105,105,105,1], "dodgerblue": [30,144,255,1],
+        "firebrick": [178,34,34,1], "floralwhite": [255,250,240,1],
+        "forestgreen": [34,139,34,1], "fuchsia": [255,0,255,1],
+        "gainsboro": [220,220,220,1], "ghostwhite": [248,248,255,1],
+        "gold": [255,215,0,1], "goldenrod": [218,165,32,1],
+        "gray": [128,128,128,1], "green": [0,128,0,1],
+        "greenyellow": [173,255,47,1], "grey": [128,128,128,1],
+        "honeydew": [240,255,240,1], "hotpink": [255,105,180,1],
+        "indianred": [205,92,92,1], "indigo": [75,0,130,1],
+        "ivory": [255,255,240,1], "khaki": [240,230,140,1],
+        "lavender": [230,230,250,1], "lavenderblush": [255,240,245,1],
+        "lawngreen": [124,252,0,1], "lemonchiffon": [255,250,205,1],
+        "lightblue": [173,216,230,1], "lightcoral": [240,128,128,1],
+        "lightcyan": [224,255,255,1], "lightgoldenrodyellow": [250,250,210,1],
+        "lightgray": [211,211,211,1], "lightgreen": [144,238,144,1],
+        "lightgrey": [211,211,211,1], "lightpink": [255,182,193,1],
+        "lightsalmon": [255,160,122,1], "lightseagreen": [32,178,170,1],
+        "lightskyblue": [135,206,250,1], "lightslategray": [119,136,153,1],
+        "lightslategrey": [119,136,153,1], "lightsteelblue": [176,196,222,1],
+        "lightyellow": [255,255,224,1], "lime": [0,255,0,1],
+        "limegreen": [50,205,50,1], "linen": [250,240,230,1],
+        "magenta": [255,0,255,1], "maroon": [128,0,0,1],
+        "mediumaquamarine": [102,205,170,1], "mediumblue": [0,0,205,1],
+        "mediumorchid": [186,85,211,1], "mediumpurple": [147,112,219,1],
+        "mediumseagreen": [60,179,113,1], "mediumslateblue": [123,104,238,1],
+        "mediumspringgreen": [0,250,154,1], "mediumturquoise": [72,209,204,1],
+        "mediumvioletred": [199,21,133,1], "midnightblue": [25,25,112,1],
+        "mintcream": [245,255,250,1], "mistyrose": [255,228,225,1],
+        "moccasin": [255,228,181,1], "navajowhite": [255,222,173,1],
+        "navy": [0,0,128,1], "oldlace": [253,245,230,1],
+        "olive": [128,128,0,1], "olivedrab": [107,142,35,1],
+        "orange": [255,165,0,1], "orangered": [255,69,0,1],
+        "orchid": [218,112,214,1], "palegoldenrod": [238,232,170,1],
+        "palegreen": [152,251,152,1], "paleturquoise": [175,238,238,1],
+        "palevioletred": [219,112,147,1], "papayawhip": [255,239,213,1],
+        "peachpuff": [255,218,185,1], "peru": [205,133,63,1],
+        "pink": [255,192,203,1], "plum": [221,160,221,1],
+        "powderblue": [176,224,230,1], "purple": [128,0,128,1],
+        "red": [255,0,0,1], "rosybrown": [188,143,143,1],
+        "royalblue": [65,105,225,1], "saddlebrown": [139,69,19,1],
+        "salmon": [250,128,114,1], "sandybrown": [244,164,96,1],
+        "seagreen": [46,139,87,1], "seashell": [255,245,238,1],
+        "sienna": [160,82,45,1], "silver": [192,192,192,1],
+        "skyblue": [135,206,235,1], "slateblue": [106,90,205,1],
+        "slategray": [112,128,144,1], "slategrey": [112,128,144,1],
+        "snow": [255,250,250,1], "springgreen": [0,255,127,1],
+        "steelblue": [70,130,180,1], "tan": [210,180,140,1],
+        "teal": [0,128,128,1], "thistle": [216,191,216,1],
+        "tomato": [255,99,71,1], "turquoise": [64,224,208,1],
+        "violet": [238,130,238,1], "wheat": [245,222,179,1],
+        "white": [255,255,255,1], "whitesmoke": [245,245,245,1],
+        "yellow": [255,255,0,1], "yellowgreen": [154,205,50,1]
+    }
+
+    function clamp_css_byte(i) {  // Clamp to integer 0 .. 255.
+        i = Math.round(i);  // Seems to be what Chrome does (vs truncation).
+        return i < 0 ? 0 : i > 255 ? 255 : i;
+    }
+
+    function clamp_css_float(f) {  // Clamp to float 0.0 .. 1.0.
+        return f < 0 ? 0 : f > 1 ? 1 : f;
+    }
+
+    function parse_css_int(str) {  // int or percentage.
+        if (str[str.length - 1] === '%')
+            return clamp_css_byte(parseFloat(str) / 100 * 255);
+        return clamp_css_byte(parseInt(str));
+    }
+
+    function parse_css_float(str) {  // float or percentage.
+        if (str[str.length - 1] === '%')
+            return clamp_css_float(parseFloat(str) / 100);
+        return clamp_css_float(parseFloat(str));
+    }
+
+    function css_hue_to_rgb(m1, m2, h) {
+      if (h < 0) h += 1;
+      else if (h > 1) h -= 1;
+
+      if (h * 6 < 1) return m1 + (m2 - m1) * h * 6;
+      if (h * 2 < 1) return m2;
+      if (h * 3 < 2) return m1 + (m2 - m1) * (2/3 - h) * 6;
+      return m1;
+    }
+
+    function parse(css_str) {
+        // Remove all whitespace, not compliant, but should just be more accepting.
+        var str = css_str.replace(/ /g, '').toLowerCase();
+
+        // Color keywords (and transparent) lookup.
+        if (str in kCSSColorTable)
+            return kCSSColorTable[str].slice();  // dup.
+
+        // #abc and #abc123 syntax.
+        if (str[0] === '#') {
+            if (str.length === 4) {
+                var iv = parseInt(str.substr(1), 16);  // TODO(deanm): Stricter parsing.
+                if (!(iv >= 0 && iv <= 0xfff)) return null;  // Covers NaN.
+                return [
+                    ((iv & 0xf00) >> 4) | ((iv & 0xf00) >> 8),
+                    (iv & 0xf0) | ((iv & 0xf0) >> 4),
+                    (iv & 0xf) | ((iv & 0xf) << 4),
+                    1
+                ];
+            }
+            else if (str.length === 7) {
+                var iv = parseInt(str.substr(1), 16);  // TODO(deanm): Stricter parsing.
+                if (!(iv >= 0 && iv <= 0xffffff)) return null;  // Covers NaN.
+                return [
+                    (iv & 0xff0000) >> 16,
+                    (iv & 0xff00) >> 8,
+                    iv & 0xff,
+                    1
+                ];
+            }
+        
+            return null;
+        }
+
+        var op = str.indexOf('('), ep = str.indexOf(')');
+        if (op !== -1 && ep + 1 === str.length) {
+            var fname = str.substr(0, op);
+            var params = str.substr(op+1, ep-(op+1)).split(',');
+            var alpha = 1;  // To allow case fallthrough.
+            switch (fname) {
+                case 'rgba':
+                    if (params.length !== 4) return null;
+                    alpha = parse_css_float(params.pop());
+                // Fall through.
+                case 'rgb':
+                    if (params.length !== 3) return null;
+                    return [
+                        parse_css_int(params[0]),
+                        parse_css_int(params[1]),
+                        parse_css_int(params[2]),
+                        alpha
+                    ];
+                case 'hsla':
+                    if (params.length !== 4) return null;
+                    alpha = parse_css_float(params.pop());
+                // Fall through.
+                case 'hsl':
+                    if (params.length !== 3) return null;
+                    var h = (((parseFloat(params[0]) % 360) + 360) % 360) / 360;  // 0 .. 1
+                    // NOTE(deanm): According to the CSS spec s/l should only be
+                    // percentages, but we don't bother and let float or percentage.
+                    var s = parse_css_float(params[1]);
+                    var l = parse_css_float(params[2]);
+                    var m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s;
+                    var m1 = l * 2 - m2;
+                    return [
+                        clamp_css_byte(css_hue_to_rgb(m1, m2, h+1/3) * 255),
+                        clamp_css_byte(css_hue_to_rgb(m1, m2, h) * 255),
+                        clamp_css_byte(css_hue_to_rgb(m1, m2, h-1/3) * 255),
+                        alpha
+                    ];
+                default:
+                    return null;
+            }
+        }
+
+        return null;
+    }
+
+    return {
+        parse : parse
+    }
+});
 /**
  * Base class of all meta component
  * Meta component is the ui component
@@ -3313,228 +3525,238 @@ return Checkbox;
 
 })  ;
 /**
- * Combobox component
- * 
- * @VMProp  value
- * @VMProp  items
- *          @property   value
- *          @property   text
+ * Base class of all widget component
+ * Widget is component mixed with meta 
+ * containers and other HTMLDOMElenents
  */
-define('qpf/meta/ComboBox',['require','./Meta','../core/XMLParser','knockout','$','_'],function(require) {
+define('qpf/widget/Widget',['require','../Base','../meta/Meta','../container/Container','knockout','_'],function(require) {
 
-var Meta = require("./Meta");
-var XMLParser = require("../core/XMLParser");
+var Base = require("../Base");
+var Meta = require("../meta/Meta");
+var Container = require("../container/Container");
 var ko = require("knockout");
-var $ = require("$");
 var _ = require("_");
 
-var Combobox = Meta.derive(function() {
-    return {
-        $el : $('<div data-bind="css:{active:active}" tabindex="0"></div>'),
+var Widget = Base.derive(
+{
 
-        value : ko.observable(),
-
-        items : ko.observableArray(),   //{value, text}
-
-        defaultText : ko.observable("select"),
-
-        active : ko.observable(false),
-    };
 }, {
-    
-    type : 'COMBOBOX',
+    type : "WIDGET",
 
-    css : 'combobox',
-
-    eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
-
-    initialize : function() {
-
-        this.selectedText = ko.computed(function() {
-            var val = this.value();
-            var result =  _.filter(this.items(), function(item) {
-                return ko.utils.unwrapObservable(item.value) == val;
-            })[0];
-            if (typeof(result) == "undefined") {
-                return this.defaultText();
-            }
-            return ko.utils.unwrapObservable(result.text);
-        }, this);
-
-    },
-
-    template : '<div class="qpf-combobox-selected" data-bind="click:_toggle">\
-                    <div class="qpf-left" data-bind="html:selectedText"></div>\
-                    <div class="qpf-right qpf-common-button">\
-                        <div class="qpf-icon"></div>\
-                    </div>\
-                </div>\
-                <ul class="qpf-combobox-items" data-bind="foreach:items">\
-                    <li data-bind="html:text,attr:{\'data-qpf-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
-                </ul>',
-
-    afterRender : function() {
-
-        var self = this;
-        this._$selected = this.$el.find(".qpf-combobox-selected");
-        this._$items = this.$el.find(".qpf-combobox-items");
-
-        this.$el.blur(function() {
-            self._blur();
-        })
-
-    },
-
-    //events
-    _focus : function() {
-        this.active(true);
-    },
-    _blur : function() {
-        this.active(false);
-    },
-    _toggle : function() {
-        this.active(! this.active());
-    },
-    _select : function(value) {
-        value = ko.utils.unwrapObservable(value);
-        this.value(value);
-        this._blur();
-    },
-    _isSelected : function(value) {
-        return this.value() === ko.utils.unwrapObservable(value);
-    }
-})
-
-Meta.provideBinding("combobox", Combobox);
-
-XMLParser.provideParser('combobox', function(xmlNode) {
-    var items = [];
-    var nodes = XMLParser.util.getChildrenByTagName(xmlNode, "item");
-    _.each(nodes, function(child) {
-        // Data source can from item tags of the children
-        var value = child.getAttribute("value");
-        var text = child.getAttribute("text") ||
-                    XMLParser.util.getTextContent(child);
-
-        if (value !== null) {
-            items.push({
-                value : value,
-                text : text
-            })
-        }
-    })
-    if (items.length) {
-        return {
-            items : items
-        }
-    }
-})
-
-
-return Combobox;
+    css : 'widget'
 
 });
-define('qpf/meta/IconButton',['require','./Button','./Meta','knockout'],function(require){
 
-    var Button = require("./Button");
-    var Meta = require("./Meta");
-    var ko = require("knockout");
+//-------------------------------------------
+// Handle bingings in the knockout template
+Widget.provideBinding = Base.provideBinding;
+Widget.provideBinding("widget", Widget);
 
-    var IconButton = Button.derive(function(){
-        return {
-            $el : $("<div></div>"),
-            icon : ko.observable("")
-        }
-    }, {
-        type : "ICONBUTTON",
-        css : _.union("icon-button", Button.prototype.css),
-
-        template : '<div class="qpf-icon" data-bind="css:icon"></div>',
-    })
-
-    Meta.provideBinding("iconbutton", IconButton);
-
-    return IconButton;
+return Widget;
 
 });
 /**
- * Label component
+ * view model for color
+ * supply hsv and rgb color space
+ * http://en.wikipedia.org/wiki/HSV_color_space.
  */
-define('qpf/meta/Label',['require','./Meta','../core/XMLParser','knockout','$','_'],function(require) {
+define('qpf/widget/ColorViewModel',['require','../core/Clazz','knockout','_'],function(require) {
 
-    var Meta = require("./Meta");
-    var XMLParser = require("../core/XMLParser");
+    var Clazz = require("../core/Clazz");
     var ko = require("knockout");
-    var $ = require("$");
     var _ = require("_");
 
-    var Label = Meta.derive(function() {
+
+    function rgbToHsv(r, g, b) {
+        r = r/255, g = g/255, b = b/255;
+
+        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+        var h, s, v = max;
+
+        var d = max - min;
+        s = max == 0 ? 0 : d / max;
+
+        if(max == min) {
+            h = 0; // achromatic
+        }else{
+            switch(max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+
+        return [h*360, s*100, v*100];
+    }
+
+    function hsvToRgb(h, s, v) {
+
+        h = h/360;
+        s = s/100;
+        v = v/100;
+
+        var r, g, b;
+
+        var i = Math.floor(h * 6);
+        var f = h * 6 - i;
+        var p = v * (1 - s);
+        var q = v * (1 - f * s);
+        var t = v * (1 - (1 - f) * s);
+
+        switch (i % 6) {
+            case 0: r = v, g = t, b = p; break;
+            case 1: r = q, g = v, b = p; break;
+            case 2: r = p, g = v, b = t; break;
+            case 3: r = p, g = q, b = v; break;
+            case 4: r = t, g = p, b = v; break;
+            case 5: r = v, g = p, b = q; break;
+        }
+
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+
+    function intToRgb(value) {
+        var r = (value >> 16) & 0xff;
+        var g = (value >> 8) & 0xff;
+        var b = value & 0xff;
+        return [r, g, b];
+    }
+
+    function rgbToInt(r, g, b) {
+        return r << 16 | g << 8 | b;
+    }
+
+    function intToHsv(value) {
+        var rgb = intToRgb(value);
+        return rgbToHsv(rgb[0], rgb[1], rgb[2]);
+    }
+
+    function hsvToInt(h, s, v) {
+        return rgbToInt(hsvToRgb(h, s, v));
+    }
+
+    // hsv to rgb is multiple to one
+    // dependency relationship
+    // h,s,v(w)------->rgb(r)----->r,g,b(w)
+    // r,g,b(w)------->hex(r)
+    // hex(w)------->hsv(w)
+    // hex(rw)<------->hexString(rw)
+    //
+    // so writing hsv will not result circular update
+    //
+    var Color = Clazz.derive(function() {
         return {
-            // value of the Label
-            text : ko.observable('Label')        
-        };
-    }, {
+            //--------------------rgb color space
+            _r : ko.observable().extend({numeric:0}),
+            _g : ko.observable().extend({numeric:0}),
+            _b : ko.observable().extend({numeric:0}),
+            //--------------------hsv color space
+            _h : ko.observable().extend({clamp:{min:0,max:360}}),
+            _s : ko.observable().extend({clamp:{min:0,max:100}}),
+            _v : ko.observable().extend({clamp:{min:0,max:100}}),
+            alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
+        }
+    }, function() {
 
-        template : '<Label data-bind="html:text"></Label>',
+        this.hex = ko.computed({
+            read : function() {
+                return rgbToInt( this._r(), this._g(), this._b() );
+            },
+            write : function(value) {
+                var hsv = intToHsv(value);
+                this._h(hsv[0]);
+                this._s(hsv[1]);
+                this._v(hsv[2]);
+            }
+        }, this);
 
-        type : 'LABEL',
+        // bridge of hsv to rgb
+        this.rgb = ko.computed({
+            read : function() {
+                var rgb = hsvToRgb(this._h(), this._s(), this._v());
+                this._r(rgb[0]);
+                this._g(rgb[1]);
+                this._b(rgb[2]);
 
-        css : 'label'
+                return rgb;
+            }
+        }, this);
+
+        this.hsv = ko.computed(function() {
+            return [this._h(), this._s(), this._v()];
+        }, this);
+
+        // set rgb and hsv from hex manually
+        this.set = function(hex) {
+            var hsv = intToHsv(hex);
+            var rgb = intToRgb(hex);
+            this._h(hsv[0]);
+            this._s(hsv[1]);
+            this._v(hsv[2]);
+            this._r(rgb[0]);
+            this._g(rgb[1]);
+            this._b(rgb[2]);
+        }
+        //---------------string of hex
+        this.hexString = ko.computed({
+            read : function() {
+                var string = this.hex().toString(16),
+                    fill = [];
+                for (var i = 0; i < 6-string.length; i++) {
+                    fill.push('0');
+                }
+                return fill.join("")+string;
+            },
+            write : function() {}
+        }, this);
+
+        //-----------------rgb color of hue when value and saturation is 100%
+        this.hueRGB = ko.computed(function() {
+            return "rgb(" + hsvToRgb(this._h(), 100, 100).join(",") + ")";
+        }, this);
+
+        //---------------items data for vector(rgb and hsv)
+        var vector = ['_r', '_g', '_b'];
+        this.rgbVector = [];
+        for (var i = 0; i < 3; i++) {
+            this.rgbVector.push({
+                type : "spinner",
+                min : 0,
+                max : 255,
+                step : 1,
+                precision : 0,
+                value : this[vector[i]]
+            })
+        }
+        var vector = ['_h', '_s', '_v'];
+        this.hsvVector = [];
+        for (var i = 0; i < 3; i++) {
+            this.hsvVector.push({
+                type : "spinner",
+                min : 0,
+                max : 100,
+                step : 1,
+                precision : 0,
+                value : this[vector[i]]
+            })
+        }
+        // modify the hue
+        this.hsvVector[0].max = 360;
+
+        // set default 0xffffff
+        this.set(0xffffff);
     });
 
-    Meta.provideBinding("label", Label);
+    Color.intToRgb = intToRgb;
+    Color.rgbToInt = rgbToInt;
+    Color.rgbToHsv = rgbToHsv;
+    Color.hsvToRgb = hsvToRgb;
+    Color.intToHsv = intToHsv;
+    Color.hsvToInt = hsvToInt;
 
-    // provide parser when do xmlparsing
-    XMLParser.provideParser("label", function(xmlNode) {
-        var text = XMLParser.util.getTextContent(xmlNode);
-        if (text) {
-            return {
-                text : text
-            }
-        }
-    })
-
-    return Label;
-
-});
-// default list item component
-define('qpf/meta/NativeHtml',['require','./Meta','../core/XMLParser','knockout','_'],function(require){
-
-    var Meta = require("./Meta");
-    var XMLParser = require("../core/XMLParser");
-    var ko = require("knockout");
-    var _ = require("_");
-
-    var NativeHtml = Meta.derive(function(){
-        return {
-            $el : $('<div data-bind="html:html"></div>'),
-            html : ko.observable("")
-        }
-    }, {
-        type : "NATIVEHTML",
-        
-        css : "native-html"
-    })
-
-    Meta.provideBinding("nativehtml", NativeHtml);
-
-    XMLParser.provideParser("nativehtml", function(xmlNode){
-        var children = XMLParser.util.getChildren(xmlNode);
-        var html = "";
-        _.each(children, function(child){
-            // CDATA
-            if(child.nodeType === 4){
-                html += child.textContent;
-            }
-        });
-        if( html ){
-            return {
-                html : html
-            }
-        }
-    })
-
-    return NativeHtml;
+    return Color;
 });
 /**
  * Slider component
@@ -3869,439 +4091,6 @@ define('qpf/meta/Spinner',['require','./Meta','knockout','$','_','../helper/Drag
 	return Spinner;
 });
 /**
- * Textfiled component
- *
- * @VMProp text
- * @VMProp placeholder
- *
- */
-define('qpf/meta/TextField',['require','./Meta','knockout','_'],function(require) {
-
-    var Meta = require("./Meta");
-    var ko = require("knockout");
-    var _ = require("_");
-
-    var TextField = Meta.derive(function() {
-        return {
-            tag : "div",
-
-            text : ko.observable(""),
-                
-            placeholder : ko.observable("")
-        };
-    }, {
-        
-        type : "TEXTFIELD",
-
-        css : 'textfield',
-
-        template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>',
-
-        onResize : function() {
-            this.$el.find("input").width( this.width() );
-            Meta.prototype.onResize.call(this);
-        }
-    })
-
-    Meta.provideBinding("textfield", TextField);
-
-    return TextField;
-});
-/**
- * Tree Component
- * Example
- * ----------------xml---------------
- * <tree>
- *   <item icon="assets/imgs/file.gif">foo</item>
- *   <item css="folder">
- *     <item title="bar" icon="assets/imgs/file.gif"></item>
- *   </item>
- * </tree>
- * ----------------------------------
- * 
- */
-define('qpf/meta/Tree',['require','./Meta','knockout','$','_','../core/XMLParser'],function(require) {
-
-    var Meta = require("./Meta");
-    var ko = require('knockout');
-    var $ = require('$');
-    var _ = require("_");
-    var XMLParser = require('../core/XMLParser');
-
-    var Tree = Meta.derive(function() {
-        return {
-            // Example
-            // [{
-            //    title : "" | ko.observable(),
-            //    icon  : "" | ko.observable(),      //icon img url
-            //    css   : "" | ko.observable(),      //css class
-            //    items : [] | ko.observableArray()  //sub items
-            // }]
-            items : ko.observableArray(),
-
-            draggable : ko.observable(false),
-
-            renamble : ko.observable(false),
-
-            indent : ko.observable(20),
-
-            // the depth of node, root is 0;
-            __depth__ : 0,
-            __nodeIndex__ : 0,
-
-            __root__ : this
-        };
-    }, {
-
-        type : "TREE",
-        
-        css : 'tree',
-
-        template : '<ul data-bind="foreach:items">\
-                        <li data-bind="qpf_tree_itemview:$data"></li>\
-                    </ul>'
-    })
-
-    var itemTemplate = '<li class="qpf-tree-item">\
-                            <div class="qpf-tree-item-title"\
-                                    data-bind="style:{paddingLeft:_paddingLeftPx}">\
-                                <!--ko if:items-->\
-                                <span class="qpf-tree-unfold"></span>\
-                                <!--/ko-->\
-                                <span class="qpf-tree-icon" data-bind="css:css"></span>\
-                                <a class="qpf-tree-item-caption" data-bind="text:title"></a>\
-                            </div>\
-                            <!--ko if:items-->\
-                            <ul class="qpf-tree-subitems" data-bind="foreach:items">\
-                                <li data-bind="qpf_tree_itemview:$data"></li>\
-                            </ul>\
-                            <!--/ko-->\
-                        </li>';
-
-    ko.bindingHandlers["qpf_tree_itemview"] = {
-        init : function(element, valueAccessor, allBindingAccessor, viewModel, bindingContext) {
-            var data = bindingContext.$data;
-            var parent = bindingContext.$parent;
-            var root = parent.__root__;
-
-            var $itemEl = $(itemTemplate);
-
-            // Default properties
-            // In case there is no items property in data
-            if( ! data.items){   
-                data.items = null;
-            }
-            if( ! data.css) {
-                data.css = data.items ? "qpf-tree-folder" : "qpf-tree-file";
-            }
-            // private data
-            data.__root__ = root;
-            data.__depth__ = parent.__depth__+1;
-
-            data._paddingLeftPx = ko.computed(function() {
-                return data.__depth__ * ko.utils.unwrapObservable( root.indent ) + "px";
-            });
-            data
-
-            element.parentNode.replaceChild($itemEl[0], element);
-            ko.applyBindings(data, $itemEl[0]);
-
-            return { 'controlsDescendantBindings': true };
-
-        }
-    }
-
-    Meta.provideBinding("tree", Tree);
-
-    return Tree;
-});
-/**
- * Util.js
- * provide util function to operate
- * the components
- */
-define('qpf/util',['require','knockout','./core/XMLParser','./Base'],function(require) {
-
-    var ko = require("knockout");
-    var XMLParser = require("./core/XMLParser");
-    var Base = require("./Base");
-    var exports = {};
-
-    // Return an array of components created from XML
-    exports.createComponentsFromXML = function(XMLString, viewModel) {
-        var dom = XMLParser.parse(XMLString);
-        ko.applyBindings(viewModel || {}, dom);
-        var ret = [];
-        var node = dom.firstChild;
-        while (node) {
-            var component = Base.getByDom(node);
-            if (component) {
-                ret.push(component);
-            }
-            node = node.nextSibling;
-        }
-        return ret;
-    }
-
-    exports.initFromXML = function(dom, XMLString, viewModel) {
-        var components = exports.createComponentsFromXML(XMLString, viewModel);
-        for (var i = 0; i < components.length; i++) {
-            dom.appendChild(components[i].$el[0]);
-        }
-        return components;
-    }
-
-    exports.init = function(dom, viewModel, callback) {
-        ko.applyBindings(dom, viewModel);
-
-        var xmlPath = dom.getAttribute('data-qpf-xml');
-        if (xmlPath) {
-            $.get(xmlPath, function(XMLString) {
-                exports.initFromXML(dom, XMLString, viewModel);
-                callback && callback();
-            }, 'text');
-        }
-    }
-
-    return exports;
-
-})
-;
-/**
- * view model for color
- * supply hsv and rgb color space
- * http://en.wikipedia.org/wiki/HSV_color_space.
- */
-define('qpf/widget/Color',['require','../core/Clazz','knockout','_'],function(require) {
-
-    var Clazz = require("../core/Clazz");
-    var ko = require("knockout");
-    var _ = require("_");
-
-
-    function rgbToHsv(r, g, b) {
-        r = r/255, g = g/255, b = b/255;
-
-        var max = Math.max(r, g, b), min = Math.min(r, g, b);
-        var h, s, v = max;
-
-        var d = max - min;
-        s = max == 0 ? 0 : d / max;
-
-        if(max == min) {
-            h = 0; // achromatic
-        }else{
-            switch(max) {
-                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                case g: h = (b - r) / d + 2; break;
-                case b: h = (r - g) / d + 4; break;
-            }
-            h /= 6;
-        }
-
-        return [h*360, s*100, v*100];
-    }
-
-    function hsvToRgb(h, s, v) {
-
-        h = h/360;
-        s = s/100;
-        v = v/100;
-
-        var r, g, b;
-
-        var i = Math.floor(h * 6);
-        var f = h * 6 - i;
-        var p = v * (1 - s);
-        var q = v * (1 - f * s);
-        var t = v * (1 - (1 - f) * s);
-
-        switch (i % 6) {
-            case 0: r = v, g = t, b = p; break;
-            case 1: r = q, g = v, b = p; break;
-            case 2: r = p, g = v, b = t; break;
-            case 3: r = p, g = q, b = v; break;
-            case 4: r = t, g = p, b = v; break;
-            case 5: r = v, g = p, b = q; break;
-        }
-
-        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
-    }
-
-
-    function intToRgb(value) {
-        var r = (value >> 16) & 0xff;
-        var g = (value >> 8) & 0xff;
-        var b = value & 0xff;
-        return [r, g, b];
-    }
-
-    function rgbToInt(r, g, b) {
-        return r << 16 | g << 8 | b;
-    }
-
-    function intToHsv(value) {
-        var rgb = intToRgb(value);
-        return rgbToHsv(rgb[0], rgb[1], rgb[2]);
-    }
-
-    function hsvToInt(h, s, v) {
-        return rgbToInt(hsvToRgb(h, s, v));
-    }
-
-    // hsv to rgb is multiple to one
-    // dependency relationship
-    // h,s,v(w)------->rgb(r)----->r,g,b(w)
-    // r,g,b(w)------->hex(r)
-    // hex(w)------->hsv(w)
-    // hex(rw)<------->hexString(rw)
-    //
-    // so writing hsv will not result circular update
-    //
-    var Color = Clazz.derive(function() {
-        return {
-            //--------------------rgb color space
-            _r : ko.observable().extend({numeric:0}),
-            _g : ko.observable().extend({numeric:0}),
-            _b : ko.observable().extend({numeric:0}),
-            //--------------------hsv color space
-            _h : ko.observable().extend({clamp:{min:0,max:360}}),
-            _s : ko.observable().extend({clamp:{min:0,max:100}}),
-            _v : ko.observable().extend({clamp:{min:0,max:100}}),
-            alpha : ko.observable(1).extend({numeric:2, clamp:{min:0, max:1}})
-        }
-    }, function() {
-
-        this.hex = ko.computed({
-            read : function() {
-                return rgbToInt( this._r(), this._g(), this._b() );
-            },
-            write : function(value) {
-                var hsv = intToHsv(value);
-                this._h(hsv[0]);
-                this._s(hsv[1]);
-                this._v(hsv[2]);
-            }
-        }, this);
-
-        // bridge of hsv to rgb
-        this.rgb = ko.computed({
-            read : function() {
-                var rgb = hsvToRgb(this._h(), this._s(), this._v());
-                this._r(rgb[0]);
-                this._g(rgb[1]);
-                this._b(rgb[2]);
-
-                return rgb;
-            }
-        }, this);
-
-        this.hsv = ko.computed(function() {
-            return [this._h(), this._s(), this._v()];
-        }, this);
-
-        // set rgb and hsv from hex manually
-        this.set = function(hex) {
-            var hsv = intToHsv(hex);
-            var rgb = intToRgb(hex);
-            this._h(hsv[0]);
-            this._s(hsv[1]);
-            this._v(hsv[2]);
-            this._r(rgb[0]);
-            this._g(rgb[1]);
-            this._b(rgb[2]);
-        }
-        //---------------string of hex
-        this.hexString = ko.computed({
-            read : function() {
-                var string = this.hex().toString(16),
-                    fill = [];
-                for (var i = 0; i < 6-string.length; i++) {
-                    fill.push('0');
-                }
-                return fill.join("")+string;
-            },
-            write : function() {}
-        }, this);
-
-        //-----------------rgb color of hue when value and saturation is 100%
-        this.hueRGB = ko.computed(function() {
-            return "rgb(" + hsvToRgb(this._h(), 100, 100).join(",") + ")";
-        }, this);
-
-        //---------------items data for vector(rgb and hsv)
-        var vector = ['_r', '_g', '_b'];
-        this.rgbVector = [];
-        for (var i = 0; i < 3; i++) {
-            this.rgbVector.push({
-                type : "spinner",
-                min : 0,
-                max : 255,
-                step : 1,
-                precision : 0,
-                value : this[vector[i]]
-            })
-        }
-        var vector = ['_h', '_s', '_v'];
-        this.hsvVector = [];
-        for (var i = 0; i < 3; i++) {
-            this.hsvVector.push({
-                type : "spinner",
-                min : 0,
-                max : 100,
-                step : 1,
-                precision : 0,
-                value : this[vector[i]]
-            })
-        }
-        // modify the hue
-        this.hsvVector[0].max = 360;
-
-        // set default 0xffffff
-        this.set(0xffffff);
-    });
-
-    Color.intToRgb = intToRgb;
-    Color.rgbToInt = rgbToInt;
-    Color.rgbToHsv = rgbToHsv;
-    Color.hsvToRgb = hsvToRgb;
-    Color.intToHsv = intToHsv;
-    Color.hsvToInt = hsvToInt;
-
-    return Color;
-});
-/**
- * Base class of all widget component
- * Widget is component mixed with meta 
- * containers and other HTMLDOMElenents
- */
-define('qpf/widget/Widget',['require','../Base','../meta/Meta','../container/Container','knockout','_'],function(require) {
-
-var Base = require("../Base");
-var Meta = require("../meta/Meta");
-var Container = require("../container/Container");
-var ko = require("knockout");
-var _ = require("_");
-
-var Widget = Base.derive(
-{
-
-}, {
-    type : "WIDGET",
-
-    css : 'widget'
-
-});
-
-//-------------------------------------------
-// Handle bingings in the knockout template
-Widget.provideBinding = Base.provideBinding;
-Widget.provideBinding("widget", Widget);
-
-return Widget;
-
-});
-/**
  * Vector widget
  * 
  * @VMProp  items
@@ -4501,12 +4290,51 @@ return Vector;
 
 });
 /**
+ * Textfiled component
+ *
+ * @VMProp text
+ * @VMProp placeholder
+ *
+ */
+define('qpf/meta/TextField',['require','./Meta','knockout','_'],function(require) {
+
+    var Meta = require("./Meta");
+    var ko = require("knockout");
+    var _ = require("_");
+
+    var TextField = Meta.derive(function() {
+        return {
+            tag : "div",
+
+            text : ko.observable(""),
+                
+            placeholder : ko.observable("")
+        };
+    }, {
+        
+        type : "TEXTFIELD",
+
+        css : 'textfield',
+
+        template : '<input type="text" data-bind="attr:{placeholder:placeholder}, value:text"/>',
+
+        onResize : function() {
+            this.$el.find("input").width( this.width() );
+            Meta.prototype.onResize.call(this);
+        }
+    })
+
+    Meta.provideBinding("textfield", TextField);
+
+    return TextField;
+});
+/**
  * Palette
  */
-define('qpf/widget/Palette',['require','./Widget','./Color','knockout','$','_','./Vector','../meta/TextField','../meta/Slider'],function(require) {
+define('qpf/widget/Palette',['require','./Widget','./ColorViewModel','knockout','$','_','./Vector','../meta/TextField','../meta/Slider'],function(require) {
 
     var Widget = require("./Widget");
-    var Color = require("./Color");
+    var ColorViewModel = require("./ColorViewModel");
     var ko = require("knockout");
     var $ = require("$");
     var _ = require("_");
@@ -4517,7 +4345,7 @@ define('qpf/widget/Palette',['require','./Widget','./Color','knockout','$','_','
     require("../meta/Slider");
 
     var Palette = Widget.derive(function() {
-        var ret = new Color;
+        var ret = new ColorViewModel;
         var self = this;
 
         _.extend(ret, {
@@ -4531,7 +4359,7 @@ define('qpf/widget/Palette',['require','./Widget','./Color','knockout','$','_','
 
         css : 'palette',
 
-        eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply']),
+        eventsProvided : _.union(Widget.prototype.eventsProvided, ['change', 'apply', 'cancel']),
 
         template :  '<div class="qpf-palette-adjuster">\
                         <div class="qpf-left">\
@@ -4728,7 +4556,569 @@ define('qpf/widget/Palette',['require','./Widget','./Color','knockout','$','_','
 
     return Palette;
 });
-define('qpf/qpf',['require','qpf/Base','qpf/container/Accordian','qpf/container/Application','qpf/container/Box','qpf/container/Container','qpf/container/HBox','qpf/container/Inline','qpf/container/List','qpf/container/Panel','qpf/container/Tab','qpf/container/VBox','qpf/container/Window','qpf/core/Clazz','qpf/core/XMLParser','qpf/core/mixin/derive','qpf/core/mixin/notifier','qpf/helper/Draggable','qpf/helper/Resizable','qpf/meta/Button','qpf/meta/CheckBox','qpf/meta/ComboBox','qpf/meta/IconButton','qpf/meta/Label','qpf/meta/ListItem','qpf/meta/Meta','qpf/meta/NativeHtml','qpf/meta/Slider','qpf/meta/Spinner','qpf/meta/TextField','qpf/meta/Tree','qpf/util','qpf/widget/Color','qpf/widget/Palette','qpf/widget/Vector','qpf/widget/Widget'],function(require){
+define('qpf/widget/PaletteWindow',['require','./Palette','../container/Window','knockout','_'],function(require){
+    
+    var Palette = require("./Palette");
+    var Window = require('../container/Window')
+    var ko = require("knockout");
+
+    var _ = require('_');
+
+    var PaletteWindow = Window.derive({
+        
+        _palette: null
+
+    }, {
+        type: 'PALETTEWINDOW',
+
+        css: _.union('palette-window', Window.prototype.css),
+
+        initialize: function() {
+
+            Window.prototype.initialize.call(this);
+            
+            this._palette = new Palette();
+
+            this._palette.width(370);
+
+            this.add(this._palette);
+
+            this.title("Palette");
+        },
+
+        show: function() {
+            this.$el.show();
+
+            this.$el.css({
+                left: Math.round($(window).width() / 2 - this.$el.width() / 2) + 'px',
+                top: Math.round($(window).height() / 2 - this.$el.height() / 2) + 'px',
+            });
+        },
+
+        hide: function() {
+            this.$el.hide();
+        },
+
+        getPalette: function() {
+            return this._palette;
+        }
+    });
+
+    return PaletteWindow;
+});
+define('qpf/meta/Color',['require','./Meta','knockout','../core/color','../widget/PaletteWindow'],function(require) {
+
+    var Meta = require('./Meta');
+    var ko = require('knockout');
+    var colorUtil = require('../core/color');
+
+    var PaletteWindow = require('../widget/PaletteWindow');
+
+    function hexToString(hex) {
+        var string = hex.toString(16);
+        var fill = [];
+        for (var i = 0; i < 6-string.length; i++) {
+            fill.push('0');
+        }
+        return "#" + fill.join("") + string;
+    }
+
+    function hexToRgb(value) {
+        var r = (value >> 16) & 0xff;
+        var g = (value >> 8) & 0xff;
+        var b = value & 0xff;
+        return [r, g, b];
+    }
+
+    function rgbToHex(r, g, b) {
+        return r << 16 | g << 8 | b;
+    }
+
+    // Share one palette window instance
+    var _paletteWindow = null;
+
+    var Color = Meta.derive(function() {
+        var ret = {
+
+            color: ko.observable('#ffffff'),
+
+            _palette: null
+        }
+        var self = this;
+
+        ret._colorHexStr = ko.computed(function() {
+            var color = ret.color();
+            if (typeof(color) == 'string') {
+                var rgb = colorUtil.parse(ret.color());
+                var hex = rgbToHex(rgb[0], rgb[1], rgb[2]);   
+            } else {
+                var hex = color;
+            }
+            return hexToString(hex).toUpperCase();
+        });
+
+        return ret;
+    }, {
+
+        type: 'COLOR',
+
+        css: 'color',
+
+        template : '<div data-bind="text:_colorHexStr" class="qpf-color-hex"></div>\
+                    <div class="qpf-color-preview" data-bind="style:{backgroundColor:_colorHexStr()}"></div>',
+
+        initialize: function() {
+            var self = this;
+
+            if (!_paletteWindow) {
+
+                _paletteWindow = new PaletteWindow({
+                    temporary: true
+                });
+                _paletteWindow.$el.hide();
+
+                this._palette = _paletteWindow.getPalette();
+
+                document.body.appendChild(_paletteWindow.$el[0]);
+
+                _paletteWindow.render();
+            }
+
+            this.$el.click(function(){
+                self.showPalette();
+            });
+        },
+
+        showPalette : function(){
+
+            _paletteWindow.show();
+
+            this._palette.on("change", this._paletteChange, this);
+            this._palette.on("cancel", this._paletteCancel, this);
+            this._palette.on("apply", this._paletteApply, this);
+
+
+            var color = this.color();
+            if (typeof(color) == 'string') {
+                var rgb = colorUtil.parse(this.color());
+            } else {
+                var rgb = hexToRgb(color);
+            }
+
+            this._palette.set(rgbToHex(rgb[0], rgb[1], rgb[2]));
+        },
+
+        _paletteChange : function(hex) {
+            if (typeof(this.color()) == 'string') {
+                this.color(hexToString(hex));
+            } else {
+                this.color(hex);
+            }
+        },
+
+        _paletteCancel : function(){
+
+            _paletteWindow.hide();
+            
+            this._palette.off("change");
+            this._palette.off("apply");
+            this._palette.off("cancel");
+        },
+
+        _paletteApply : function(){
+            this._paletteCancel();
+        }
+    });
+    
+    Meta.provideBinding('color', Color);
+
+    return Color;
+});
+/**
+ * Combobox component
+ * 
+ * @VMProp  value
+ * @VMProp  items
+ *          @property   value
+ *          @property   text
+ */
+define('qpf/meta/ComboBox',['require','./Meta','../core/XMLParser','knockout','$','_'],function(require) {
+
+var Meta = require("./Meta");
+var XMLParser = require("../core/XMLParser");
+var ko = require("knockout");
+var $ = require("$");
+var _ = require("_");
+
+var Combobox = Meta.derive(function() {
+    return {
+        $el : $('<div data-bind="css:{active:active}" tabindex="0"></div>'),
+
+        value : ko.observable(),
+
+        items : ko.observableArray(),   //{value, text}
+
+        defaultText : ko.observable("select"),
+
+        active : ko.observable(false),
+    };
+}, {
+    
+    type : 'COMBOBOX',
+
+    css : 'combobox',
+
+    eventsProvided : _.union(Meta.prototype.eventsProvided, "change"),
+
+    initialize : function() {
+
+        this.selectedText = ko.computed(function() {
+            var val = this.value();
+            var result =  _.filter(this.items(), function(item) {
+                return ko.utils.unwrapObservable(item.value) == val;
+            })[0];
+            if (typeof(result) == "undefined") {
+                return this.defaultText();
+            }
+            return ko.utils.unwrapObservable(result.text);
+        }, this);
+
+    },
+
+    template : '<div class="qpf-combobox-selected" data-bind="click:_toggle">\
+                    <div class="qpf-left" data-bind="html:selectedText"></div>\
+                    <div class="qpf-right qpf-common-button">\
+                        <div class="qpf-icon"></div>\
+                    </div>\
+                </div>\
+                <ul class="qpf-combobox-items" data-bind="foreach:items">\
+                    <li data-bind="html:text,attr:{\'data-qpf-value\':value},click:$parent._select.bind($parent,value),css:{selected:$parent._isSelected(value)}"></li>\
+                </ul>',
+
+    afterRender : function() {
+
+        var self = this;
+        this._$selected = this.$el.find(".qpf-combobox-selected");
+        this._$items = this.$el.find(".qpf-combobox-items");
+
+        this.$el.blur(function() {
+            self._blur();
+        })
+
+    },
+
+    //events
+    _focus : function() {
+        this.active(true);
+    },
+    _blur : function() {
+        this.active(false);
+    },
+    _toggle : function() {
+        this.active(! this.active());
+    },
+    _select : function(value) {
+        value = ko.utils.unwrapObservable(value);
+        this.value(value);
+        this._blur();
+    },
+    _isSelected : function(value) {
+        return this.value() === ko.utils.unwrapObservable(value);
+    }
+})
+
+Meta.provideBinding("combobox", Combobox);
+
+XMLParser.provideParser('combobox', function(xmlNode) {
+    var items = [];
+    var nodes = XMLParser.util.getChildrenByTagName(xmlNode, "item");
+    _.each(nodes, function(child) {
+        // Data source can from item tags of the children
+        var value = child.getAttribute("value");
+        var text = child.getAttribute("text") ||
+                    XMLParser.util.getTextContent(child);
+
+        if (value !== null) {
+            items.push({
+                value : value,
+                text : text
+            })
+        }
+    })
+    if (items.length) {
+        return {
+            items : items
+        }
+    }
+})
+
+
+return Combobox;
+
+});
+define('qpf/meta/IconButton',['require','./Button','./Meta','knockout'],function(require){
+
+    var Button = require("./Button");
+    var Meta = require("./Meta");
+    var ko = require("knockout");
+
+    var IconButton = Button.derive(function(){
+        return {
+            $el : $("<div></div>"),
+            icon : ko.observable("")
+        }
+    }, {
+        type : "ICONBUTTON",
+        css : _.union("icon-button", Button.prototype.css),
+
+        template : '<div class="qpf-icon" data-bind="css:icon"></div>',
+    })
+
+    Meta.provideBinding("iconbutton", IconButton);
+
+    return IconButton;
+
+});
+/**
+ * Label component
+ */
+define('qpf/meta/Label',['require','./Meta','../core/XMLParser','knockout','$','_'],function(require) {
+
+    var Meta = require("./Meta");
+    var XMLParser = require("../core/XMLParser");
+    var ko = require("knockout");
+    var $ = require("$");
+    var _ = require("_");
+
+    var Label = Meta.derive(function() {
+        return {
+            // value of the Label
+            text : ko.observable('Label')        
+        };
+    }, {
+
+        template : '<Label data-bind="html:text"></Label>',
+
+        type : 'LABEL',
+
+        css : 'label'
+    });
+
+    Meta.provideBinding("label", Label);
+
+    // provide parser when do xmlparsing
+    XMLParser.provideParser("label", function(xmlNode) {
+        var text = XMLParser.util.getTextContent(xmlNode);
+        if (text) {
+            return {
+                text : text
+            }
+        }
+    })
+
+    return Label;
+
+});
+// default list item component
+define('qpf/meta/NativeHtml',['require','./Meta','../core/XMLParser','knockout','_'],function(require){
+
+    var Meta = require("./Meta");
+    var XMLParser = require("../core/XMLParser");
+    var ko = require("knockout");
+    var _ = require("_");
+
+    var NativeHtml = Meta.derive(function(){
+        return {
+            $el : $('<div data-bind="html:html"></div>'),
+            html : ko.observable("")
+        }
+    }, {
+        type : "NATIVEHTML",
+        
+        css : "native-html"
+    })
+
+    Meta.provideBinding("nativehtml", NativeHtml);
+
+    XMLParser.provideParser("nativehtml", function(xmlNode){
+        var children = XMLParser.util.getChildren(xmlNode);
+        var html = "";
+        _.each(children, function(child){
+            // CDATA
+            if(child.nodeType === 4){
+                html += child.textContent;
+            }
+        });
+        if( html ){
+            return {
+                html : html
+            }
+        }
+    })
+
+    return NativeHtml;
+});
+/**
+ * Tree Component
+ * Example
+ * ----------------xml---------------
+ * <tree>
+ *   <item icon="assets/imgs/file.gif">foo</item>
+ *   <item css="folder">
+ *     <item title="bar" icon="assets/imgs/file.gif"></item>
+ *   </item>
+ * </tree>
+ * ----------------------------------
+ * 
+ */
+define('qpf/meta/Tree',['require','./Meta','knockout','$','_','../core/XMLParser'],function(require) {
+
+    var Meta = require("./Meta");
+    var ko = require('knockout');
+    var $ = require('$');
+    var _ = require("_");
+    var XMLParser = require('../core/XMLParser');
+
+    var Tree = Meta.derive(function() {
+        return {
+            // Example
+            // [{
+            //    title : "" | ko.observable(),
+            //    icon  : "" | ko.observable(),      //icon img url
+            //    css   : "" | ko.observable(),      //css class
+            //    items : [] | ko.observableArray()  //sub items
+            // }]
+            items : ko.observableArray(),
+
+            draggable : ko.observable(false),
+
+            renamble : ko.observable(false),
+
+            indent : ko.observable(20),
+
+            // the depth of node, root is 0;
+            __depth__ : 0,
+            __nodeIndex__ : 0,
+
+            __root__ : this
+        };
+    }, {
+
+        type : "TREE",
+        
+        css : 'tree',
+
+        template : '<ul data-bind="foreach:items">\
+                        <li data-bind="qpf_tree_itemview:$data"></li>\
+                    </ul>'
+    })
+
+    var itemTemplate = '<li class="qpf-tree-item">\
+                            <div class="qpf-tree-item-title"\
+                                    data-bind="style:{paddingLeft:_paddingLeftPx}">\
+                                <!--ko if:items-->\
+                                <span class="qpf-tree-unfold"></span>\
+                                <!--/ko-->\
+                                <span class="qpf-tree-icon" data-bind="css:css"></span>\
+                                <a class="qpf-tree-item-caption" data-bind="text:title"></a>\
+                            </div>\
+                            <!--ko if:items-->\
+                            <ul class="qpf-tree-subitems" data-bind="foreach:items">\
+                                <li data-bind="qpf_tree_itemview:$data"></li>\
+                            </ul>\
+                            <!--/ko-->\
+                        </li>';
+
+    ko.bindingHandlers["qpf_tree_itemview"] = {
+        init : function(element, valueAccessor, allBindingAccessor, viewModel, bindingContext) {
+            var data = bindingContext.$data;
+            var parent = bindingContext.$parent;
+            var root = parent.__root__;
+
+            var $itemEl = $(itemTemplate);
+
+            // Default properties
+            // In case there is no items property in data
+            if( ! data.items){   
+                data.items = null;
+            }
+            if( ! data.css) {
+                data.css = data.items ? "qpf-tree-folder" : "qpf-tree-file";
+            }
+            // private data
+            data.__root__ = root;
+            data.__depth__ = parent.__depth__+1;
+
+            data._paddingLeftPx = ko.computed(function() {
+                return data.__depth__ * ko.utils.unwrapObservable( root.indent ) + "px";
+            });
+            data
+
+            element.parentNode.replaceChild($itemEl[0], element);
+            ko.applyBindings(data, $itemEl[0]);
+
+            return { 'controlsDescendantBindings': true };
+
+        }
+    }
+
+    Meta.provideBinding("tree", Tree);
+
+    return Tree;
+});
+/**
+ * Util.js
+ * provide util function to operate
+ * the components
+ */
+define('qpf/util',['require','knockout','./core/XMLParser','./Base'],function(require) {
+
+    var ko = require("knockout");
+    var XMLParser = require("./core/XMLParser");
+    var Base = require("./Base");
+    var exports = {};
+
+    // Return an array of components created from XML
+    exports.createComponentsFromXML = function(XMLString, viewModel) {
+        var dom = XMLParser.parse(XMLString);
+        ko.applyBindings(viewModel || {}, dom);
+        var ret = [];
+        var node = dom.firstChild;
+        while (node) {
+            var component = Base.getByDom(node);
+            if (component) {
+                ret.push(component);
+            }
+            node = node.nextSibling;
+        }
+        return ret;
+    }
+
+    exports.initFromXML = function(dom, XMLString, viewModel) {
+        var components = exports.createComponentsFromXML(XMLString, viewModel);
+        for (var i = 0; i < components.length; i++) {
+            dom.appendChild(components[i].$el[0]);
+        }
+        return components;
+    }
+
+    exports.init = function(dom, viewModel, callback) {
+        ko.applyBindings(dom, viewModel);
+
+        var xmlPath = dom.getAttribute('data-qpf-xml');
+        if (xmlPath) {
+            $.get(xmlPath, function(XMLString) {
+                exports.initFromXML(dom, XMLString, viewModel);
+                callback && callback();
+            }, 'text');
+        }
+    }
+
+    return exports;
+
+})
+;
+define('qpf/qpf',['require','qpf/Base','qpf/container/Accordian','qpf/container/Application','qpf/container/Box','qpf/container/Container','qpf/container/HBox','qpf/container/Inline','qpf/container/List','qpf/container/Panel','qpf/container/Tab','qpf/container/VBox','qpf/container/Window','qpf/core/Clazz','qpf/core/XMLParser','qpf/core/color','qpf/core/mixin/derive','qpf/core/mixin/notifier','qpf/helper/Draggable','qpf/helper/Resizable','qpf/meta/Button','qpf/meta/CheckBox','qpf/meta/Color','qpf/meta/ComboBox','qpf/meta/IconButton','qpf/meta/Label','qpf/meta/ListItem','qpf/meta/Meta','qpf/meta/NativeHtml','qpf/meta/Slider','qpf/meta/Spinner','qpf/meta/TextField','qpf/meta/Tree','qpf/util','qpf/widget/ColorViewModel','qpf/widget/Palette','qpf/widget/PaletteWindow','qpf/widget/Vector','qpf/widget/Widget'],function(require){
     
     var qpf =  {
 	"Base": require('qpf/Base'),
@@ -4748,6 +5138,7 @@ define('qpf/qpf',['require','qpf/Base','qpf/container/Accordian','qpf/container/
 	"core": {
 		"Clazz": require('qpf/core/Clazz'),
 		"XMLParser": require('qpf/core/XMLParser'),
+		"color": require('qpf/core/color'),
 		"mixin": {
 			"derive": require('qpf/core/mixin/derive'),
 			"notifier": require('qpf/core/mixin/notifier')
@@ -4760,6 +5151,7 @@ define('qpf/qpf',['require','qpf/Base','qpf/container/Accordian','qpf/container/
 	"meta": {
 		"Button": require('qpf/meta/Button'),
 		"CheckBox": require('qpf/meta/CheckBox'),
+		"Color": require('qpf/meta/Color'),
 		"ComboBox": require('qpf/meta/ComboBox'),
 		"IconButton": require('qpf/meta/IconButton'),
 		"Label": require('qpf/meta/Label'),
@@ -4773,8 +5165,9 @@ define('qpf/qpf',['require','qpf/Base','qpf/container/Accordian','qpf/container/
 	},
 	"util": require('qpf/util'),
 	"widget": {
-		"Color": require('qpf/widget/Color'),
+		"ColorViewModel": require('qpf/widget/ColorViewModel'),
 		"Palette": require('qpf/widget/Palette'),
+		"PaletteWindow": require('qpf/widget/PaletteWindow'),
 		"Vector": require('qpf/widget/Vector'),
 		"Widget": require('qpf/widget/Widget')
 	}

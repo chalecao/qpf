@@ -18,6 +18,7 @@ define(function(require){
 	"core": {
 		"Clazz": require('qpf/core/Clazz'),
 		"XMLParser": require('qpf/core/XMLParser'),
+		"color": require('qpf/core/color'),
 		"mixin": {
 			"derive": require('qpf/core/mixin/derive'),
 			"notifier": require('qpf/core/mixin/notifier')
@@ -30,6 +31,7 @@ define(function(require){
 	"meta": {
 		"Button": require('qpf/meta/Button'),
 		"CheckBox": require('qpf/meta/CheckBox'),
+		"Color": require('qpf/meta/Color'),
 		"ComboBox": require('qpf/meta/ComboBox'),
 		"IconButton": require('qpf/meta/IconButton'),
 		"Label": require('qpf/meta/Label'),
@@ -43,8 +45,9 @@ define(function(require){
 	},
 	"util": require('qpf/util'),
 	"widget": {
-		"Color": require('qpf/widget/Color'),
+		"ColorViewModel": require('qpf/widget/ColorViewModel'),
 		"Palette": require('qpf/widget/Palette'),
+		"PaletteWindow": require('qpf/widget/PaletteWindow'),
 		"Vector": require('qpf/widget/Vector'),
 		"Widget": require('qpf/widget/Widget')
 	}
