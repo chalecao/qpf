@@ -33,6 +33,8 @@ define(function(require) {
 
         initialize : function() {
 
+            Container.prototype.initialize.call(this);
+
             var oldArray = _.clone(this.dataSource());
             var self = this;
             

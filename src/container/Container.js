@@ -44,11 +44,13 @@ define(function(require) {
                 _.each(differences, function(item) {
                     // In case the dispose operation is launched by the child component
                     if (item.status == "added") {
+                        item.value.parent = this;
                         item.value.on("dispose", _onItemDispose, item.value);
                     }else if (item.status == "deleted") {
+                        item.value.parent = null;
                         item.value.off("dispose", _onItemDispose);
                     }
-                }, this);
+                }, self);
             });
             function _onItemDispose() {  
                 self.remove(this);

@@ -1548,11 +1548,13 @@ define('qpf/container/Container',['require','../Base','../helper/Resizable','kno
                 _.each(differences, function(item) {
                     // In case the dispose operation is launched by the child component
                     if (item.status == "added") {
+                        item.value.parent = this;
                         item.value.on("dispose", _onItemDispose, item.value);
                     }else if (item.status == "deleted") {
+                        item.value.parent = null;
                         item.value.off("dispose", _onItemDispose);
                     }
-                }, this);
+                }, self);
             });
             function _onItemDispose() {  
                 self.remove(this);
@@ -2083,7 +2085,7 @@ return Inline;
  * Meta component is the ui component
  * that has no children
  */
-define('qpf/meta/meta',['require','../Base','knockout'],function(require) {
+define('qpf/meta/Meta',['require','../Base','knockout'],function(require) {
 
     var Base = require("../Base");
     var ko = require("knockout");
@@ -2106,9 +2108,9 @@ define('qpf/meta/meta',['require','../Base','knockout'],function(require) {
 });
 // Default list item component
 // Specially provide for List container
-define('qpf/meta/ListItem',['require','./meta','knockout'],function(require){
+define('qpf/meta/ListItem',['require','./Meta','knockout'],function(require){
 
-    var Meta = require("./meta");
+    var Meta = require("./Meta");
     var ko = require("knockout");
 
     var ListItem = Meta.derive(function(){
@@ -2126,7 +2128,7 @@ define('qpf/meta/ListItem',['require','./meta','knockout'],function(require){
             });
         },
 
-        template : '<div class="title" data-bind="html:title"></div>'
+        template : '<div class="qpf-list-item-title" data-bind="html:title"></div>'
     })
 
     return ListItem;
@@ -2165,6 +2167,8 @@ define('qpf/container/List',['require','./Container','knockout','../meta/ListIte
         eventsProvided : _.union(Container.prototype.eventsProvided, "select"),
 
         initialize : function() {
+
+            Container.prototype.initialize.call(this);
 
             var oldArray = _.clone(this.dataSource());
             var self = this;
@@ -2981,32 +2985,6 @@ define('qpf/core/color',[],function() {
     return {
         parse : parse
     }
-});
-/**
- * Base class of all meta component
- * Meta component is the ui component
- * that has no children
- */
-define('qpf/meta/Meta',['require','../Base','knockout'],function(require) {
-
-    var Base = require("../Base");
-    var ko = require("knockout");
-
-    var Meta = Base.derive(
-    {
-    }, {
-        type : "META",
-
-        css : 'meta'
-    });
-
-    // Inherit the static methods
-    Meta.provideBinding = Base.provideBinding;
-
-    Meta.provideBinding("meta", Meta);
-
-    return Meta;
-
 });
 //======================================
 // Button component
