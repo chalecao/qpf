@@ -47,7 +47,7 @@ define(function(require) {
 
                 // PENDING : here use jquery innerHeight method ?because we still 
                 // need to consider the padding of body
-                this._$body.height(this.$el.height() - headerHeight - footerHeight );
+                this._$body.innerHeight(this.$el.height() - headerHeight - footerHeight );
         
             }
             Container.prototype.onResize.call(this);

@@ -2,7 +2,7 @@
 // Specially provide for List container
 define(function(require){
 
-    var Meta = require("./meta");
+    var Meta = require("./Meta");
     var ko = require("knockout");
 
     var ListItem = Meta.derive(function(){
@@ -20,7 +20,7 @@ define(function(require){
             });
         },
 
-        template : '<div class="title" data-bind="html:title"></div>'
+        template : '<div class="qpf-list-item-title" data-bind="html:title"></div>'
     })
 
     return ListItem;

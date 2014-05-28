@@ -83,10 +83,10 @@ define(function(require) {
             var differences = ko.utils.compareArrays(oldArray, newArray);
             var newChildren = [];
             _.each(differences, function(item) {
-                if(item.status === "retained") {
+                if (item.status === "retained") {
                     var index = oldArray.indexOf(item.value);
-                    result[ index ] = children[ index ];
-                }else if(item.status === "added") {
+                    result.push(children[index]);
+                } else if(item.status === "added") {
                     var newChild = new ItemView({
                         attributes : item.value
                     });

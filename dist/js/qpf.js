@@ -2179,7 +2179,7 @@ define('qpf/container/Panel',['require','./Container','knockout','$'],function(r
 
                 // PENDING : here use jquery innerHeight method ?because we still 
                 // need to consider the padding of body
-                this._$body.height(this.$el.height() - headerHeight - footerHeight );
+                this._$body.innerHeight(this.$el.height() - headerHeight - footerHeight );
         
             }
             Container.prototype.onResize.call(this);
@@ -2647,10 +2647,10 @@ define('qpf/container/List',['require','./Container','knockout','../meta/ListIte
             var differences = ko.utils.compareArrays(oldArray, newArray);
             var newChildren = [];
             _.each(differences, function(item) {
-                if(item.status === "retained") {
+                if (item.status === "retained") {
                     var index = oldArray.indexOf(item.value);
-                    result[ index ] = children[ index ];
-                }else if(item.status === "added") {
+                    result.push(children[index]);
+                } else if(item.status === "added") {
                     var newChild = new ItemView({
                         attributes : item.value
                     });
